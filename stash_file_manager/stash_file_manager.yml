@@ -1,0 +1,9 @@
+name: Path File Manager
+description: Hierarchical directory file-manager navigation for Stash with folder-level batch tagging and parsing.
+version: 0.1.0
+url: https://github.com/stashapp/stash
+ui:
+  javascript:
+    - file_manager.js
+  css:
+    - file_manager.css
