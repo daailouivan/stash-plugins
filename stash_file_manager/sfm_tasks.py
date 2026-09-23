@@ -19,6 +19,7 @@ from pathlib import Path
 # Factory defaults for Stash File Manager settings
 DEFAULT_SETTINGS = {
     "default_transcode_method": "direct",
+    "fallback_transcode_method": "hls",
     "root_library_path": "",
     "folder_view_mode": "cards",
     "scene_view_mode": "cards",

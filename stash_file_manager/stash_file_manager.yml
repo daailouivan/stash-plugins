@@ -1,6 +1,6 @@
 name: Path File Manager
 description: Hierarchical directory file-manager navigation for Stash with customizable folder views, Binge-style reel player, draggable PIP player, regex metadata parser, and native tasks.
-version: 2.3.0
+version: 2.4.0
 ui:
   javascript:
     - file_manager.js
@@ -30,7 +30,11 @@ settings:
   default_transcode_method:
     displayName: Default Transcode Mode
     type: STRING
-    description: "Default video playback stream mode: 'direct' (raw stream), 'transcode' (WebM transcode), or 'hls' (HLS segmented stream). Default: direct"
+    description: "Default playback stream mode for native videos: 'direct' (raw stream), 'hls' (HLS stream), or 'webm' (WebM transcode). Default: direct"
+  fallback_transcode_method:
+    displayName: Fallback Transcode Mode
+    type: STRING
+    description: "Automatic fallback transcode mode when non-native video formats (.avi, .flv, .wmv, .mpg) are detected: 'hls' (recommended) or 'webm'. Default: hls"
   root_library_path:
     displayName: Root Library Path Override
     type: STRING

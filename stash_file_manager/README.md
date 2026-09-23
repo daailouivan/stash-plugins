@@ -61,6 +61,16 @@ Eliminate wasted vertical space with compact folder layouts tailored to any libr
 
 ## 📋 Changelog & Development History
 
+### [v2.4.0] — 2026-09-23 10:45:00
+* **Fixed Picture-in-Picture (PiP) Implementation:** Resolved broken PiP where an invisible video played in the background. The primary video element is now kept persistently mounted in the DOM, preventing browser PiP session decoupling and background audio desync.
+* **Unified Right-Side Circular Action Bar:** Moved all player function buttons from the top bar into sleek, circular buttons aligned vertically on the right, ordered exactly as: `[Stash ↗] > [VLC 🚀] > [Copy Link 📋] > [Transcode Dropdown ⚡/📺/🔄] > [space] > [Prev ▲] > [Counter 1/15] > [Next ▼] > [space] > [PiP ⧉] > [Fullscreen ⛶]`.
+* **TikTok / Instagram-Style Auto-Hiding Metadata Overlay:** Relocated file name, format badge, and studio pill to the bottom-left overlay, with duration, file size, date, and video codec directly beneath. All metadata, controls, and action buttons auto-hide together after 2.5 seconds of user inactivity.
+* **Full-Bleed Canvas & Removed Bars:** Completely eliminated the static top and bottom bars, transforming the player into an edge-to-edge video canvas.
+* **Consistent Custom Player UI (Eliminated Browser Control Morphing):** Implemented custom dark timeline scrubber, play/pause button, time counter, and volume slider. Disabled browser native controls heuristics, stopping Chrome from switching between white rounded pills and black bars across different codecs.
+* **Optimized Transcode Default & Fallback Logic:** Native videos (`mp4`, `m4v`, `webm`) stream `direct` by default. Non-native videos (`.avi`, `.flv`, `.wmv`, `.mpg`) automatically fall back to `hls` (instead of webm). Added `fallback_transcode_method` to Stash Plugin Settings.
+* **Fixed Sticky Transcode Bug on Reel Scroll:** Stream mode now re-evaluates per-scene during scrolling, ensuring native MP4 files immediately resume Direct stream even after scrolling past non-native videos.
+* **Seamless Video Reel Scrolling:** Re-engineered up/down scrolling with a continuous vertical reel track that pre-renders adjacent top and bottom video slides with poster screenshots, creating fluid, connected video-reel scrolling.
+
 ### [v2.3.0] — 2026-09-23 09:12:00
 * **Fixed Plugin Manifest YAML Schema:** Resolved Stash plugin loader unmarshal errors (`field date not found in type plugin.Config` and `cannot unmarshal !!str into []string`) by removing the extraneous `date` key from `stash_file_manager.yml` (reserved exclusively for `index.yml`) and declaring `ui.javascript` and `ui.css` as YAML string arrays.
 * **Native Stash Plugin Settings (`Settings → Plugins → Path File Manager`):** Added a full settings schema exposed directly in Stash's native UI:
