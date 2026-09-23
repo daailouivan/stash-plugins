@@ -66,7 +66,7 @@ Install directly through Stash's built-in plugin manager to receive one-click up
 2. Scroll to the **Available Plugins** section and click **Add Source**.
 3. Fill out the popup:
    - **Name:** `Stash Plugins`
-   - **Source URL:** `https://raw.githubusercontent.com/<username>/<repo>/main/index.yml`
+   - **Source URL:** `https://raw.githubusercontent.com/daailouivan/stash-plugins/main/index.yml`
 4. Click **Confirm / Add**.
 5. Under **Available Plugins**, locate **"Path File Manager"** and click **Install**.
 6. Go to the **Plugins** section and click **Reload Plugins**.
@@ -80,13 +80,13 @@ Clone the repository directly into your Stash `plugins` directory:
 **Linux / macOS / Docker:**
 ```bash
 cd ~/.stash/plugins
-git clone https://github.com/<username>/<repo>.git stash_file_manager
+git clone https://github.com/daailouivan/stash-plugins.git stash_file_manager
 ```
 
 **Windows (PowerShell):**
 ```powershell
 cd $env:USERPROFILE\.stash\plugins
-git clone https://github.com/<username>/<repo>.git stash_file_manager
+git clone https://github.com/daailouivan/stash-plugins.git stash_file_manager
 ```
 
 After cloning, go to **Settings → Plugins** in Stash and click **Reload Plugins**.

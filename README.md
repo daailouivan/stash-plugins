@@ -14,7 +14,7 @@ You can add this repository directly to Stash to browse, install, and update plu
 2. Under the **Available Plugins** section, click **Add Source**.
 3. Fill out the fields:
    - **Name:** `Stash Community Plugins`
-   - **Source URL:** `https://raw.githubusercontent.com/<username>/<repo>/main/index.yml`
+   - **Source URL:** `https://raw.githubusercontent.com/daailouivan/stash-plugins/main/index.yml`
 4. Click **Confirm / Add**.
 5. Select any plugin from **Available Plugins** and click **Install**!
 
@@ -42,13 +42,13 @@ If you prefer installing via Git CLI:
 **Linux / macOS / Docker:**
 ```bash
 cd ~/.stash/plugins
-git clone https://github.com/<username>/<repo>.git stash_file_manager
+git clone https://github.com/daailouivan/stash-plugins.git stash_file_manager
 ```
 
 **Windows (PowerShell):**
 ```powershell
 cd $env:USERPROFILE\.stash\plugins
-git clone https://github.com/<username>/<repo>.git stash_file_manager
+git clone https://github.com/daailouivan/stash-plugins.git stash_file_manager
 ```
 
 After cloning, open Stash, navigate to **Settings → Plugins**, and click **Reload Plugins**.
