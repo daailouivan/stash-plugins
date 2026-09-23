@@ -11,4 +11,5 @@ desktop.ini
 
 # Archives & Temporary files
 *.zip
+!stash_file_manager.zip
 *.tar.gz
