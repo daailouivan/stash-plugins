@@ -15,61 +15,85 @@
 
     const { useState, useEffect, useMemo, useCallback, useRef } = React;
 
-    // Cache Configuration (Feature 5)
-    const CACHE_KEY = "sfm_library_cache_v2";
-    const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
+    // Global In-Memory Singleton Cache (instant 0ms retrieval within session)
+    window.__SFM_GLOBAL_CACHE__ = window.__SFM_GLOBAL_CACHE__ || {
+      trie: null,
+      scenes: null,
+      timestamp: 0,
+    };
 
-    function getCachedScenes() {
-      try {
-        const raw = window.sessionStorage.getItem(CACHE_KEY);
-        if (!raw) return null;
-        const parsed = JSON.parse(raw);
-        if (Date.now() - parsed.timestamp > CACHE_TTL_MS) {
-          window.sessionStorage.removeItem(CACHE_KEY);
-          return null;
+    // IndexedDB Persistent Storage for Large Libraries (replaces 5MB sessionStorage limit)
+    const IDB_NAME = "stash_file_manager_db";
+    const IDB_VERSION = 1;
+    const IDB_STORE = "library";
+    const CACHE_KEY = "scenes_index_v3";
+    const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+    function openIDB() {
+      return new Promise((resolve) => {
+        if (!window.indexedDB) return resolve(null);
+        try {
+          const req = window.indexedDB.open(IDB_NAME, IDB_VERSION);
+          req.onupgradeneeded = (e) => {
+            const db = e.target.result;
+            if (!db.objectStoreNames.contains(IDB_STORE)) {
+              db.createObjectStore(IDB_STORE);
+            }
+          };
+          req.onsuccess = () => resolve(req.result);
+          req.onerror = () => resolve(null);
+        } catch (e) {
+          resolve(null);
         }
-        return parsed.scenes;
-      } catch (e) {
-        return null;
-      }
+      });
     }
 
-    function setCachedScenes(scenes) {
-      try {
-        // Store compact representation to stay well within quota
-        const compact = scenes.map(s => ({
-          id: s.id,
-          title: s.title,
-          date: s.date,
-          rating100: s.rating100,
-          studio: s.studio ? { id: s.studio.id, name: s.studio.name } : null,
-          performers: s.performers ? s.performers.map(p => ({ id: p.id, name: p.name })) : [],
-          tags: s.tags ? s.tags.map(t => ({ id: t.id, name: t.name })) : [],
-          paths: {
-            screenshot: s.paths?.screenshot,
-            preview: s.paths?.preview
-          },
-          files: s.files ? s.files.map(f => ({
-            path: f.path,
-            basename: f.basename,
-            size: f.size,
-            duration: f.duration
-          })) : []
-        }));
-
-        window.sessionStorage.setItem(CACHE_KEY, JSON.stringify({
-          timestamp: Date.now(),
-          scenes: compact
-        }));
-      } catch (e) {
-        console.warn("[PathFileManager] sessionStorage caching skipped:", e.message);
-      }
+    async function idbGet(key) {
+      const db = await openIDB();
+      if (!db) return null;
+      return new Promise((resolve) => {
+        try {
+          const tx = db.transaction(IDB_STORE, "readonly");
+          const store = tx.objectStore(IDB_STORE);
+          const req = store.get(key);
+          req.onsuccess = () => resolve(req.result || null);
+          req.onerror = () => resolve(null);
+        } catch (e) {
+          resolve(null);
+        }
+      });
     }
 
-    function clearCachedScenes() {
-      try {
-        window.sessionStorage.removeItem(CACHE_KEY);
-      } catch (e) {}
+    async function idbSet(key, val) {
+      const db = await openIDB();
+      if (!db) return false;
+      return new Promise((resolve) => {
+        try {
+          const tx = db.transaction(IDB_STORE, "readwrite");
+          const store = tx.objectStore(IDB_STORE);
+          const req = store.put(val, key);
+          req.onsuccess = () => resolve(true);
+          req.onerror = () => resolve(false);
+        } catch (e) {
+          resolve(false);
+        }
+      });
+    }
+
+    async function idbClear() {
+      const db = await openIDB();
+      if (!db) return false;
+      return new Promise((resolve) => {
+        try {
+          const tx = db.transaction(IDB_STORE, "readwrite");
+          const store = tx.objectStore(IDB_STORE);
+          const req = store.clear();
+          req.onsuccess = () => resolve(true);
+          req.onerror = () => resolve(false);
+        } catch (e) {
+          resolve(false);
+        }
+      });
     }
 
     // GraphQL Query Helper
@@ -780,22 +804,46 @@
         } catch (e) {}
       };
 
-      // Feature 5: Progressive Indexing & Caching
+      // Feature 5: High-Performance Progressive Indexing & Multi-Tier Caching
       const fetchCatalog = useCallback(async (forceBypassCache = false) => {
         setLoading(true);
 
+        // Tier 1: Instant In-Memory Cache (0ms - zero hang)
+        if (!forceBypassCache && window.__SFM_GLOBAL_CACHE__.trie) {
+          setTrie(window.__SFM_GLOBAL_CACHE__.trie);
+          setLoading(false);
+          return;
+        }
+
+        // Tier 2: Persistent IndexedDB Cache (~50ms across tab visits / reloads)
         if (!forceBypassCache) {
-          setStatusText("Loading cached directory tree...");
-          const cached = getCachedScenes();
-          if (cached && cached.length > 0) {
-            const newTrie = new PathTrie();
-            cached.forEach((s) => newTrie.insert(s));
-            setTrie(newTrie);
-            setLoading(false);
-            return;
+          setStatusText("Checking local index database...");
+          const cached = await idbGet(CACHE_KEY);
+          if (cached && cached.scenes && cached.scenes.length > 0) {
+            if (Date.now() - cached.timestamp < CACHE_TTL_MS) {
+              const total = cached.scenes.length;
+              setStatusText(`Restoring ${total.toLocaleString()} scenes from local index...`);
+              const newTrie = new PathTrie();
+              const chunkSize = 1500;
+              for (let i = 0; i < total; i += chunkSize) {
+                const chunk = cached.scenes.slice(i, i + chunkSize);
+                chunk.forEach((s) => newTrie.insert(s));
+                if (total > 3000) {
+                  // Yield to browser event loop
+                  await new Promise((r) => setTimeout(r, 0));
+                }
+              }
+              window.__SFM_GLOBAL_CACHE__.trie = newTrie;
+              window.__SFM_GLOBAL_CACHE__.scenes = cached.scenes;
+              window.__SFM_GLOBAL_CACHE__.timestamp = cached.timestamp;
+              setTrie(newTrie);
+              setLoading(false);
+              return;
+            }
           }
         }
 
+        // Tier 3: Fetch from Stash GraphQL
         setStatusText("Querying scenes from Stash database...");
         try {
           const query = `
@@ -818,13 +866,55 @@
           `;
           const data = await gqlFetch(query);
           const scenes = data?.findScenes?.scenes || [];
+          const total = scenes.length;
 
-          setStatusText(`Building Path Trie for ${scenes.length} scenes...`);
+          // Build trie progressively with non-blocking UI chunks
           const newTrie = new PathTrie();
-          scenes.forEach((s) => newTrie.insert(s));
+          const chunkSize = 1000;
+
+          for (let i = 0; i < total; i += chunkSize) {
+            const chunk = scenes.slice(i, i + chunkSize);
+            chunk.forEach((s) => newTrie.insert(s));
+            const processed = Math.min(i + chunkSize, total);
+            setStatusText(`Indexing file hierarchy: ${processed.toLocaleString()} / ${total.toLocaleString()} scenes...`);
+            // Yield to browser event loop to prevent UI freezing
+            await new Promise((r) => setTimeout(r, 0));
+          }
+
+          // Compact scene representations to store efficiently
+          const compact = scenes.map((s) => ({
+            id: s.id,
+            title: s.title,
+            date: s.date,
+            rating100: s.rating100,
+            studio: s.studio ? { id: s.studio.id, name: s.studio.name } : null,
+            performers: s.performers ? s.performers.map((p) => ({ id: p.id, name: p.name })) : [],
+            tags: s.tags ? s.tags.map((t) => ({ id: t.id, name: t.name })) : [],
+            paths: {
+              screenshot: s.paths?.screenshot,
+              preview: s.paths?.preview,
+            },
+            files: s.files
+              ? s.files.map((f) => ({
+                  path: f.path,
+                  basename: f.basename,
+                  size: f.size,
+                  duration: f.duration,
+                }))
+              : [],
+          }));
+
+          // Store in memory and in IndexedDB
+          window.__SFM_GLOBAL_CACHE__.trie = newTrie;
+          window.__SFM_GLOBAL_CACHE__.scenes = compact;
+          window.__SFM_GLOBAL_CACHE__.timestamp = Date.now();
+
+          await idbSet(CACHE_KEY, {
+            timestamp: Date.now(),
+            scenes: compact,
+          });
 
           setTrie(newTrie);
-          setCachedScenes(scenes);
         } catch (err) {
           console.error(err);
           setNotification(`Failed to load library: ${err.message}`);
@@ -837,8 +927,10 @@
         fetchCatalog(refreshKey > 0);
       }, [fetchCatalog, refreshKey]);
 
-      const handleRescan = () => {
-        clearCachedScenes();
+      const handleRescan = async () => {
+        window.__SFM_GLOBAL_CACHE__.trie = null;
+        window.__SFM_GLOBAL_CACHE__.scenes = null;
+        await idbClear();
         setRefreshKey((k) => k + 1);
       };
 
@@ -1256,26 +1348,30 @@
     }
 
     // Modal Manager / View Opener
+    function closeWorkspace() {
+      const root = document.getElementById("sfm-workspace-root");
+      if (root) {
+        root.style.display = "none";
+      }
+      if (window.location.hash === "#file-manager") {
+        window.history.pushState(null, "", window.location.pathname + window.location.search);
+      }
+    }
+
     function openFileManager() {
       let root = document.getElementById("sfm-workspace-root");
       if (!root) {
         root = document.createElement("div");
         root.id = "sfm-workspace-root";
         document.body.appendChild(root);
+        ReactDOM.render(React.createElement(FileManagerView, { onClose: closeWorkspace }), root);
+      } else {
+        root.style.display = "block";
       }
 
-      function closeWorkspace() {
-        if (root) {
-          ReactDOM.unmountComponentAtNode(root);
-          root.remove();
-        }
-        if (window.location.hash === "#file-manager") {
-          window.history.pushState(null, "", window.location.pathname + window.location.search);
-        }
+      if (window.location.hash !== "#file-manager") {
+        window.history.pushState(null, "", "#file-manager");
       }
-
-      window.history.pushState(null, "", "#file-manager");
-      ReactDOM.render(React.createElement(FileManagerView, { onClose: closeWorkspace }), root);
     }
 
     // Listen to hash changes
@@ -1285,8 +1381,7 @@
       } else {
         const root = document.getElementById("sfm-workspace-root");
         if (root) {
-          ReactDOM.unmountComponentAtNode(root);
-          root.remove();
+          root.style.display = "none";
         }
       }
     });
