@@ -4,6 +4,11 @@
    Main Navigation Bar Integration (Binge Compatibility)
    ========================================================================== */
 
+
+#sfm-nav-container.nav-link {
+  padding: 0;
+}
+
 #sfm-nav-button.active,
 #sfm-nav-container a.active {
   background-color: rgba(255, 255, 255, 0.15) !important;

@@ -3249,19 +3249,44 @@
       );
     }
 
-    // Method 1: Official PluginApi.patch.instead (Matches Binge exactly)
-    if (window.PluginApi.patch && window.PluginApi.patch.instead) {
+    // Helper: recursively append a React element into the correct children container
+    function appendNavChild(node, item) {
+      if (!node) return item;
+      if (Array.isArray(node)) {
+        return node.concat(item);
+      }
+      if (React.isValidElement(node)) {
+        const children = node.props && node.props.children;
+        if (children !== undefined && children !== null) {
+          if (Array.isArray(children)) {
+            return React.cloneElement(node, null, ...children, item);
+          }
+          if (React.isValidElement(children)) {
+            if (children.props && children.props.children !== undefined) {
+              return React.cloneElement(node, null, appendNavChild(children, item));
+            }
+            return React.cloneElement(node, null, children, item);
+          }
+        }
+        return React.cloneElement(node, null, item);
+      }
+      return React.createElement(React.Fragment, null, node, item);
+    }
+
+    // Method 1: Official PluginApi.patch.instead & patch.after
+    if (window.PluginApi.patch) {
       try {
-        window.PluginApi.patch.instead("MainNavBar.MenuItems", function (props) {
-          const next = arguments[arguments.length - 1];
-          const res = typeof next === "function" ? next(props) : null;
-          return React.createElement(
-            React.Fragment,
-            null,
-            res,
-            React.createElement(FilesNavButton)
-          );
-        });
+        if (window.PluginApi.patch.instead) {
+          window.PluginApi.patch.instead("MainNavBar.MenuItems", function (props) {
+            const next = arguments[arguments.length - 1];
+            const res = typeof next === "function" ? next(props) : null;
+            return appendNavChild(res, React.createElement(FilesNavButton, { key: "sfm-files-nav-item" }));
+          });
+        } else if (window.PluginApi.patch.after) {
+          window.PluginApi.patch.after("MainNavBar.MenuItems", function (props, res) {
+            return appendNavChild(res, React.createElement(FilesNavButton, { key: "sfm-files-nav-item" }));
+          });
+        }
 
         if (window.PluginApi.patch.before) {
           window.PluginApi.patch.before("CheckboxGroup", function (props) {
@@ -3282,7 +3307,7 @@
       }
     }
 
-    // Method 2: Fallback DOM Injection (Uses exact same responsive classes as Binge)
+    // Method 2: Fallback DOM Injection (Ensures placement inside the .row container)
     function injectMainBarButtonFallback() {
       if (document.getElementById("sfm-nav-container") || document.getElementById("sfm-nav-button")) return;
 
@@ -3293,18 +3318,20 @@
 
       if (!anchor) return;
 
-      const navItem = anchor.closest(".nav-link, .nav-item, [class*='col-']") || anchor;
-      const navBar = navItem.parentElement;
-      if (!navBar) return;
+      const colItem = anchor.closest("[class*='col-']") || anchor.closest(".nav-item") || anchor;
+      const rowContainer = colItem.closest(".row") || colItem.parentElement;
+      if (!rowContainer) return;
+
+      const colClass = (colItem.getAttribute && colItem.getAttribute("class")) || "col-4 col-sm-3 col-md-2 col-lg-auto nav-link";
 
       const container = document.createElement("div");
-      container.className = "col-4 col-sm-3 col-md-2 col-lg-auto nav-link";
+      container.className = colClass;
       container.id = "sfm-nav-container";
 
       const a = document.createElement("a");
       a.href = "#file-manager";
       a.id = "sfm-nav-button";
-      a.title = "File Manager";
+      a.title = "File Manager (Browse by Directory)";
       a.setAttribute("aria-label", "File Manager");
       a.className = "minimal p-4 p-xl-2 d-flex d-xl-inline-block flex-column justify-content-between align-items-center btn btn-primary";
       a.addEventListener("click", function (evt) {
@@ -3331,7 +3358,7 @@
       a.appendChild(span);
       container.appendChild(a);
 
-      navBar.appendChild(container);
+      rowContainer.appendChild(container);
     }
 
     setInterval(injectMainBarButtonFallback, 1000);
