@@ -131,6 +131,57 @@
       }
       return `${m}:${s.toString().padStart(2, "0")}`;
     }
+    const formatSeconds = formatDuration;
+
+    // React Error Boundary to prevent any child modal or component error from closing the workspace
+    class SafeErrorBoundary extends React.Component {
+      constructor(props) {
+        super(props);
+        this.state = { hasError: false, error: null };
+      }
+      static getDerivedStateFromError(error) {
+        return { hasError: true, error };
+      }
+      componentDidCatch(error, info) {
+        console.error("[SFM SafeErrorBoundary caught]", error, info);
+      }
+      render() {
+        if (this.state.hasError) {
+          return React.createElement(
+            "div",
+            {
+              className: "sfm-modal-backdrop",
+              onClick: () => {
+                this.setState({ hasError: false, error: null });
+                if (this.props.onReset) this.props.onReset();
+              },
+            },
+            React.createElement(
+              "div",
+              {
+                className: "sfm-player-dialog p-4 bg-dark text-light border border-danger",
+                onClick: (e) => e.stopPropagation(),
+                style: { maxWidth: "520px", margin: "10% auto", borderRadius: "8px" },
+              },
+              React.createElement("h5", { className: "text-danger" }, "⚠️ Video Player Error"),
+              React.createElement("p", { className: "text-muted small" }, String(this.state.error?.message || this.state.error)),
+              React.createElement(
+                "button",
+                {
+                  className: "btn btn-secondary btn-sm mt-3",
+                  onClick: () => {
+                    this.setState({ hasError: false, error: null });
+                    if (this.props.onReset) this.props.onReset();
+                  },
+                },
+                "Close Player"
+              )
+            )
+          );
+        }
+        return this.props.children;
+      }
+    }
 
     // Modern SVG Vector Icons for UI consistency (no cartoon emojis)
     function IconFolder({ size = 20, color = "currentColor", className = "" }) {
@@ -799,7 +850,7 @@
               { className: "d-flex align-items-center flex-wrap gap-2" },
               scene.date && React.createElement("span", { className: "mr-3" }, `📅 ${scene.date}`),
               scene.files?.[0]?.size && React.createElement("span", { className: "mr-3" }, `💾 ${formatBytes(scene.files[0].size)}`),
-              scene.files?.[0]?.duration && React.createElement("span", { className: "mr-3" }, `⏱ ${formatSeconds(scene.files[0].duration)}`),
+              scene.files?.[0]?.duration && React.createElement("span", { className: "mr-3" }, `⏱ ${formatDuration(scene.files[0].duration)}`),
               React.createElement("span", { className: "sfm-reel-shortcut-hint" }, "💡 Scroll wheel or Up/Down arrows to advance like Binge")
             ),
             React.createElement(
@@ -1658,6 +1709,43 @@
         }
       });
 
+      // Collapsible Subfolders & Files Sections
+      const [isSubfoldersCollapsed, setIsSubfoldersCollapsed] = useState(() => {
+        try {
+          return window.localStorage.getItem("sfm_subfolders_collapsed") === "true";
+        } catch (e) {
+          return false;
+        }
+      });
+
+      const [isFilesCollapsed, setIsFilesCollapsed] = useState(() => {
+        try {
+          return window.localStorage.getItem("sfm_files_collapsed") === "true";
+        } catch (e) {
+          return false;
+        }
+      });
+
+      const handleToggleSubfoldersCollapsed = useCallback(() => {
+        setIsSubfoldersCollapsed((prev) => {
+          const next = !prev;
+          try {
+            window.localStorage.setItem("sfm_subfolders_collapsed", String(next));
+          } catch (e) {}
+          return next;
+        });
+      }, []);
+
+      const handleToggleFilesCollapsed = useCallback(() => {
+        setIsFilesCollapsed((prev) => {
+          const next = !prev;
+          try {
+            window.localStorage.setItem("sfm_files_collapsed", String(next));
+          } catch (e) {}
+          return next;
+        });
+      }, []);
+
       // Scene View Mode: Card vs List Views
       const [viewMode, setViewMode] = useState(() => {
         try {
@@ -2285,9 +2373,21 @@
                 { className: "d-flex justify-content-between align-items-center mb-2" },
                 React.createElement(
                   "div",
-                  { className: "sfm-section-header mb-0" },
+                  {
+                    className: "sfm-section-header mb-0 sfm-collapsible-title",
+                    onClick: handleToggleSubfoldersCollapsed,
+                    title: isSubfoldersCollapsed ? "Click to expand Subfolders" : "Click to collapse Subfolders",
+                    style: { cursor: "pointer", userSelect: "none" },
+                  },
+                  React.createElement(
+                    "span",
+                    { className: "sfm-collapse-chevron mr-2 text-info font-weight-bold" },
+                    isSubfoldersCollapsed ? "▶" : "▼"
+                  ),
                   React.createElement("span", null, "Subfolders"),
-                  React.createElement("span", { className: "badge badge-dark ml-2 font-weight-normal" }, filteredAndSortedSubfolders.length)
+                  React.createElement("span", { className: "badge badge-dark ml-2 font-weight-normal" }, filteredAndSortedSubfolders.length),
+                  isSubfoldersCollapsed &&
+                    React.createElement("span", { className: "text-muted small ml-2 font-italic" }, "(collapsed)")
                 ),
                 React.createElement(
                   "div",
@@ -2296,7 +2396,7 @@
                     "button",
                     {
                       className: `btn btn-sm ${folderViewMode === "cards" ? "btn-info" : "btn-outline-secondary"} py-0 px-2`,
-                      onClick: () => handleSetFolderViewMode("cards"),
+                      onClick: () => { setIsSubfoldersCollapsed(false); handleSetFolderViewMode("cards"); },
                       title: "Compact Cards View",
                     },
                     "田 Cards"
@@ -2305,7 +2405,7 @@
                     "button",
                     {
                       className: `btn btn-sm ${folderViewMode === "list" ? "btn-info" : "btn-outline-secondary"} py-0 px-2`,
-                      onClick: () => handleSetFolderViewMode("list"),
+                      onClick: () => { setIsSubfoldersCollapsed(false); handleSetFolderViewMode("list"); },
                       title: "Compact List View",
                     },
                     "☰ List"
@@ -2314,16 +2414,17 @@
                     "button",
                     {
                       className: `btn btn-sm ${folderViewMode === "detail" ? "btn-info" : "btn-outline-secondary"} py-0 px-2`,
-                      onClick: () => handleSetFolderViewMode("detail"),
+                      onClick: () => { setIsSubfoldersCollapsed(false); handleSetFolderViewMode("detail"); },
                       title: "Detail Table View",
                     },
                     "☷ Details"
                   )
                 )
               ),
-              // Render Folder View based on mode
-              folderViewMode === "cards" &&
-                React.createElement(
+              // Render Folder View based on mode (if not collapsed)
+              !isSubfoldersCollapsed &&
+                (folderViewMode === "cards"
+                  ? React.createElement(
                   "div",
                   { className: "row" },
                   filteredAndSortedSubfolders.map((folderName) => {
@@ -2352,9 +2453,9 @@
                       )
                     );
                   })
-                ),
-              folderViewMode === "list" &&
-                React.createElement(
+                )
+              : folderViewMode === "list"
+                ? React.createElement(
                   "div",
                   { className: "row" },
                   filteredAndSortedSubfolders.map((folderName) => {
@@ -2378,9 +2479,8 @@
                       )
                     );
                   })
-                ),
-              folderViewMode === "detail" &&
-                React.createElement(
+                )
+                : React.createElement(
                   "div",
                   { className: "table-responsive mb-3" },
                   React.createElement(
@@ -2466,7 +2566,7 @@
                       })
                     )
                   )
-                )
+                ))
             ),
           // Direct Scenes Section (Milestone 1 & 2)
           filteredAndSortedScenes.length > 0 &&
@@ -2478,23 +2578,40 @@
                 { className: "d-flex justify-content-between align-items-center mb-3" },
                 React.createElement(
                   "div",
-                  { className: "sfm-section-header mb-0" },
-                  React.createElement("span", null, `Scenes (${filteredAndSortedScenes.length})`),
+                  {
+                    className: "sfm-section-header mb-0 sfm-collapsible-title",
+                    onClick: handleToggleFilesCollapsed,
+                    title: isFilesCollapsed ? "Click to expand Files" : "Click to collapse Files",
+                    style: { cursor: "pointer", userSelect: "none" },
+                  },
+                  React.createElement(
+                    "span",
+                    { className: "sfm-collapse-chevron mr-2 text-info font-weight-bold" },
+                    isFilesCollapsed ? "▶" : "▼"
+                  ),
+                  React.createElement("span", null, `Files / Scenes (${filteredAndSortedScenes.length})`),
                   selectedSceneIds.size > 0 &&
-                    React.createElement("span", { className: "badge badge-info ml-2" }, `${selectedSceneIds.size} selected`)
+                    React.createElement("span", { className: "badge badge-info ml-2" }, `${selectedSceneIds.size} selected`),
+                  isFilesCollapsed &&
+                    React.createElement("span", { className: "text-muted small ml-2 font-italic" }, "(collapsed)")
                 ),
                 React.createElement(
-                  "button",
-                  {
-                    className: "btn btn-sm btn-outline-secondary py-0 px-2",
-                    onClick: handleSelectAllFolderScenes,
-                    title: "Select or deselect all visible scenes in folder",
-                  },
-                  filteredAndSortedScenes.every((s) => selectedSceneIds.has(s.id)) ? "Deselect All" : "Select All"
+                  "div",
+                  { onClick: (e) => e.stopPropagation() },
+                  React.createElement(
+                    "button",
+                    {
+                      className: "btn btn-sm btn-outline-secondary py-0 px-2",
+                      onClick: handleSelectAllFolderScenes,
+                      title: "Select or deselect all visible scenes in folder",
+                    },
+                    filteredAndSortedScenes.every((s) => selectedSceneIds.has(s.id)) ? "Deselect All" : "Select All"
+                  )
                 )
               ),
-              viewMode === "list"
-                ? React.createElement(SceneTableView, {
+              !isFilesCollapsed &&
+                (viewMode === "list"
+                  ? React.createElement(SceneTableView, {
                     scenes: filteredAndSortedScenes,
                     onPlay: (s) => setPlayingScene(s),
                     selectedIds: selectedSceneIds,
@@ -2517,6 +2634,7 @@
                       )
                     )
                   )
+            )
             ),
           filteredAndSortedSubfolders.length === 0 &&
             filteredAndSortedScenes.length === 0 &&
@@ -2616,14 +2734,18 @@
               },
             }),
           playingScene &&
-            React.createElement(BingeReelPlayerModal, {
-              scene: playingScene,
-              scenes: filteredAndSortedScenes,
-              onSelectScene: (s) => setPlayingScene(s),
-              onClose: () => setPlayingScene(null),
-              folderName: currentFolderName,
-              currentPath: currentPath,
-            })
+            React.createElement(
+              SafeErrorBoundary,
+              { onReset: () => setPlayingScene(null) },
+              React.createElement(BingeReelPlayerModal, {
+                scene: playingScene,
+                scenes: filteredAndSortedScenes,
+                onSelectScene: (s) => setPlayingScene(s),
+                onClose: () => setPlayingScene(null),
+                folderName: currentFolderName,
+                currentPath: currentPath,
+              })
+            )
         )
       );
     }

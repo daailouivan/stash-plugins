@@ -25,7 +25,7 @@ You can add this repository directly to Stash to browse, install, and update plu
 ### [Path File Manager](./stash_file_manager) (v2.0)
 
 A high-performance directory navigation file manager for Stash:
-* **📁 3 Customizable Folder Views:** Compact Cards Grid, Space-Efficient List Strip (30+ folders per screen), and Detail Table View with direct Stash Grid and Scan actions.
+* **📁 Collapsible Sections & 3 Folder Views:** Click `Subfolders` or `Files / Scenes` titles to collapse/expand lists; switch between Compact Cards Grid, Space-Efficient List Strip (30+ folders per screen), and Detail Table View with direct Stash Grid and Scan actions.
 * **🎬 Multi-Format Video Player (Bug Fix):** Seamless playback for `.mkv`, `.avi`, `.wmv`, and `.mp4` via automatic Stash live transcoding and error recovery.
 * **📱 Binge-Style Directory Reel:** Scroll up/down with mouse wheel, keyboard arrows, or swipe to browse through videos in the folder.
 * **⧉ Draggable Floating PIP Player:** Mini-player window draggable anywhere across the screen while keeping the file manager fully interactive.

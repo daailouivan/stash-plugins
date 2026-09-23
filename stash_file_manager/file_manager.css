@@ -1025,3 +1025,36 @@
 .sfm-stream-select:focus {
   border-color: #88c0d0;
 }
+
+/* ==========================================================================
+   Collapsible Section Headers (Subfolders & Files)
+   ========================================================================== */
+
+.sfm-collapsible-title {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 4px;
+  padding: 0.2rem 0.5rem;
+  margin-left: -0.5rem;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.sfm-collapsible-title:hover {
+  background-color: rgba(136, 192, 208, 0.15);
+  color: #88c0d0;
+}
+
+.sfm-collapse-chevron {
+  display: inline-block;
+  width: 14px;
+  font-size: 0.85rem;
+  text-align: center;
+  transition: transform 0.15s ease;
+}
+
+.sfm-collapse-hint {
+  font-size: 0.78rem;
+  opacity: 0.75;
+}
