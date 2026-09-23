@@ -1058,3 +1058,231 @@
   font-size: 0.78rem;
   opacity: 0.75;
 }
+
+/* ==========================================================================
+   Dedicated Picture-in-Picture Controls & Active Dock Pill
+   ========================================================================== */
+
+.sfm-pip-dock-pill {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 10060;
+  pointer-events: auto;
+  background: #242933;
+  border: 1px solid #88c0d0;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.75);
+  border-radius: 30px;
+  padding: 0.45rem 1rem;
+  display: flex;
+  align-items: center;
+  color: #eceff4;
+  font-size: 0.88rem;
+  backdrop-filter: blur(8px);
+  animation: sfmPipPulse 2.5s infinite ease-in-out;
+}
+
+@keyframes sfmPipPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(136, 192, 208, 0.45);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(136, 192, 208, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(136, 192, 208, 0);
+  }
+}
+
+.sfm-pip-pulse {
+  color: #a3be8c;
+  font-size: 0.95rem;
+  display: inline-block;
+  line-height: 1;
+}
+
+.sfm-onvideo-pip-btn {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 25;
+  background: rgba(36, 41, 51, 0.82);
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(136, 192, 208, 0.6);
+  color: #eceff4;
+  border-radius: 6px;
+  padding: 0.3rem 0.65rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+.sfm-onvideo-pip-btn:hover {
+  background: #88c0d0;
+  color: #242933;
+  border-color: #88c0d0;
+  transform: scale(1.05);
+}
+
+.sfm-pip-action-btn {
+  background-color: #88c0d0 !important;
+  color: #242933 !important;
+  border-color: #88c0d0 !important;
+}
+
+.sfm-pip-action-btn:hover {
+  background-color: #81a1c1 !important;
+  border-color: #81a1c1 !important;
+}
+
+/* ==========================================================================
+   Binge-Style Fast-Forward, Rewind & Playback Controls Overlay
+   ========================================================================== */
+
+.sfm-player-seek-bar {
+  position: absolute;
+  bottom: 45px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 22;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(24, 28, 37, 0.88);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(136, 192, 208, 0.4);
+  border-radius: 30px;
+  padding: 0.35rem 0.85rem;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.75);
+  opacity: 0.92;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  user-select: none;
+}
+
+.sfm-player-seek-bar:hover {
+  opacity: 1;
+  transform: translateX(-50%) scale(1.02);
+}
+
+.sfm-seek-btn {
+  background: transparent;
+  border: none;
+  color: #eceff4;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0.25rem 0.65rem;
+  border-radius: 20px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  transition: background-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
+  user-select: none;
+}
+
+.sfm-seek-btn:hover {
+  background-color: rgba(136, 192, 208, 0.25);
+  color: #88c0d0;
+}
+
+.sfm-seek-btn:active {
+  transform: scale(0.94);
+  background-color: rgba(136, 192, 208, 0.4);
+}
+
+.sfm-seek-btn-play {
+  background-color: rgba(136, 192, 208, 0.2);
+  color: #88c0d0;
+  padding: 0.25rem 0.85rem;
+}
+
+.sfm-seek-btn-play:hover {
+  background-color: #88c0d0;
+  color: #242933;
+}
+
+.sfm-seek-btn-speed {
+  font-size: 0.8rem;
+  color: #ebcb8b;
+  border: 1px solid rgba(235, 203, 139, 0.35);
+  padding: 0.2rem 0.55rem;
+}
+
+.sfm-seek-btn-speed:hover {
+  background-color: rgba(235, 203, 139, 0.2);
+  color: #ebcb8b;
+}
+
+/* On-Screen HUD Animated Feedback */
+.sfm-player-hud {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 30;
+  pointer-events: none;
+  animation: sfmHudPop 0.3s ease-out;
+}
+
+.sfm-hud-pill {
+  background: rgba(15, 18, 25, 0.9);
+  backdrop-filter: blur(12px);
+  border: 1px solid #88c0d0;
+  color: #eceff4;
+  font-size: 1.25rem;
+  font-weight: 700;
+  padding: 0.65rem 1.5rem;
+  border-radius: 40px;
+  box-shadow: 0 10px 36px rgba(0, 0, 0, 0.85);
+  letter-spacing: 0.5px;
+}
+
+@keyframes sfmHudPop {
+  0% {
+    opacity: 0;
+    transform: scale(0.75);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Floating PiP Mini Seek Overlay */
+.sfm-pip-seek-overlay {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: rgba(15, 18, 25, 0.85);
+  backdrop-filter: blur(6px);
+  border-radius: 20px;
+  padding: 0.2rem 0.5rem;
+  z-index: 20;
+}
+
+.sfm-pip-seek-btn {
+  background: transparent;
+  border: none;
+  color: #eceff4;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.15rem 0.4rem;
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.sfm-pip-seek-btn:hover {
+  background-color: rgba(136, 192, 208, 0.25);
+  color: #88c0d0;
+}
+
+.sfm-pip-seek-play {
+  color: #88c0d0;
+  font-weight: 700;
+}
