@@ -41,6 +41,22 @@ A high-performance directory navigation file manager for Stash:
 
 ## 📋 Changelog & Development History
 
+### [v2.3.0] — 2026-09-23 09:12:00
+* **Fixed Plugin Manifest YAML Schema:** Resolved Stash plugin loader unmarshal errors (`field date not found in type plugin.Config` and `cannot unmarshal !!str into []string`) by removing the extraneous `date` key from `stash_file_manager.yml` (reserved exclusively for `index.yml`) and declaring `ui.javascript` and `ui.css` as YAML string arrays.
+* **Native Stash Plugin Settings (`Settings → Plugins → Path File Manager`):** Added a full settings schema exposed directly in Stash's native UI:
+  * `default_transcode_method`: Configurable default playback stream mode (`direct` raw stream, `webm` progressive transcode, or `hls` adaptive stream).
+  * `root_library_path`: Custom library root folder path override.
+  * `folder_view_mode` & `scene_view_mode`: Default layout modes (`cards`, `list`, `details` / `cards`, `table`).
+  * `folder_card_size` & `scene_card_size`: Default zoom slider values.
+  * `default_sort_field` & `default_sort_direction`: Default scene sorting criteria and order.
+  * `remember_last_path`: Toggle to resume at the last visited folder across sessions.
+  * `auto_rebuild_tree_on_start`: Toggle to automatically rebuild the directory tree on plugin load.
+* **Native Stash Plugin Tasks (`Settings → Tasks → Plugin Tasks`):** Introduced `sfm_tasks.py` backend runner implementing standard Stash task operations:
+  * `Rescan Library and Rebuild Tree`: Crawls library directories, counts scenes, and rebuilds local directory cache.
+  * `Reset Plugin Settings to Defaults`: Restores factory default settings via Stash's `configurePlugin` GraphQL mutation and clears caches for troubleshooting.
+  * `Initialize Plugin Configuration`: Verifies library paths and seeds configuration into Stash.
+* **In-App Settings & Tasks Dialog:** Added a `⚙️ Settings` button to the File Manager toolbar that opens a settings modal allowing users to inspect active settings, save changes directly to Stash's `config.yml`, trigger tree rebuilds, and access Stash Settings pages.
+
 ### [v2.2.0] — 2026-09-23 08:17:48
 * **Unified Section Headers:** Relocated the Scene view toggle (`⊞ Cards` / `☰ Table`) from the top toolbar to the `Files / Scenes` section header line, creating visual and behavioral uniformity with the `Subfolders` section controls.
 * **Relocated Select All Control:** Moved the `Select All` / `Deselect All` button directly alongside the scene count and selection badge.

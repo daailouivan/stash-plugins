@@ -111,6 +111,35 @@
       return json.data;
     }
 
+    // Stash Plugin Settings Helpers (Query & Mutation)
+    async function fetchStashPluginSettings() {
+      try {
+        const data = await gqlFetch(`query GetSFMSettings {
+          configuration {
+            plugins
+          }
+        }`);
+        return data?.configuration?.plugins?.stash_file_manager || {};
+      } catch (e) {
+        return {};
+      }
+    }
+
+    async function saveStashPluginSettings(values) {
+      try {
+        const data = await gqlFetch(
+          `mutation ConfigureSFM($plugin_id: ID!, $values: Map!) {
+            configurePlugin(plugin_id: $plugin_id, values: $values)
+          }`,
+          { plugin_id: "stash_file_manager", values }
+        );
+        return data?.configurePlugin;
+      } catch (e) {
+        console.error("[SFM] Failed to configure plugin settings:", e);
+        return null;
+      }
+    }
+
     // Helper: format bytes
     function formatBytes(bytes) {
       if (!bytes || bytes <= 0) return "0 B";
@@ -424,9 +453,12 @@
 
       const [streamMode, setStreamMode] = useState(() => {
         try {
-          return window.localStorage.getItem("sfm_stream_mode") || (isNativeDirect ? "direct" : "webm");
-        } catch (e) {
+          const saved = window.localStorage.getItem("sfm_stream_mode");
+          if (saved) return saved;
+          if (window.__SFM_DEFAULT_TRANSCODE_METHOD__) return window.__SFM_DEFAULT_TRANSCODE_METHOD__;
           return isNativeDirect ? "direct" : "webm";
+        } catch (e) {
+          return window.__SFM_DEFAULT_TRANSCODE_METHOD__ || (isNativeDirect ? "direct" : "webm");
         }
       });
       const [customStreamUrl, setCustomStreamUrl] = useState("");
@@ -1978,6 +2010,279 @@
     }
 
     // ==========================================
+    // Modal: Plugin Settings & Troubleshooting Tasks
+    // ==========================================
+    function SettingsAndTasksModal({ isOpen, onClose, settings, onSaveSettings, onTriggerRebuild, onResetDefaults }) {
+      const [formData, setFormData] = useState({
+        default_transcode_method: settings?.default_transcode_method || "direct",
+        root_library_path: settings?.root_library_path || "",
+        folder_view_mode: settings?.folder_view_mode || "cards",
+        scene_view_mode: settings?.scene_view_mode || "cards",
+        default_sort_field: settings?.default_sort_field || "name",
+        default_sort_direction: settings?.default_sort_direction || "asc",
+        folder_card_size: settings?.folder_card_size || 160,
+        scene_card_size: settings?.scene_card_size || 240,
+        remember_last_path: settings?.remember_last_path !== false,
+        auto_rebuild_tree_on_start: !!settings?.auto_rebuild_tree_on_start,
+      });
+      const [isSaving, setIsSaving] = useState(false);
+      const [saveNotice, setSaveNotice] = useState("");
+
+      const handleChange = (key, value) => {
+        setFormData((prev) => ({ ...prev, [key]: value }));
+      };
+
+      const handleSave = async () => {
+        setIsSaving(true);
+        setSaveNotice("Saving to Stash configuration...");
+        try {
+          await onSaveSettings(formData);
+          setSaveNotice("✓ Saved to Stash config.yml!");
+          setTimeout(() => {
+            setSaveNotice("");
+            onClose();
+          }, 1000);
+        } catch (e) {
+          setSaveNotice(`Error: ${e.message}`);
+        } finally {
+          setIsSaving(false);
+        }
+      };
+
+      if (!isOpen) return null;
+
+      return React.createElement(
+        "div",
+        { className: "sfm-modal-backdrop", onClick: onClose },
+        React.createElement(
+          "div",
+          {
+            className: "sfm-modal-dialog",
+            style: { maxWidth: "680px", width: "95%" },
+            onClick: (e) => e.stopPropagation(),
+          },
+          React.createElement(
+            "div",
+            { className: "sfm-modal-header" },
+            React.createElement("h5", { className: "mb-0" }, "⚙️ Stash File Manager — Settings & Tasks"),
+            React.createElement("button", { className: "close text-light", onClick: onClose }, "×")
+          ),
+          React.createElement(
+            "div",
+            { className: "sfm-modal-body", style: { maxHeight: "75vh", overflowY: "auto" } },
+            saveNotice &&
+              React.createElement(
+                "div",
+                { className: `alert ${saveNotice.startsWith("✓") ? "alert-success" : "alert-info"} py-2` },
+                saveNotice
+              ),
+
+            // Section 1: Video Playback & Transcoding
+            React.createElement("h6", { className: "text-primary border-bottom border-secondary pb-1 mb-3" }, "🎥 Video Playback & Transcoding"),
+            React.createElement(
+              "div",
+              { className: "form-group mb-3" },
+              React.createElement("label", { className: "small font-weight-bold" }, "Default Playback Stream Mode"),
+              React.createElement(
+                "select",
+                {
+                  className: "form-control bg-dark text-light border-secondary",
+                  value: formData.default_transcode_method,
+                  onChange: (e) => handleChange("default_transcode_method", e.target.value),
+                },
+                React.createElement("option", { value: "direct" }, "Direct Stream (Raw file - fastest, native containers)"),
+                React.createElement("option", { value: "webm" }, "WebM Transcode (Progressive transcode, broad compatibility)"),
+                React.createElement("option", { value: "hls" }, "HLS Stream (.m3u8 adaptive segmented stream)")
+              ),
+              React.createElement(
+                "small",
+                { className: "form-text text-muted" },
+                "Configures the default playback stream method for the Binge Reel Player and floating PIP player."
+              )
+            ),
+
+            // Section 2: Navigation & Root Library Path
+            React.createElement("h6", { className: "text-primary border-bottom border-secondary pb-1 mb-3 mt-4" }, "📁 Navigation & Library Root"),
+            React.createElement(
+              "div",
+              { className: "form-group mb-3" },
+              React.createElement("label", { className: "small font-weight-bold" }, "Root Library Path Override"),
+              React.createElement("input", {
+                type: "text",
+                className: "form-control bg-dark text-light border-secondary",
+                placeholder: "Leave empty to auto-detect Stash library paths",
+                value: formData.root_library_path,
+                onChange: (e) => handleChange("root_library_path", e.target.value),
+              }),
+              React.createElement(
+                "small",
+                { className: "form-text text-muted" },
+                "Set an explicit root path (e.g. /data/videos or D:\\Media) to anchor File Manager navigation."
+              )
+            ),
+            React.createElement(
+              "div",
+              { className: "form-group form-check mb-3" },
+              React.createElement("input", {
+                type: "checkbox",
+                className: "form-check-input",
+                id: "sfm_chk_remember_path",
+                checked: formData.remember_last_path,
+                onChange: (e) => handleChange("remember_last_path", e.target.checked),
+              }),
+              React.createElement(
+                "label",
+                { className: "form-check-label small font-weight-bold", htmlFor: "sfm_chk_remember_path" },
+                "Remember Last Visited Folder Across Sessions"
+              )
+            ),
+
+            // Section 3: View Modes & Card Sizes
+            React.createElement("h6", { className: "text-primary border-bottom border-secondary pb-1 mb-3 mt-4" }, "🎨 View Modes & Layout Preferences"),
+            React.createElement(
+              "div",
+              { className: "row" },
+              React.createElement(
+                "div",
+                { className: "col-sm-6 form-group mb-3" },
+                React.createElement("label", { className: "small font-weight-bold" }, "Default Folder View Mode"),
+                React.createElement(
+                  "select",
+                  {
+                    className: "form-control bg-dark text-light border-secondary",
+                    value: formData.folder_view_mode,
+                    onChange: (e) => handleChange("folder_view_mode", e.target.value),
+                  },
+                  React.createElement("option", { value: "cards" }, "田 Cards (Thumbnails)"),
+                  React.createElement("option", { value: "list" }, "☰ List (Compact)"),
+                  React.createElement("option", { value: "details" }, "☷ Details (Table with Stats)")
+                )
+              ),
+              React.createElement(
+                "div",
+                { className: "col-sm-6 form-group mb-3" },
+                React.createElement("label", { className: "small font-weight-bold" }, "Default Scene View Mode"),
+                React.createElement(
+                  "select",
+                  {
+                    className: "form-control bg-dark text-light border-secondary",
+                    value: formData.scene_view_mode,
+                    onChange: (e) => handleChange("scene_view_mode", e.target.value),
+                  },
+                  React.createElement("option", { value: "cards" }, "⊞ Cards (16:9 Grid)"),
+                  React.createElement("option", { value: "table" }, "☰ Table (Metadata Columns)")
+                )
+              )
+            ),
+            React.createElement(
+              "div",
+              { className: "row" },
+              React.createElement(
+                "div",
+                { className: "col-sm-6 form-group mb-3" },
+                React.createElement("label", { className: "small font-weight-bold" }, `Folder Card Size: ${formData.folder_card_size}px`),
+                React.createElement("input", {
+                  type: "range",
+                  className: "form-control-range",
+                  min: 120,
+                  max: 300,
+                  step: 10,
+                  value: formData.folder_card_size,
+                  onChange: (e) => handleChange("folder_card_size", Number(e.target.value)),
+                })
+              ),
+              React.createElement(
+                "div",
+                { className: "col-sm-6 form-group mb-3" },
+                React.createElement("label", { className: "small font-weight-bold" }, `Scene Card Size: ${formData.scene_card_size}px`),
+                React.createElement("input", {
+                  type: "range",
+                  className: "form-control-range",
+                  min: 160,
+                  max: 420,
+                  step: 10,
+                  value: formData.scene_card_size,
+                  onChange: (e) => handleChange("scene_card_size", Number(e.target.value)),
+                })
+              )
+            ),
+
+            // Section 4: Native Stash Tasks & Troubleshooting
+            React.createElement("h6", { className: "text-primary border-bottom border-secondary pb-1 mb-3 mt-4" }, "⚡ Stash Plugin Tasks & Troubleshooting"),
+            React.createElement(
+              "p",
+              { className: "small text-muted mb-3" },
+              "These operations are registered as native tasks under ",
+              React.createElement("code", { className: "text-warning" }, "Settings → Tasks → Plugin Tasks"),
+              "."
+            ),
+            React.createElement(
+              "div",
+              { className: "d-flex flex-wrap gap-2 mb-3" },
+              React.createElement(
+                "button",
+                {
+                  className: "btn btn-outline-info btn-sm mr-2 mb-2",
+                  onClick: onTriggerRebuild,
+                  title: "Clear all local cache and query Stash for fresh folder hierarchies",
+                },
+                "🔄 Rescan & Rebuild Tree"
+              ),
+              React.createElement(
+                "button",
+                {
+                  className: "btn btn-outline-danger btn-sm mr-2 mb-2",
+                  onClick: onResetDefaults,
+                  title: "Reset all plugin settings back to initial factory defaults",
+                },
+                "⚠️ Reset All Settings to Default"
+              ),
+              React.createElement(
+                "a",
+                {
+                  href: "/settings?tab=plugins",
+                  target: "_blank",
+                  rel: "noopener noreferrer",
+                  className: "btn btn-outline-secondary btn-sm mr-2 mb-2",
+                },
+                "↗ Open Stash Plugins Page"
+              ),
+              React.createElement(
+                "a",
+                {
+                  href: "/settings?tab=tasks",
+                  target: "_blank",
+                  rel: "noopener noreferrer",
+                  className: "btn btn-outline-secondary btn-sm mb-2",
+                },
+                "↗ Open Stash Tasks Page"
+              )
+            )
+          ),
+          React.createElement(
+            "div",
+            { className: "sfm-modal-footer d-flex justify-content-between align-items-center" },
+            React.createElement(
+              "span",
+              { className: "small text-muted" },
+              "Settings are saved to Stash config and synchronized across browsers."
+            ),
+            React.createElement(
+              "div",
+              null,
+              React.createElement("button", { className: "btn btn-secondary btn-sm mr-2", onClick: onClose }, "Cancel"),
+              React.createElement(
+                "button",
+                { className: "btn btn-primary btn-sm", onClick: handleSave, disabled: isSaving },
+                isSaving ? "Saving..." : "💾 Save to Stash Config"
+              )
+            )
+          )
+        )
+      );
+    }
+
+    // ==========================================
     // Main App Component (Features 5, 1, 2, 3, 4)
     // ==========================================
     function FileManagerView({ onClose, initialPath }) {
@@ -2186,7 +2491,45 @@
       // Modals
       const [showBatchModal, setShowBatchModal] = useState(false);
       const [showParserModal, setShowParserModal] = useState(false);
+      const [showSettingsModal, setShowSettingsModal] = useState(false);
       const [playingScene, setPlayingScene] = useState(null);
+      const [pluginSettings, setPluginSettings] = useState(null);
+
+      // Load native Stash plugin configuration on mount
+      useEffect(() => {
+        let isMounted = true;
+        fetchStashPluginSettings().then((cfg) => {
+          if (!isMounted || !cfg) return;
+          setPluginSettings(cfg);
+          if (cfg.default_transcode_method) {
+            window.__SFM_DEFAULT_TRANSCODE_METHOD__ = cfg.default_transcode_method;
+            if (!window.localStorage.getItem("sfm_stream_mode")) {
+              try { window.localStorage.setItem("sfm_stream_mode", cfg.default_transcode_method); } catch(e) {}
+            }
+          }
+          if (cfg.root_library_path && !currentPath) {
+            if (cfg.remember_last_path === false || !window.localStorage.getItem("sfm_last_folder_path")) {
+              setCurrentPath(normalizePath(cfg.root_library_path));
+            }
+          }
+          if (cfg.folder_view_mode && !window.localStorage.getItem("sfm_folder_view_mode")) {
+            setFolderViewMode(cfg.folder_view_mode);
+          }
+          if (cfg.scene_view_mode && !window.localStorage.getItem("sfm_view_mode")) {
+            setViewMode(cfg.scene_view_mode === "cards" ? "grid" : "table");
+          }
+          if (cfg.folder_card_size && !window.localStorage.getItem("sfm_folder_card_size")) {
+            setFolderCardSize(Number(cfg.folder_card_size));
+          }
+          if (cfg.scene_card_size && !window.localStorage.getItem("sfm_scene_card_size")) {
+            setSceneCardSize(Number(cfg.scene_card_size));
+          }
+          if (cfg.auto_rebuild_tree_on_start) {
+            fetchCatalog(true);
+          }
+        });
+        return () => { isMounted = false; };
+      }, []);
 
       const handleToggleViewMode = (mode) => {
         setViewMode(mode);
@@ -2682,7 +3025,12 @@
                     "button",
                     { className: "btn btn-sm btn-outline-info", onClick: openInNativeGrid, title: "Open in Stash Native Grid" },
                     "↗️ Grid"
-                  )
+                  ),
+                React.createElement(
+                  "button",
+                  { className: "btn btn-sm btn-outline-light ml-1", onClick: () => setShowSettingsModal(true), title: "Stash Settings & Plugin Tasks" },
+                  "⚙️ Settings"
+                )
               )
             ),
             // Lower row: Live search and sorting
@@ -3190,6 +3538,75 @@
                 handleClearSelection();
                 handleRescan();
               },
+            }),
+          showSettingsModal &&
+            React.createElement(SettingsAndTasksModal, {
+              isOpen: showSettingsModal,
+              onClose: () => setShowSettingsModal(false),
+              settings: pluginSettings,
+              onSaveSettings: async (newVals) => {
+                await saveStashPluginSettings(newVals);
+                setPluginSettings((prev) => ({ ...(prev || {}), ...newVals }));
+                if (newVals.default_transcode_method) {
+                  window.__SFM_DEFAULT_TRANSCODE_METHOD__ = newVals.default_transcode_method;
+                  try { window.localStorage.setItem("sfm_stream_mode", newVals.default_transcode_method); } catch(e) {}
+                }
+                if (newVals.folder_view_mode) {
+                  setFolderViewMode(newVals.folder_view_mode);
+                  try { window.localStorage.setItem("sfm_folder_view_mode", newVals.folder_view_mode); } catch(e) {}
+                }
+                if (newVals.scene_view_mode) {
+                  const m = newVals.scene_view_mode === "cards" ? "grid" : "table";
+                  setViewMode(m);
+                  try { window.localStorage.setItem("sfm_view_mode", m); } catch(e) {}
+                }
+                if (newVals.folder_card_size) {
+                  setFolderCardSize(Number(newVals.folder_card_size));
+                  try { window.localStorage.setItem("sfm_folder_card_size", String(newVals.folder_card_size)); } catch(e) {}
+                }
+                if (newVals.scene_card_size) {
+                  setSceneCardSize(Number(newVals.scene_card_size));
+                  try { window.localStorage.setItem("sfm_scene_card_size", String(newVals.scene_card_size)); } catch(e) {}
+                }
+                setNotification("✓ Settings saved to Stash config.yml");
+                setTimeout(() => setNotification(""), 3500);
+              },
+              onTriggerRebuild: () => {
+                setShowSettingsModal(false);
+                handleRescan();
+              },
+              onResetDefaults: async () => {
+                const defaults = {
+                  default_transcode_method: "direct",
+                  root_library_path: "",
+                  folder_view_mode: "cards",
+                  scene_view_mode: "cards",
+                  default_sort_field: "name",
+                  default_sort_direction: "asc",
+                  folder_card_size: 160,
+                  scene_card_size: 240,
+                  remember_last_path: true,
+                  auto_rebuild_tree_on_start: false,
+                };
+                await saveStashPluginSettings(defaults);
+                setPluginSettings(defaults);
+                window.__SFM_DEFAULT_TRANSCODE_METHOD__ = "direct";
+                try {
+                  window.localStorage.removeItem("sfm_stream_mode");
+                  window.localStorage.removeItem("sfm_folder_card_size");
+                  window.localStorage.removeItem("sfm_scene_card_size");
+                  window.localStorage.removeItem("sfm_folder_view_mode");
+                  window.localStorage.removeItem("sfm_view_mode");
+                } catch(e) {}
+                setFolderCardSize(160);
+                setSceneCardSize(240);
+                setFolderViewMode("cards");
+                setViewMode("grid");
+                setShowSettingsModal(false);
+                setNotification("✓ Settings reset to defaults");
+                setTimeout(() => setNotification(""), 3500);
+                handleRescan();
+              }
             }),
           playingScene &&
             React.createElement(

@@ -1,7 +1,69 @@
 name: Path File Manager
-description: Hierarchical directory file-manager navigation for Stash with customizable folder views, Binge-style reel player, draggable PIP player, and regex metadata parser.
-version: 2.2.0
-date: "2026-09-23 08:17:48"
+description: Hierarchical directory file-manager navigation for Stash with customizable folder views, Binge-style reel player, draggable PIP player, regex metadata parser, and native tasks.
+version: 2.3.0
 ui:
-  javascript: file_manager.js
-  css: file_manager.css
+  javascript:
+    - file_manager.js
+  css:
+    - file_manager.css
+
+exec:
+  - python
+  - "{pluginDir}/sfm_tasks.py"
+interface: raw
+
+tasks:
+  - name: Rescan Library and Rebuild Tree
+    description: Rescans library directories and rebuilds the directory tree hierarchy cache for Stash File Manager.
+    execArgs:
+      - "rebuild"
+  - name: Reset Plugin Settings to Defaults
+    description: Resets all Stash File Manager plugin settings to factory defaults for troubleshooting.
+    execArgs:
+      - "reset"
+  - name: Initialize Plugin Configuration
+    description: Validates Stash library paths and initializes default plugin settings.
+    execArgs:
+      - "init"
+
+settings:
+  default_transcode_method:
+    displayName: Default Transcode Mode
+    type: STRING
+    description: "Default video playback stream mode: 'direct' (raw stream), 'transcode' (WebM transcode), or 'hls' (HLS segmented stream). Default: direct"
+  root_library_path:
+    displayName: Root Library Path Override
+    type: STRING
+    description: "Override initial root folder path (leave blank to auto-detect from Stash library paths)."
+  folder_view_mode:
+    displayName: Default Folder View Mode
+    type: STRING
+    description: "Initial subfolders display layout: 'cards', 'list', or 'details'. Default: cards"
+  scene_view_mode:
+    displayName: Default Scene View Mode
+    type: STRING
+    description: "Initial files/scenes display layout: 'cards' or 'table'. Default: cards"
+  default_sort_field:
+    displayName: Default Sort Field
+    type: STRING
+    description: "Default scene sort criterion: 'name', 'date', 'rating', 'size', or 'duration'. Default: name"
+  default_sort_direction:
+    displayName: Default Sort Direction
+    type: STRING
+    description: "Default sort direction: 'asc' or 'desc'. Default: asc"
+  folder_card_size:
+    displayName: Folder Card Size (px)
+    type: NUMBER
+    description: "Default folder card zoom width in pixels (120 to 300). Default: 160"
+  scene_card_size:
+    displayName: Scene Card Size (px)
+    type: NUMBER
+    description: "Default scene card zoom width in pixels (160 to 420). Default: 240"
+  remember_last_path:
+    displayName: Remember Last Visited Directory
+    type: BOOLEAN
+    description: "Automatically resume at the last opened folder path across browser sessions. Default: true"
+  auto_rebuild_tree_on_start:
+    displayName: Auto Rebuild Tree on Launch
+    type: BOOLEAN
+    description: "Automatically refresh directory hierarchy when launching File Manager. Default: false"
