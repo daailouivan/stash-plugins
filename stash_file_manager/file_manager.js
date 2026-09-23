@@ -1466,13 +1466,16 @@
         document.querySelector('.navbar-nav a[href*="/studios"]') ||
         document.querySelector('.navbar-nav a[href*="/tags"]') ||
         document.querySelector('.navbar-nav a[href*="/movies"]') ||
-        document.querySelector('.navbar-nav a');
+        document.querySelector('.navbar-nav a') ||
+        document.querySelector('a[href*="/scenes"]');
 
       if (!anchor) return;
 
-      const parentLi = anchor.closest("li");
-      const container = parentLi ? parentLi.parentElement : anchor.parentElement;
-      if (!container) return;
+      // Crucial: Identify the true top-level item container (.nav-item, li, etc.)
+      // and NOT anchor.parentElement if anchor is already inside a .nav-item!
+      const navItem = anchor.closest(".nav-item, li") || anchor;
+      const navBar = navItem.closest(".navbar-nav, .nav, nav") || navItem.parentElement;
+      if (!navBar) return;
 
       const newLink = document.createElement("a");
       newLink.className = (anchor.className || "nav-link").replace(/\bactive\b/g, "").trim();
@@ -1484,15 +1487,27 @@
       const siblingSvg = anchor.querySelector("svg");
       const siblingSpan = anchor.querySelector("span");
 
+      // Dynamically measure sibling SVG dimensions or default to 26px
+      let targetSize = 26;
+      if (siblingSvg) {
+        const rect = siblingSvg.getBoundingClientRect();
+        if (rect && rect.width >= 16 && rect.height >= 16) {
+          targetSize = Math.round(rect.width);
+        }
+      }
+
       // Solid bold folder icon matching Stash's native filled icons
       const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
       svg.setAttribute("viewBox", "0 0 24 24");
-      svg.setAttribute("width", "24");
-      svg.setAttribute("height", "24");
+      svg.setAttribute("width", String(targetSize));
+      svg.setAttribute("height", String(targetSize));
       svg.setAttribute("aria-hidden", "true");
       svg.setAttribute("focusable", "false");
       svg.setAttribute("role", "img");
       svg.setAttribute("fill", "currentColor");
+      svg.style.width = `${targetSize}px`;
+      svg.style.height = `${targetSize}px`;
+      svg.style.fontSize = `${targetSize}px`;
 
       let svgClassStr = "svg-inline--fa fa-folder fa-2x sfm-nav-svg";
       if (siblingSvg) {
@@ -1536,11 +1551,14 @@
       }
       newLink.appendChild(labelSpan);
 
+      let newItem = null;
       function syncActiveState() {
         if (window.location.hash === "#file-manager") {
           newLink.classList.add("active");
+          if (newItem) newItem.classList.add("active");
         } else {
           newLink.classList.remove("active");
+          if (newItem) newItem.classList.remove("active");
         }
       }
       window.addEventListener("hashchange", syncActiveState);
@@ -1551,23 +1569,26 @@
         openFileManager();
       });
 
-      if (parentLi) {
-        const newLi = document.createElement("li");
-        newLi.className = parentLi.className;
-        newLi.id = "sfm-main-nav-item";
-        newLi.appendChild(newLink);
-        // Insert right after Scenes so it integrates naturally in the content group without wrapping
-        if (parentLi.nextSibling) {
-          container.insertBefore(newLi, parentLi.nextSibling);
+      if (navItem !== anchor) {
+        // navItem is a distinct container (<div class="nav-item"> or <li>)
+        newItem = document.createElement(navItem.tagName.toLowerCase());
+        newItem.className = navItem.className;
+        newItem.id = "sfm-main-nav-item";
+        newItem.appendChild(newLink);
+        // Insert right after navItem as a true peer in the navbar row
+        if (navItem.nextSibling) {
+          navBar.insertBefore(newItem, navItem.nextSibling);
         } else {
-          container.appendChild(newLi);
+          navBar.appendChild(newItem);
         }
       } else {
+        // anchor is a direct child of navBar
         newLink.id = "sfm-main-nav-item";
+        newItem = newLink;
         if (anchor.nextSibling) {
-          container.insertBefore(newLink, anchor.nextSibling);
+          navBar.insertBefore(newLink, anchor.nextSibling);
         } else {
-          container.appendChild(newLink);
+          navBar.appendChild(newLink);
         }
       }
     }
