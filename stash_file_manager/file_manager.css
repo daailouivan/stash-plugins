@@ -1,6 +1,67 @@
 /* Stash Path File Manager Styles */
 
-/* Full-Screen Workspace Modal / Overlay */
+/* ==========================================================================
+   Main Navigation Bar Integration
+   ========================================================================== */
+
+/* Prevent navigation items from wrapping awkwardly to a second row */
+.top-nav .navbar-nav,
+nav.navbar .navbar-nav,
+.navbar-nav {
+  flex-wrap: nowrap !important;
+}
+
+#sfm-main-nav-item {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+#sfm-main-nav-item .nav-link,
+a#sfm-main-nav-item,
+.sfm-nav-link {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0.35rem 0.65rem !important;
+  color: #c4cdd5 !important;
+  text-decoration: none !important;
+  min-width: 48px !important;
+  cursor: pointer !important;
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+#sfm-main-nav-item .nav-link:hover,
+a#sfm-main-nav-item:hover,
+#sfm-main-nav-item .nav-link.active,
+a#sfm-main-nav-item.active {
+  color: #ffffff !important;
+}
+
+#sfm-main-nav-item svg,
+.sfm-nav-svg {
+  width: 1.65rem !important;
+  height: 1.65rem !important;
+  font-size: 1.65rem !important;
+  margin-bottom: 0.25rem !important;
+  display: block !important;
+  fill: currentColor !important;
+}
+
+#sfm-main-nav-item span,
+.sfm-nav-label {
+  font-size: 0.8rem !important;
+  line-height: 1.1 !important;
+  letter-spacing: 0.02em !important;
+  text-align: center !important;
+  white-space: nowrap !important;
+}
+
+/* ==========================================================================
+   Full-Screen Workspace Modal / Overlay
+   ========================================================================== */
+
 .sfm-workspace-overlay {
   position: fixed;
   top: 0;
@@ -63,25 +124,34 @@
   padding: 1.25rem 1.5rem 3rem 1.5rem;
 }
 
-/* Breadcrumbs & Filter Bar */
-.sfm-breadcrumb-bar {
+/* ==========================================================================
+   Unified Modern Command & Breadcrumb Bar
+   ========================================================================== */
+
+.sfm-unified-bar {
   background-color: #1a1e27;
   border: 1px solid #282e3d;
   border-radius: 8px;
-  padding: 0.65rem 1rem;
+  padding: 0.85rem 1.15rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.sfm-bar-top-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 0.75rem;
-  margin-bottom: 1rem;
 }
 
-.sfm-breadcrumbs {
+.sfm-breadcrumbs-wrap {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 0.25rem;
+  gap: 0.35rem;
   font-size: 0.95rem;
 }
 
@@ -105,29 +175,85 @@
   text-decoration: none;
 }
 
+.sfm-crumb-active {
+  color: #eceff4 !important;
+  font-weight: 600;
+  cursor: default;
+}
+
 .sfm-crumb-separator {
   color: #4c566a;
   user-select: none;
+  font-size: 1.1rem;
+  line-height: 1;
 }
 
-/* Search and Sort Toolbar */
-.sfm-filter-controls {
+.sfm-stat-pill {
+  font-size: 0.76rem;
+  color: #81a1c1;
+  background-color: rgba(129, 161, 193, 0.12);
+  padding: 0.2rem 0.6rem;
+  border-radius: 12px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+}
+
+.sfm-actions-group {
   display: flex;
   align-items: center;
   gap: 0.5rem;
   flex-wrap: wrap;
 }
 
+.sfm-checkbox-label {
+  font-size: 0.82rem;
+  color: #d8dee9;
+  margin-bottom: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.sfm-bar-filter-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.sfm-search-wrap {
+  position: relative;
+  flex-grow: 1;
+  max-width: 440px;
+  min-width: 240px;
+  display: flex;
+  align-items: center;
+}
+
+.sfm-search-icon {
+  position: absolute;
+  left: 0.75rem;
+  color: #81a1c1;
+  pointer-events: none;
+  font-size: 0.85rem;
+}
+
 .sfm-search-input {
+  width: 100%;
   background-color: #12151c;
   border: 1px solid #3b4252;
   color: #eceff4;
   border-radius: 6px;
-  padding: 0.35rem 0.75rem;
+  padding: 0.38rem 2rem 0.38rem 2.2rem;
   font-size: 0.88rem;
-  min-width: 220px;
   outline: none;
-  transition: border-color 0.15s ease;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .sfm-search-input:focus {
@@ -135,53 +261,64 @@
   box-shadow: 0 0 0 2px rgba(136, 192, 208, 0.2);
 }
 
+.sfm-search-clear {
+  position: absolute;
+  right: 0.65rem;
+  background: none;
+  border: none;
+  color: #81a1c1;
+  cursor: pointer;
+  font-size: 1.15rem;
+  line-height: 1;
+  padding: 0;
+}
+
+.sfm-sort-group {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  font-size: 0.82rem;
+  color: #81a1c1;
+}
+
+.sfm-sort-label {
+  font-size: 0.8rem;
+  color: #9aa8b8;
+  font-weight: 500;
+}
+
 .sfm-sort-select {
   background-color: #12151c;
   border: 1px solid #3b4252;
   color: #eceff4;
   border-radius: 6px;
-  padding: 0.35rem 0.65rem;
-  font-size: 0.88rem;
+  padding: 0.32rem 0.65rem;
+  font-size: 0.82rem;
   outline: none;
   cursor: pointer;
 }
 
-/* Action Toolbar */
-.sfm-toolbar {
-  background-color: #212631;
-  border: 1px solid #2f3646;
-  border-radius: 8px;
-  padding: 0.75rem 1.25rem;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-  margin-bottom: 1.25rem;
-}
-
-.sfm-folder-info {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-}
-
-.sfm-folder-title {
-  font-size: 1.15rem;
+.sfm-section-header {
+  font-size: 0.85rem;
   font-weight: 600;
-  color: #eceff4;
-  margin: 0;
+  color: #81a1c1;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 0.85rem;
   display: flex;
   align-items: center;
-  gap: 0.4rem;
 }
 
-/* Folder Cards */
+/* ==========================================================================
+   Folder Cards
+   ========================================================================== */
+
 .sfm-folder-card {
   background-color: #1a1e27;
   border: 1px solid #282e3d;
   border-radius: 8px;
-  padding: 1.25rem 1rem;
+  padding: 1.25rem 0.85rem;
   cursor: pointer;
   transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease;
   display: flex;
@@ -189,37 +326,45 @@
   align-items: center;
   justify-content: center;
   height: 100%;
-  min-height: 140px;
+  min-height: 135px;
   user-select: none;
 }
 
 .sfm-folder-card:hover {
   transform: translateY(-3px);
   border-color: #88c0d0;
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
-  background-color: #222733;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+  background-color: #212633;
 }
 
-.sfm-folder-icon {
-  font-size: 2.5rem;
-  color: #ebcb8b;
-  margin-bottom: 0.5rem;
+.sfm-folder-icon-wrap {
+  margin-bottom: 0.65rem;
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: transform 0.18s ease;
+}
+
+.sfm-folder-card:hover .sfm-folder-icon-wrap {
+  transform: scale(1.08);
+}
+
+.sfm-folder-card-svg {
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
 }
 
 .sfm-folder-name {
   font-weight: 600;
-  font-size: 0.92rem;
+  font-size: 0.9rem;
   color: #eceff4;
   text-align: center;
   word-break: break-word;
   line-height: 1.3;
+  margin-bottom: 0.35rem;
 }
 
 .sfm-folder-badges {
-  margin-top: 0.45rem;
+  margin-top: 0.25rem;
   display: flex;
   gap: 0.35rem;
   align-items: center;
@@ -228,14 +373,18 @@
 }
 
 .sfm-badge {
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   padding: 0.18rem 0.5rem;
   border-radius: 12px;
-  background-color: #2e3440;
-  color: #d8dee9;
+  background-color: #252b38;
+  color: #88c0d0;
+  border: 1px solid rgba(136, 192, 208, 0.2);
 }
 
-/* Scene Cards */
+/* ==========================================================================
+   Scene Cards
+   ========================================================================== */
+
 .sfm-scene-card {
   background-color: #1a1e27;
   border: 1px solid #282e3d;
@@ -356,7 +505,10 @@
   padding-top: 0.35rem;
 }
 
-/* Modals */
+/* ==========================================================================
+   Modals
+   ========================================================================== */
+
 .sfm-modal-backdrop {
   position: fixed;
   top: 0;
