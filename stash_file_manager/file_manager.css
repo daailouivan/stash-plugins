@@ -1,63 +1,13 @@
 /* Stash Path File Manager Styles */
 
 /* ==========================================================================
-   Main Navigation Bar Integration
+   Main Navigation Bar Integration (Binge Compatibility)
    ========================================================================== */
 
-/* Prevent navigation items from wrapping awkwardly to a second row */
-.top-nav .navbar-nav,
-nav.navbar .navbar-nav,
-.navbar-nav {
-  flex-wrap: nowrap !important;
-}
-
-#sfm-main-nav-item {
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-}
-
-#sfm-main-nav-item .nav-link,
-a#sfm-main-nav-item,
-.sfm-nav-link {
-  display: flex !important;
-  flex-direction: column !important;
-  align-items: center !important;
-  justify-content: center !important;
-  padding: 0.35rem 0.65rem !important;
-  color: #c4cdd5 !important;
-  text-decoration: none !important;
-  min-width: 48px !important;
-  cursor: pointer !important;
-  transition: color 0.15s ease, background-color 0.15s ease;
-}
-
-#sfm-main-nav-item .nav-link:hover,
-a#sfm-main-nav-item:hover,
-#sfm-main-nav-item .nav-link.active,
-a#sfm-main-nav-item.active {
+#sfm-nav-button.active,
+#sfm-nav-container a.active {
+  background-color: rgba(255, 255, 255, 0.15) !important;
   color: #ffffff !important;
-}
-
-#sfm-main-nav-item svg,
-.sfm-nav-svg {
-  width: 26px !important;
-  height: 26px !important;
-  min-width: 26px !important;
-  min-height: 26px !important;
-  font-size: 26px !important;
-  margin-bottom: 0.25rem !important;
-  display: block !important;
-  fill: currentColor !important;
-}
-
-#sfm-main-nav-item span,
-.sfm-nav-label {
-  font-size: 0.8rem !important;
-  line-height: 1.1 !important;
-  letter-spacing: 0.02em !important;
-  text-align: center !important;
-  white-space: nowrap !important;
 }
 
 /* ==========================================================================
@@ -802,4 +752,227 @@ a#sfm-main-nav-item.active {
   line-height: 1.2;
   margin-top: 0.15rem;
   font-family: SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+/* ==========================================================================
+   Compact Folder Cards & Customizable Folder Views
+   ========================================================================== */
+
+.sfm-folder-card-compact {
+  padding: 0.65rem 0.75rem !important;
+  min-height: 82px !important;
+  border-radius: 6px !important;
+}
+
+.sfm-folder-card-compact .sfm-folder-icon-wrap {
+  margin-bottom: 0.35rem !important;
+}
+
+.sfm-folder-card-compact .sfm-folder-name {
+  font-size: 0.85rem !important;
+  line-height: 1.2 !important;
+  margin-bottom: 0.2rem !important;
+}
+
+.sfm-folder-list-item {
+  background-color: #1a1e27;
+  border: 1px solid #282e3d;
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  transition: all 0.16s ease;
+  user-select: none;
+}
+
+.sfm-folder-list-item:hover {
+  border-color: #88c0d0;
+  background-color: #212633;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+
+.sfm-folder-list-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.sfm-folder-list-name {
+  color: #eceff4;
+  font-size: 0.85rem;
+  flex: 1;
+}
+
+.sfm-folder-list-badge {
+  font-size: 0.72rem;
+  background-color: rgba(136, 192, 208, 0.14);
+  color: #88c0d0;
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+.sfm-folder-table {
+  background-color: #141720;
+  border: 1px solid #282e3d;
+  border-radius: 6px;
+  overflow: hidden;
+  margin-bottom: 0;
+}
+
+.sfm-folder-table thead th {
+  background-color: #1c202a;
+  border-bottom: 1px solid #282e3d;
+  color: #88c0d0;
+  font-weight: 600;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.55rem 0.75rem;
+}
+
+.sfm-folder-table tbody tr {
+  border-bottom: 1px solid #222735;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.sfm-folder-table tbody tr:hover td {
+  background-color: rgba(136, 192, 208, 0.08);
+}
+
+.sfm-folder-table td {
+  padding: 0.5rem 0.75rem;
+  vertical-align: middle;
+  color: #d8dee9;
+  font-size: 0.85rem;
+}
+
+.sfm-folder-table-name {
+  color: #eceff4;
+}
+
+/* ==========================================================================
+   Binge-Style On-Screen Video Reel Overlay & Controls
+   ========================================================================== */
+
+.sfm-reel-overlay {
+  position: absolute;
+  right: 18px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  z-index: 10;
+  pointer-events: auto;
+}
+
+.sfm-reel-btn {
+  background: rgba(20, 24, 34, 0.85);
+  border: 1px solid rgba(136, 192, 208, 0.35);
+  color: #eceff4;
+  border-radius: 50%;
+  width: 42px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  backdrop-filter: blur(6px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+}
+
+.sfm-reel-btn:hover:not(:disabled) {
+  background: #88c0d0;
+  color: #0b0d13;
+  transform: scale(1.1);
+  border-color: #88c0d0;
+  box-shadow: 0 6px 18px rgba(136, 192, 208, 0.4);
+}
+
+.sfm-reel-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.sfm-reel-counter {
+  background: rgba(15, 18, 26, 0.88);
+  border: 1px solid rgba(136, 192, 208, 0.25);
+  color: #88c0d0;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.25rem 0.55rem;
+  border-radius: 12px;
+  letter-spacing: 0.03em;
+  backdrop-filter: blur(4px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.sfm-reel-shortcut-hint {
+  font-size: 0.72rem;
+  color: #81a1c1;
+  background: rgba(129, 161, 193, 0.1);
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+}
+
+/* ==========================================================================
+   Floating Draggable Picture-in-Picture (PIP) Player
+   ========================================================================== */
+
+.sfm-pip-dialog {
+  background: #12151c;
+  border: 1px solid #434c5e;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(136, 192, 208, 0.2);
+  transition: box-shadow 0.2s ease;
+}
+
+.sfm-pip-dialog:hover {
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.95), 0 0 0 1px rgba(136, 192, 208, 0.4);
+}
+
+.sfm-pip-header {
+  background: #1c202a;
+  padding: 0.45rem 0.75rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: move;
+  user-select: none;
+  border-bottom: 1px solid #2e3440;
+}
+
+.sfm-drag-handle {
+  color: #81a1c1;
+  font-size: 1.1rem;
+  line-height: 1;
+  letter-spacing: 0.05em;
+}
+
+.sfm-pip-video-wrap {
+  background: #000;
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+}
+
+.sfm-pip-video-wrap video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.sfm-pip-footer {
+  border-top: 1px solid #2e3440;
 }

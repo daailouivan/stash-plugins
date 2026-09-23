@@ -234,57 +234,462 @@
     }
 
     // ==========================================
-    // Modal: Inline Video Player (Feature 3)
+    // Modal & Floating PIP: Binge Reel Video Player
+    // (Features: Multi-format Transcode Fallback, Binge Scroll Reel, Floating Draggable PIP)
     // ==========================================
-    function InlinePlayerModal({ scene, onClose }) {
+    function BingeReelPlayerModal({ scene, scenes = [], onSelectScene, onClose, folderName, currentPath }) {
+      const videoRef = useRef(null);
+      const savedPlaybackTime = useRef(0);
+
+      // 1. Scene Index & Adjacent Navigation
+      const currentIndex = useMemo(() => {
+        if (!scenes || !scenes.length || !scene) return 0;
+        const idx = scenes.findIndex((s) => s.id === scene.id);
+        return idx >= 0 ? idx : 0;
+      }, [scenes, scene]);
+
+      const totalScenes = scenes?.length || 1;
+      const hasPrev = currentIndex > 0;
+      const hasNext = currentIndex < totalScenes - 1;
+      const prevScene = hasPrev ? scenes[currentIndex - 1] : null;
+      const nextScene = hasNext ? scenes[currentIndex + 1] : null;
+
+      const goToPrev = useCallback(() => {
+        if (hasPrev && onSelectScene && prevScene) {
+          onSelectScene(prevScene);
+        }
+      }, [hasPrev, onSelectScene, prevScene]);
+
+      const goToNext = useCallback(() => {
+        if (hasNext && onSelectScene && nextScene) {
+          onSelectScene(nextScene);
+        }
+      }, [hasNext, onSelectScene, nextScene]);
+
+      // 2. Multi-Format Detection & Transcoding Resolution
+      const filePath = scene?.files?.[0]?.path || scene?.files?.[0]?.basename || "";
+      const fileExt = (filePath.split(".").pop() || "").toLowerCase();
+      const isNativeDirectSupported = ["mp4", "m4v", "webm"].includes(fileExt);
+
+      // Default non-MP4 formats (MKV, AVI, WMV, FLV, TS, etc.) to live transcode
+      const [streamMode, setStreamMode] = useState(() => (isNativeDirectSupported ? "direct" : "transcode"));
+      const [playerNotice, setPlayerNotice] = useState("");
+      const [playerError, setPlayerError] = useState("");
+      const [availableStreams, setAvailableStreams] = useState([]);
+
+      useEffect(() => {
+        setStreamMode(isNativeDirectSupported ? "direct" : "transcode");
+        setPlayerNotice(isNativeDirectSupported ? "" : `Non-native format (.${fileExt.toUpperCase()}) detected: Live Transcode (MP4) enabled.`);
+        setPlayerError("");
+      }, [scene?.id, isNativeDirectSupported, fileExt]);
+
+      // Query available Stash transcoded streams via GraphQL for this scene
+      useEffect(() => {
+        if (!scene?.id) return;
+        let active = true;
+        gqlFetch(
+          `query SceneStreams($id: ID!) {
+            findScene(id: $id) {
+              sceneStreams {
+                url
+                mime_type
+                label
+              }
+            }
+          }`,
+          { id: scene.id }
+        )
+          .then((res) => {
+            if (active && res?.findScene?.sceneStreams?.length) {
+              setAvailableStreams(res.findScene.sceneStreams);
+            }
+          })
+          .catch(() => {});
+        return () => {
+          active = false;
+        };
+      }, [scene?.id]);
+
+      // Compute effective stream URL
+      const streamUrl = useMemo(() => {
+        if (!scene?.id) return "";
+        if (streamMode === "transcode") {
+          const trans = availableStreams.find((s) => s.mime_type === "video/mp4" && s.url.includes("transcode"));
+          return trans ? trans.url : `/scene/${scene.id}/stream.mp4`;
+        }
+        return `/scene/${scene.id}/stream`;
+      }, [scene?.id, streamMode, availableStreams]);
+
+      // Auto-recover on playback error
+      const handleVideoError = (e) => {
+        console.warn("[SFM Video Player] Video loading error:", streamUrl, e);
+        if (streamMode === "direct") {
+          console.log("[SFM Video Player] Direct stream failed. Falling back to live transcode (stream.mp4)...");
+          setStreamMode("transcode");
+          setPlayerNotice("Direct stream failed for this file container. Switched to Live Transcode (MP4).");
+        } else {
+          setPlayerError("Video playback failed. Direct and transcoded streams could not be decoded.");
+        }
+      };
+
+      // 3. Floating Picture-in-Picture (PIP) Window State & Dragging
+      const [isPip, setIsPip] = useState(false);
+      const [pipPos, setPipPos] = useState(() => {
+        const w = typeof window !== "undefined" ? window.innerWidth : 1200;
+        const h = typeof window !== "undefined" ? window.innerHeight : 800;
+        return {
+          x: Math.max(20, w - 460),
+          y: Math.max(20, h - 340),
+        };
+      });
+      const [isDragging, setIsDragging] = useState(false);
+      const dragStart = useRef({ mouseX: 0, mouseY: 0, posX: 0, posY: 0 });
+
+      const handleHeaderMouseDown = (e) => {
+        if (!isPip) return;
+        if (e.target.closest("button") || e.target.closest("a") || e.target.closest("input")) return;
+        setIsDragging(true);
+        dragStart.current = {
+          mouseX: e.clientX,
+          mouseY: e.clientY,
+          posX: pipPos.x,
+          posY: pipPos.y,
+        };
+      };
+
+      useEffect(() => {
+        if (!isDragging) return;
+        const handleMouseMove = (e) => {
+          const dx = e.clientX - dragStart.current.mouseX;
+          const dy = e.clientY - dragStart.current.mouseY;
+          const clampedX = Math.max(10, Math.min(window.innerWidth - 380, dragStart.current.posX + dx));
+          const clampedY = Math.max(10, Math.min(window.innerHeight - 220, dragStart.current.posY + dy));
+          setPipPos({ x: clampedX, y: clampedY });
+        };
+        const handleMouseUp = () => {
+          setIsDragging(false);
+        };
+        window.addEventListener("mousemove", handleMouseMove);
+        window.addEventListener("mouseup", handleMouseUp);
+        return () => {
+          window.removeEventListener("mousemove", handleMouseMove);
+          window.removeEventListener("mouseup", handleMouseUp);
+        };
+      }, [isDragging]);
+
+      // 4. Binge-Style Wheel Scrolling (advance/previous video in folder)
+      const lastWheelTime = useRef(0);
+      const handleWheel = useCallback(
+        (e) => {
+          if (Math.abs(e.deltaY) < 30) return;
+          const now = Date.now();
+          if (now - lastWheelTime.current < 450) return;
+          if (e.deltaY > 0 && hasNext) {
+            lastWheelTime.current = now;
+            goToNext();
+          } else if (e.deltaY < 0 && hasPrev) {
+            lastWheelTime.current = now;
+            goToPrev();
+          }
+        },
+        [hasNext, hasPrev, goToNext, goToPrev]
+      );
+
+      // Keyboard Controls
       useEffect(() => {
         const handleKeyDown = (e) => {
-          if (e.key === "Escape") onClose();
+          if (e.target && (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA" || e.target.isContentEditable)) return;
+          if (e.key === "Escape") {
+            onClose();
+          } else if (e.key === "ArrowDown" || e.key === "PageDown" || e.key.toLowerCase() === "j") {
+            e.preventDefault();
+            goToNext();
+          } else if (e.key === "ArrowUp" || e.key === "PageUp" || e.key.toLowerCase() === "k") {
+            e.preventDefault();
+            goToPrev();
+          } else if (e.key === " ") {
+            e.preventDefault();
+            const v = videoRef.current;
+            if (v) {
+              if (v.paused) v.play();
+              else v.pause();
+            }
+          } else if (e.key === "ArrowLeft") {
+            const v = videoRef.current;
+            if (v) v.currentTime = Math.max(0, v.currentTime - 10);
+          } else if (e.key === "ArrowRight") {
+            const v = videoRef.current;
+            if (v) v.currentTime = Math.min(v.duration || Infinity, v.currentTime + 10);
+          } else if (e.key.toLowerCase() === "m") {
+            const v = videoRef.current;
+            if (v) v.muted = !v.muted;
+          }
         };
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
-      }, [onClose]);
+      }, [onClose, goToNext, goToPrev]);
+
+      // Preserve playback time across PIP / Modal transitions
+      const handleTimeUpdate = (e) => {
+        if (e.target && e.target.currentTime) {
+          savedPlaybackTime.current = e.target.currentTime;
+        }
+      };
+      const handleLoadedMetadata = (e) => {
+        if (savedPlaybackTime.current > 0 && e.target) {
+          try {
+            e.target.currentTime = savedPlaybackTime.current;
+          } catch (err) {}
+        }
+      };
 
       if (!scene) return null;
-      const streamUrl = `/scene/${scene.id}/stream`;
       const title = scene.title || scene.files?.[0]?.basename || `Scene #${scene.id}`;
+      const extLabel = fileExt ? `.${fileExt.toUpperCase()}` : "VIDEO";
 
+      // -------------------------------------------------------------
+      // Render: Floating Draggable PIP Window Mode
+      // -------------------------------------------------------------
+      if (isPip) {
+        return React.createElement(
+          "div",
+          {
+            className: "sfm-pip-dialog",
+            style: {
+              position: "fixed",
+              left: `${pipPos.x}px`,
+              top: `${pipPos.y}px`,
+              width: "430px",
+              zIndex: 10050,
+            },
+            onWheel: handleWheel,
+          },
+          React.createElement(
+            "div",
+            {
+              className: "sfm-pip-header",
+              onMouseDown: handleHeaderMouseDown,
+              title: "Drag to move floating player anywhere on screen",
+            },
+            React.createElement(
+              "div",
+              { className: "d-flex align-items-center text-truncate mr-2", style: { flex: 1 } },
+              React.createElement("span", { className: "sfm-drag-handle mr-2" }, "⠿"),
+              React.createElement("span", { className: "text-truncate font-weight-bold small text-light" }, title)
+            ),
+            React.createElement(
+              "div",
+              { className: "d-flex align-items-center gap-1" },
+              React.createElement("span", { className: "badge badge-dark mr-1 small" }, `${currentIndex + 1}/${totalScenes}`),
+              React.createElement(
+                "button",
+                {
+                  className: "btn btn-sm btn-outline-secondary py-0 px-1 mr-1",
+                  onClick: goToPrev,
+                  disabled: !hasPrev,
+                  title: `Previous: ${prevScene?.title || ""}`,
+                },
+                "▲"
+              ),
+              React.createElement(
+                "button",
+                {
+                  className: "btn btn-sm btn-outline-secondary py-0 px-1 mr-1",
+                  onClick: goToNext,
+                  disabled: !hasNext,
+                  title: `Next: ${nextScene?.title || ""}`,
+                },
+                "▼"
+              ),
+              React.createElement(
+                "button",
+                {
+                  className: `btn btn-sm ${streamMode === "transcode" ? "btn-warning" : "btn-outline-info"} py-0 px-1 mr-1`,
+                  onClick: () => setStreamMode((m) => (m === "direct" ? "transcode" : "direct")),
+                  title: `Toggle Stream Mode (Current: ${streamMode === "direct" ? "Direct" : "Transcode MP4"})`,
+                },
+                streamMode === "direct" ? "⚡" : "🔄"
+              ),
+              React.createElement(
+                "button",
+                {
+                  className: "btn btn-sm btn-outline-light py-0 px-1 mr-1",
+                  onClick: () => setIsPip(false),
+                  title: "Expand to Full Modal Player",
+                },
+                "🗖"
+              ),
+              React.createElement(
+                "button",
+                {
+                  className: "btn btn-sm btn-outline-danger py-0 px-1",
+                  onClick: onClose,
+                  title: "Close Player",
+                },
+                "×"
+              )
+            )
+          ),
+          React.createElement(
+            "div",
+            { className: "sfm-pip-video-wrap" },
+            React.createElement("video", {
+              ref: videoRef,
+              src: streamUrl,
+              controls: true,
+              autoPlay: true,
+              className: "sfm-video-element",
+              onError: handleVideoError,
+              onTimeUpdate: handleTimeUpdate,
+              onLoadedMetadata: handleLoadedMetadata,
+            })
+          ),
+          React.createElement(
+            "div",
+            { className: "sfm-pip-footer d-flex justify-content-between align-items-center p-2 bg-dark small text-muted" },
+            React.createElement(
+              "div",
+              { className: "text-truncate mr-2" },
+              React.createElement("span", { className: "badge badge-secondary mr-1" }, extLabel),
+              scene.studio?.name && React.createElement("span", { className: "badge badge-primary mr-1" }, scene.studio.name),
+              React.createElement("span", null, `Scroll wheel / Arrow keys to browse`)
+            ),
+            React.createElement(
+              "a",
+              { href: `/scenes/${scene.id}`, target: "_blank", rel: "noreferrer", className: "btn btn-sm btn-outline-info py-0 px-2" },
+              "Details ↗"
+            )
+          )
+        );
+      }
+
+      // -------------------------------------------------------------
+      // Render: Centered Modal Dialog with Binge Reel Overlay
+      // -------------------------------------------------------------
       return React.createElement(
         "div",
         { className: "sfm-modal-backdrop", onClick: onClose },
         React.createElement(
           "div",
-          { className: "sfm-player-dialog", onClick: (e) => e.stopPropagation() },
+          {
+            className: "sfm-player-dialog",
+            onClick: (e) => e.stopPropagation(),
+            onWheel: handleWheel,
+          },
           React.createElement(
             "div",
-            { className: "sfm-modal-header" },
-            React.createElement("h5", { className: "mb-0 text-truncate font-weight-bold" }, `▶ ${title}`),
-            React.createElement("button", { className: "close text-light", onClick: onClose }, "×")
+            { className: "sfm-modal-header d-flex justify-content-between align-items-center" },
+            React.createElement(
+              "div",
+              { className: "d-flex align-items-center text-truncate mr-3", style: { flex: 1 } },
+              React.createElement("h5", { className: "mb-0 text-truncate font-weight-bold text-light mr-2" }, `▶ ${title}`),
+              React.createElement("span", { className: "badge badge-secondary" }, extLabel)
+            ),
+            React.createElement(
+              "div",
+              { className: "d-flex align-items-center gap-2" },
+              React.createElement(
+                "button",
+                {
+                  className: `btn btn-sm ${streamMode === "transcode" ? "btn-warning" : "btn-outline-info"} mr-2`,
+                  onClick: () => setStreamMode((m) => (m === "direct" ? "transcode" : "direct")),
+                  title: "Switch between Direct Stream and Stash Live Transcode (MP4)",
+                },
+                streamMode === "direct" ? "⚡ Direct Stream" : "🔄 Transcode (MP4)"
+              ),
+              React.createElement(
+                "button",
+                {
+                  className: "btn btn-sm btn-outline-light mr-2",
+                  onClick: () => setIsPip(true),
+                  title: "Pop out into Floating Draggable PIP Player (browse files while playing)",
+                },
+                "⧉ Float PIP"
+              ),
+              React.createElement(
+                "button",
+                { className: "close text-light", onClick: onClose, title: "Close (Esc)" },
+                "×"
+              )
+            )
           ),
+          playerNotice &&
+            React.createElement(
+              "div",
+              { className: "alert alert-warning py-1 px-3 mb-0 small rounded-0 d-flex justify-content-between align-items-center" },
+              React.createElement("span", null, `ℹ ${playerNotice}`),
+              React.createElement("button", { className: "close py-0", onClick: () => setPlayerNotice("") }, "×")
+            ),
+          playerError &&
+            React.createElement(
+              "div",
+              { className: "alert alert-danger py-1 px-3 mb-0 small rounded-0" },
+              `⚠ ${playerError}`
+            ),
           React.createElement(
             "div",
-            { className: "sfm-video-container" },
+            { className: "sfm-video-container position-relative" },
             React.createElement("video", {
+              ref: videoRef,
               src: streamUrl,
               controls: true,
               autoPlay: true,
               className: "sfm-video-element",
-            })
+              onError: handleVideoError,
+              onTimeUpdate: handleTimeUpdate,
+              onLoadedMetadata: handleLoadedMetadata,
+            }),
+            // Binge-Style On-Screen Reel Overlay (prev/next chevrons & scene counter)
+            React.createElement(
+              "div",
+              { className: "sfm-reel-overlay", onClick: (e) => e.stopPropagation() },
+              React.createElement(
+                "button",
+                {
+                  className: "sfm-reel-btn",
+                  onClick: goToPrev,
+                  disabled: !hasPrev,
+                  title: hasPrev ? `Previous: ${prevScene?.title || `Scene #${prevScene?.id}`}` : "First scene in directory",
+                },
+                "▲"
+              ),
+              React.createElement(
+                "div",
+                { className: "sfm-reel-counter", title: `Folder: ${folderName || "Current"}` },
+                `${currentIndex + 1}/${totalScenes}`
+              ),
+              React.createElement(
+                "button",
+                {
+                  className: "sfm-reel-btn",
+                  onClick: goToNext,
+                  disabled: !hasNext,
+                  title: hasNext ? `Next: ${nextScene?.title || `Scene #${nextScene?.id}`}` : "Last scene in directory",
+                },
+                "▼"
+              )
+            )
           ),
           React.createElement(
             "div",
             { className: "p-3 bg-dark d-flex justify-content-between align-items-center flex-wrap gap-2 text-muted small" },
             React.createElement(
               "div",
-              null,
+              { className: "d-flex align-items-center flex-wrap gap-2" },
               scene.studio?.name && React.createElement("span", { className: "badge badge-primary mr-2" }, scene.studio.name),
               scene.date && React.createElement("span", { className: "mr-3" }, `📅 ${scene.date}`),
-              scene.files?.[0]?.size && React.createElement("span", null, `💾 ${formatBytes(scene.files[0].size)}`)
+              scene.files?.[0]?.size && React.createElement("span", { className: "mr-3" }, `💾 ${formatBytes(scene.files[0].size)}`),
+              scene.files?.[0]?.duration && React.createElement("span", { className: "mr-3" }, `⏱ ${formatSeconds(scene.files[0].duration)}`),
+              React.createElement("span", { className: "sfm-reel-shortcut-hint" }, "💡 Scroll wheel or Up/Down arrows to advance like Binge")
             ),
             React.createElement(
-              "a",
-              { href: `/scenes/${scene.id}`, target: "_blank", rel: "noreferrer", className: "btn btn-sm btn-outline-info" },
-              "Open Scene Details ↗"
+              "div",
+              { className: "d-flex align-items-center gap-2" },
+              React.createElement(
+                "a",
+                { href: `/scenes/${scene.id}`, target: "_blank", rel: "noreferrer", className: "btn btn-sm btn-outline-info" },
+                "Open Scene Details ↗"
+              )
             )
           )
         )
@@ -985,11 +1390,77 @@
     }
 
     // ==========================================
+    // History & URL Path Synchronization
+    // ==========================================
+    function buildHashForPath(path) {
+      if (!path) return "#file-manager";
+      return `#file-manager?path=${encodeURIComponent(path)}`;
+    }
+
+    function getPathFromHash() {
+      const hash = window.location.hash || "";
+      if (!hash.startsWith("#file-manager")) return null;
+      const qIdx = hash.indexOf("?");
+      if (qIdx !== -1) {
+        const params = new URLSearchParams(hash.slice(qIdx + 1));
+        return params.get("path") || "";
+      }
+      if (hash.startsWith("#file-manager/")) {
+        return decodeURIComponent(hash.slice("#file-manager/".length)) || "";
+      }
+      return "";
+    }
+    // ==========================================
     // Main App Component (Features 5, 1, 2, 3, 4)
     // ==========================================
-    function FileManagerView({ onClose }) {
+    function FileManagerView({ onClose, initialPath }) {
       const [trie, setTrie] = useState(null);
-      const [currentPath, setCurrentPath] = useState("");
+      
+      // History & Folder Memory Synchronization
+      const [currentPath, setCurrentPath] = useState(() => {
+        if (typeof initialPath === "string") return initialPath;
+        const fromHash = getPathFromHash();
+        if (fromHash !== null) return fromHash;
+        return localStorage.getItem("sfm_last_folder_path") || "";
+      });
+
+      const navigateToFolder = useCallback((nextPath) => {
+        setCurrentPath(nextPath);
+        localStorage.setItem("sfm_last_folder_path", nextPath);
+        const targetHash = buildHashForPath(nextPath);
+        if (window.location.hash !== targetHash) {
+          window.history.pushState({ sfmPath: nextPath }, "", targetHash);
+        }
+      }, []);
+
+      // Listen to popstate (browser back/forward) and hash changes to navigate folders without closing
+      useEffect(() => {
+        const handleLocationChange = () => {
+          const p = getPathFromHash();
+          if (p !== null) {
+            setCurrentPath(p);
+            localStorage.setItem("sfm_last_folder_path", p);
+          }
+        };
+        window.addEventListener("popstate", handleLocationChange);
+        window.addEventListener("hashchange", handleLocationChange);
+        return () => {
+          window.removeEventListener("popstate", handleLocationChange);
+          window.removeEventListener("hashchange", handleLocationChange);
+        };
+      }, []);
+
+      // Custom event listener for inter-component folder navigation
+      useEffect(() => {
+        const handleCustomPath = (e) => {
+          if (e.detail && typeof e.detail.path === "string") {
+            navigateToFolder(e.detail.path);
+          }
+        };
+        window.addEventListener("sfm:set-path", handleCustomPath);
+        return () => window.removeEventListener("sfm:set-path", handleCustomPath);
+      }, [navigateToFolder]);
+
       const [loading, setLoading] = useState(true);
       const [statusText, setStatusText] = useState("Checking cache...");
       const [refreshKey, setRefreshKey] = useState(0);
@@ -1009,7 +1480,7 @@
         }
       });
 
-      // Milestone 2: View Mode (Grid Cards vs Table View)
+      // Scene View Mode: Card vs List Views
       const [viewMode, setViewMode] = useState(() => {
         try {
           return window.localStorage.getItem("sfm_view_mode") || "grid";
@@ -1017,6 +1488,21 @@
           return "grid";
         }
       });
+
+      // Folder View Mode: Compact Cards vs List vs Detail Table
+      const [folderViewMode, setFolderViewMode] = useState(() => {
+        try {
+          return window.localStorage.getItem("sfm_folder_view_mode") || "cards";
+        } catch (e) {
+          return "cards";
+        }
+      });
+      const handleSetFolderViewMode = (mode) => {
+        setFolderViewMode(mode);
+        try {
+          window.localStorage.setItem("sfm_folder_view_mode", mode);
+        } catch (e) {}
+      };
 
       // Milestone 1: Scene Multi-Selection
       const [selectedSceneIds, setSelectedSceneIds] = useState(new Set());
@@ -1325,8 +1811,13 @@
           value: currentPath,
           modifier: "MATCHES_REGEX",
         };
-        if (onClose) onClose();
-        window.location.href = `/scenes?c=${encodeURIComponent(JSON.stringify(filterCriterion))}`;
+        localStorage.setItem("sfm_last_folder_path", currentPath);
+        const currentHash = buildHashForPath(currentPath);
+        if (window.location.hash !== currentHash) {
+          window.history.replaceState({ sfmPath: currentPath }, "", currentHash);
+        }
+        // Open native scene card grid in a new tab so the current folder location remains open and intact!
+        window.open(`/scenes?c=${encodeURIComponent(JSON.stringify(filterCriterion))}`, "_blank");
       };
 
       // Milestone 3: Folder-Scoped Metadata Scan
@@ -1415,7 +1906,7 @@
                 { className: "sfm-breadcrumbs-wrap" },
                 React.createElement(
                   "button",
-                  { className: "sfm-crumb-btn", onClick: () => setCurrentPath(""), title: "Return to Root" },
+                  { className: "sfm-crumb-btn", onClick: () => navigateToFolder(""), title: "Return to Root" },
                   React.createElement(IconFolder, { size: 16, color: "#88c0d0" }),
                   React.createElement("span", { className: "ml-1" }, "Root")
                 ),
@@ -1430,7 +1921,7 @@
                       "button",
                       {
                         className: `sfm-crumb-btn ${isLast ? "sfm-crumb-active" : ""}`,
-                        onClick: () => setCurrentPath(p),
+                        onClick: () => navigateToFolder(p),
                       },
                       seg
                     )
@@ -1582,38 +2073,198 @@
               notification,
               React.createElement("button", { className: "close", onClick: () => setNotification("") }, "×")
             ),
-          // Subfolders Section
+          // Subfolders Section (Customizable Views: Cards, List, Detail Table)
           filteredAndSortedSubfolders.length > 0 &&
             React.createElement(
               "div",
               { className: "mb-4" },
-              React.createElement("div", { className: "sfm-section-header" }, React.createElement("span", null, "Subfolders"), React.createElement("span", { className: "badge badge-dark ml-2 font-weight-normal" }, filteredAndSortedSubfolders.length)),
               React.createElement(
                 "div",
-                { className: "row" },
-                filteredAndSortedSubfolders.map((folderName) => {
-                  const childNode = currentNode.folders[folderName];
-                  const count = childNode ? childNode.allSceneIds.size : 0;
-                  const size = childNode ? formatBytes(childNode.totalSize) : "0 B";
-                  const nextPath = currentPath ? `${currentPath}/${folderName}` : folderName;
-                  return React.createElement(
-                    "div",
-                    { key: folderName, className: "col-6 col-sm-4 col-md-3 col-lg-2 mb-3" },
-                    React.createElement(
+                { className: "d-flex justify-content-between align-items-center mb-2" },
+                React.createElement(
+                  "div",
+                  { className: "sfm-section-header mb-0" },
+                  React.createElement("span", null, "Subfolders"),
+                  React.createElement("span", { className: "badge badge-dark ml-2 font-weight-normal" }, filteredAndSortedSubfolders.length)
+                ),
+                React.createElement(
+                  "div",
+                  { className: "btn-group btn-group-sm sfm-view-toggle-group" },
+                  React.createElement(
+                    "button",
+                    {
+                      className: `btn btn-sm ${folderViewMode === "cards" ? "btn-info" : "btn-outline-secondary"} py-0 px-2`,
+                      onClick: () => handleSetFolderViewMode("cards"),
+                      title: "Compact Cards View",
+                    },
+                    "田 Cards"
+                  ),
+                  React.createElement(
+                    "button",
+                    {
+                      className: `btn btn-sm ${folderViewMode === "list" ? "btn-info" : "btn-outline-secondary"} py-0 px-2`,
+                      onClick: () => handleSetFolderViewMode("list"),
+                      title: "Compact List View",
+                    },
+                    "☰ List"
+                  ),
+                  React.createElement(
+                    "button",
+                    {
+                      className: `btn btn-sm ${folderViewMode === "detail" ? "btn-info" : "btn-outline-secondary"} py-0 px-2`,
+                      onClick: () => handleSetFolderViewMode("detail"),
+                      title: "Detail Table View",
+                    },
+                    "☷ Details"
+                  )
+                )
+              ),
+              // Render Folder View based on mode
+              folderViewMode === "cards" &&
+                React.createElement(
+                  "div",
+                  { className: "row" },
+                  filteredAndSortedSubfolders.map((folderName) => {
+                    const childNode = currentNode.folders[folderName];
+                    const count = childNode ? childNode.allSceneIds.size : 0;
+                    const size = childNode ? formatBytes(childNode.totalSize) : "0 B";
+                    const nextPath = currentPath ? `${currentPath}/${folderName}` : folderName;
+                    return React.createElement(
                       "div",
-                      { className: "sfm-folder-card", onClick: () => setCurrentPath(nextPath) },
-                      React.createElement("div", { className: "sfm-folder-icon-wrap" }, React.createElement(IconFolderCard, { size: 46, color: "#81a1c1" })),
-                      React.createElement("div", { className: "sfm-folder-name" }, folderName),
+                      { key: folderName, className: "col-6 col-sm-4 col-md-3 col-lg-2 col-xl-2 mb-2" },
                       React.createElement(
                         "div",
-                        { className: "sfm-folder-badges" },
-                        React.createElement("span", { className: "sfm-badge" }, `${count} scenes`),
-                        count > 0 && React.createElement("span", { className: "sfm-badge text-muted" }, size)
+                        {
+                          className: "sfm-folder-card sfm-folder-card-compact",
+                          onClick: () => navigateToFolder(nextPath),
+                          title: `${folderName} (${count} scenes, ${size})`,
+                        },
+                        React.createElement("div", { className: "sfm-folder-icon-wrap" }, React.createElement(IconFolderCard, { size: 28, color: "#81a1c1" })),
+                        React.createElement("div", { className: "sfm-folder-name" }, folderName),
+                        React.createElement(
+                          "div",
+                          { className: "sfm-folder-badges" },
+                          React.createElement("span", { className: "sfm-badge" }, `${count} scenes`),
+                          count > 0 && React.createElement("span", { className: "sfm-badge text-muted" }, size)
+                        )
                       )
+                    );
+                  })
+                ),
+              folderViewMode === "list" &&
+                React.createElement(
+                  "div",
+                  { className: "row" },
+                  filteredAndSortedSubfolders.map((folderName) => {
+                    const childNode = currentNode.folders[folderName];
+                    const count = childNode ? childNode.allSceneIds.size : 0;
+                    const size = childNode ? formatBytes(childNode.totalSize) : "0 B";
+                    const nextPath = currentPath ? `${currentPath}/${folderName}` : folderName;
+                    return React.createElement(
+                      "div",
+                      { key: folderName, className: "col-12 col-sm-6 col-md-4 col-lg-3 col-xl-2 mb-2" },
+                      React.createElement(
+                        "div",
+                        {
+                          className: "sfm-folder-list-item",
+                          onClick: () => navigateToFolder(nextPath),
+                          title: `${folderName} (${count} scenes, ${size})`,
+                        },
+                        React.createElement("div", { className: "sfm-folder-list-icon" }, React.createElement(IconFolderCard, { size: 18, color: "#81a1c1" })),
+                        React.createElement("div", { className: "sfm-folder-list-name text-truncate font-weight-bold" }, folderName),
+                        React.createElement("span", { className: "sfm-folder-list-badge" }, count)
+                      )
+                    );
+                  })
+                ),
+              folderViewMode === "detail" &&
+                React.createElement(
+                  "div",
+                  { className: "table-responsive mb-3" },
+                  React.createElement(
+                    "table",
+                    { className: "table table-dark table-sm sfm-folder-table" },
+                    React.createElement(
+                      "thead",
+                      null,
+                      React.createElement(
+                        "tr",
+                        null,
+                        React.createElement("th", { style: { minWidth: "200px" } }, "Folder Name"),
+                        React.createElement("th", { style: { width: "110px" } }, "Type"),
+                        React.createElement("th", { style: { width: "120px" } }, "Scenes"),
+                        React.createElement("th", { style: { width: "110px" } }, "Size"),
+                        React.createElement("th", { style: { width: "140px", textAlign: "right" } }, "Actions")
+                      )
+                    ),
+                    React.createElement(
+                      "tbody",
+                      null,
+                      filteredAndSortedSubfolders.map((folderName) => {
+                        const childNode = currentNode.folders[folderName];
+                        const count = childNode ? childNode.allSceneIds.size : 0;
+                        const size = childNode ? formatBytes(childNode.totalSize) : "0 B";
+                        const nextPath = currentPath ? `${currentPath}/${folderName}` : folderName;
+                        return React.createElement(
+                          "tr",
+                          {
+                            key: folderName,
+                            className: "sfm-folder-table-row",
+                            onClick: () => navigateToFolder(nextPath),
+                            title: `Navigate into ${folderName}`,
+                          },
+                          React.createElement(
+                            "td",
+                            null,
+                            React.createElement(
+                              "div",
+                              { className: "d-flex align-items-center" },
+                              React.createElement("span", { className: "mr-2" }, React.createElement(IconFolderCard, { size: 18, color: "#81a1c1" })),
+                              React.createElement("span", { className: "sfm-folder-table-name font-weight-bold" }, folderName)
+                            )
+                          ),
+                          React.createElement("td", { className: "text-muted small" }, "Directory"),
+                          React.createElement("td", null, React.createElement("span", { className: "badge badge-dark" }, `${count} scenes`)),
+                          React.createElement("td", { className: "text-muted small" }, size),
+                          React.createElement(
+                            "td",
+                            { style: { textAlign: "right" } },
+                            React.createElement(
+                              "button",
+                              {
+                                className: "btn btn-sm btn-outline-info py-0 px-2 mr-1",
+                                onClick: (e) => {
+                                  e.stopPropagation();
+                                  const filter = { type: "path", value: nextPath, modifier: "MATCHES_REGEX" };
+                                  window.open(`/scenes?c=${encodeURIComponent(JSON.stringify(filter))}`, "_blank");
+                                },
+                                title: "Open folder in Stash native scene grid (new tab)",
+                              },
+                              "↗ Grid"
+                            ),
+                            React.createElement(
+                              "button",
+                              {
+                                className: "btn btn-sm btn-outline-secondary py-0 px-2",
+                                onClick: async (e) => {
+                                  e.stopPropagation();
+                                  try {
+                                    await gqlFetch(`mutation ScanPath($paths: [String!]) { metadataScan(input: { paths: $paths }) }`, { paths: [nextPath] });
+                                    setNotification(`Scan triggered for "${nextPath}". Check Settings -> Tasks.`);
+                                  } catch (err) {
+                                    setNotification(`Scan error: ${err.message}`);
+                                  }
+                                },
+                                title: "Trigger Stash filesystem scan for this folder",
+                              },
+                              "🔍 Scan"
+                            )
+                          )
+                        );
+                      })
                     )
-                  );
-                })
-              )
+                  )
+                )
             ),
           // Direct Scenes Section (Milestone 1 & 2)
           filteredAndSortedScenes.length > 0 &&
@@ -1673,7 +2324,7 @@
               React.createElement("h5", null, searchQuery ? "No matching folders or scenes found." : "This folder contains no scanned media files."),
               searchQuery
                 ? React.createElement("button", { className: "btn btn-outline-secondary mt-2", onClick: () => setSearchQuery("") }, "Clear Search")
-                : React.createElement("button", { className: "btn btn-outline-secondary mt-2", onClick: () => setCurrentPath("") }, "Return to Root")
+                : React.createElement("button", { className: "btn btn-outline-secondary mt-2", onClick: () => navigateToFolder("") }, "Return to Root")
             ),
           // Floating Bulk Action Bar (Milestone 1)
           selectedSceneIds.size > 0 &&
@@ -1763,45 +2414,53 @@
               },
             }),
           playingScene &&
-            React.createElement(InlinePlayerModal, {
+            React.createElement(BingeReelPlayerModal, {
               scene: playingScene,
+              scenes: filteredAndSortedScenes,
+              onSelectScene: (s) => setPlayingScene(s),
               onClose: () => setPlayingScene(null),
+              folderName: currentFolderName,
+              currentPath: currentPath,
             })
         )
       );
     }
 
-    // Modal Manager / View Opener
+    // Modal Manager / View Opener with Folder Path Synchronization
     function closeWorkspace() {
       const root = document.getElementById("sfm-workspace-root");
       if (root) {
         root.style.display = "none";
       }
-      if (window.location.hash === "#file-manager") {
+      if (window.location.hash.startsWith("#file-manager")) {
         window.history.pushState(null, "", window.location.pathname + window.location.search);
       }
     }
 
-    function openFileManager() {
+    function openFileManager(targetPath) {
+      const path = typeof targetPath === "string" ? targetPath : (getPathFromHash() !== null ? getPathFromHash() : (localStorage.getItem("sfm_last_folder_path") || ""));
       let root = document.getElementById("sfm-workspace-root");
       if (!root) {
         root = document.createElement("div");
         root.id = "sfm-workspace-root";
         document.body.appendChild(root);
-        ReactDOM.render(React.createElement(FileManagerView, { onClose: closeWorkspace }), root);
+        ReactDOM.render(React.createElement(FileManagerView, { onClose: closeWorkspace, initialPath: path }), root);
       } else {
         root.style.display = "block";
+        window.dispatchEvent(new CustomEvent("sfm:set-path", { detail: { path } }));
       }
 
-      if (window.location.hash !== "#file-manager") {
-        window.history.pushState(null, "", "#file-manager");
+      const expectedHash = buildHashForPath(path);
+      if (window.location.hash !== expectedHash) {
+        window.history.pushState({ sfmPath: path }, "", expectedHash);
       }
     }
 
-    // Listen to hash changes
+    // Listen to hash and popstate changes
     window.addEventListener("hashchange", () => {
-      if (window.location.hash === "#file-manager") {
-        openFileManager();
+      const path = getPathFromHash();
+      if (path !== null) {
+        openFileManager(path);
       } else {
         const root = document.getElementById("sfm-workspace-root");
         if (root) {
@@ -1810,158 +2469,173 @@
       }
     });
 
-    if (window.location.hash === "#file-manager") {
-      setTimeout(openFileManager, 200);
+    window.addEventListener("popstate", () => {
+      const path = getPathFromHash();
+      if (path !== null) {
+        openFileManager(path);
+      } else {
+        const root = document.getElementById("sfm-workspace-root");
+        if (root) {
+          root.style.display = "none";
+        }
+      }
+    });
+
+    if (window.location.hash.startsWith("#file-manager")) {
+      setTimeout(() => openFileManager(), 200);
     }
 
     if (register && register.route) {
       register.route("/plugin/file-manager", FileManagerView);
     }
 
-    // Main Navigation Bar Button Injection (matches native Stash nav items pixel-for-pixel)
-    function injectMainBarButton() {
-      if (document.getElementById("sfm-main-nav-item")) return;
+    // ==========================================================================
+    // Navigation Bar Integration (Binge's Native PluginApi.patch Method)
+    // Reference: https://github.com/ordureconnoisseur/binge
+    // ==========================================================================
+    const FOLDER_NAV_SVG_PATH = "M464 128H272l-64-64H48C21.49 64 0 85.49 0 112v288c0 26.51 21.49 48 48 48h416c26.51 0 48-21.49 48-48V176c0-26.51-21.49-48-48-48z";
+
+    function FilesNavButton() {
+      const [isActive, setIsActive] = useState(window.location.hash.startsWith("#file-manager"));
+
+      useEffect(() => {
+        const handleHash = () => {
+          setIsActive(window.location.hash.startsWith("#file-manager"));
+        };
+        window.addEventListener("hashchange", handleHash);
+        return () => window.removeEventListener("hashchange", handleHash);
+      }, []);
+
+      return React.createElement(
+        "div",
+        {
+          className: "col-4 col-sm-3 col-md-2 col-lg-auto nav-link",
+          id: "sfm-nav-container",
+        },
+        React.createElement(
+          "a",
+          {
+            href: "#file-manager",
+            id: "sfm-nav-button",
+            title: "File Manager (Browse by Directory)",
+            "aria-label": "File Manager",
+            className: `minimal p-4 p-xl-2 d-flex d-xl-inline-block flex-column justify-content-between align-items-center btn btn-primary ${isActive ? "active" : ""}`.trim(),
+            onClick: function (evt) {
+              evt.preventDefault();
+              openFileManager();
+            },
+          },
+          React.createElement(
+            "svg",
+            {
+              "aria-hidden": "true",
+              focusable: "false",
+              className: "svg-inline--fa fa-icon nav-menu-icon d-block d-xl-inline mb-2 mb-xl-0 mr-xl-1",
+              role: "img",
+              xmlns: "http://www.w3.org/2000/svg",
+              viewBox: "0 0 512 512",
+            },
+            React.createElement("path", {
+              fill: "currentColor",
+              d: FOLDER_NAV_SVG_PATH,
+            })
+          ),
+          React.createElement("span", null, "Files")
+        )
+      );
+    }
+
+    // Method 1: Official PluginApi.patch.instead (Matches Binge exactly)
+    if (window.PluginApi.patch && window.PluginApi.patch.instead) {
+      try {
+        window.PluginApi.patch.instead("MainNavBar.MenuItems", function (props) {
+          const next = arguments[arguments.length - 1];
+          const res = typeof next === "function" ? next(props) : null;
+          return React.createElement(
+            React.Fragment,
+            null,
+            res,
+            React.createElement(FilesNavButton)
+          );
+        });
+
+        if (window.PluginApi.patch.before) {
+          window.PluginApi.patch.before("CheckboxGroup", function (props) {
+            try {
+              if (!props || props.groupId !== "menu-items") return [props];
+              if (!Array.isArray(props.items)) return [props];
+              if (props.items.some(item => item.id === "files-manager")) return [props];
+              return [Object.assign({}, props, {
+                items: props.items.concat([{ id: "files-manager", headingID: "Files" }])
+              })];
+            } catch (err) {
+              return [props];
+            }
+          });
+        }
+      } catch (err) {
+        console.warn("[PathFileManager] MainNavBar.MenuItems patch failed:", err);
+      }
+    }
+
+    // Method 2: Fallback DOM Injection (Uses exact same responsive classes as Binge)
+    function injectMainBarButtonFallback() {
+      if (document.getElementById("sfm-nav-container") || document.getElementById("sfm-nav-button")) return;
 
       const anchor =
         document.querySelector('.navbar-nav a[href*="/scenes"]') ||
         document.querySelector('.navbar-nav a[href*="/images"]') ||
-        document.querySelector('.navbar-nav a[href*="/performers"]') ||
-        document.querySelector('.navbar-nav a[href*="/studios"]') ||
-        document.querySelector('.navbar-nav a[href*="/tags"]') ||
-        document.querySelector('.navbar-nav a[href*="/movies"]') ||
-        document.querySelector('.navbar-nav a') ||
-        document.querySelector('a[href*="/scenes"]');
+        document.querySelector('.navbar-nav a');
 
       if (!anchor) return;
 
-      // Crucial: Identify the true top-level item container (.nav-item, li, etc.)
-      // and NOT anchor.parentElement if anchor is already inside a .nav-item!
-      const navItem = anchor.closest(".nav-item, li") || anchor;
-      const navBar = navItem.closest(".navbar-nav, .nav, nav") || navItem.parentElement;
+      const navItem = anchor.closest(".nav-link, .nav-item, [class*='col-']") || anchor;
+      const navBar = navItem.parentElement;
       if (!navBar) return;
 
-      const newLink = document.createElement("a");
-      newLink.className = (anchor.className || "nav-link").replace(/\bactive\b/g, "").trim();
-      newLink.classList.add("sfm-nav-link");
-      newLink.href = "#file-manager";
-      newLink.setAttribute("role", "button");
-      newLink.setAttribute("title", "File Manager (Browse by Directory)");
+      const container = document.createElement("div");
+      container.className = "col-4 col-sm-3 col-md-2 col-lg-auto nav-link";
+      container.id = "sfm-nav-container";
 
-      const siblingSvg = anchor.querySelector("svg");
-      const siblingSpan = anchor.querySelector("span");
-
-      // Dynamically measure sibling SVG dimensions or default to 26px
-      let targetSize = 26;
-      if (siblingSvg) {
-        const rect = siblingSvg.getBoundingClientRect();
-        if (rect && rect.width >= 16 && rect.height >= 16) {
-          targetSize = Math.round(rect.width);
-        }
-      }
-
-      // Solid bold folder icon matching Stash's native filled icons
-      const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-      svg.setAttribute("viewBox", "0 0 24 24");
-      svg.setAttribute("width", String(targetSize));
-      svg.setAttribute("height", String(targetSize));
-      svg.setAttribute("aria-hidden", "true");
-      svg.setAttribute("focusable", "false");
-      svg.setAttribute("role", "img");
-      svg.setAttribute("fill", "currentColor");
-      svg.style.width = `${targetSize}px`;
-      svg.style.height = `${targetSize}px`;
-      svg.style.fontSize = `${targetSize}px`;
-
-      let svgClassStr = "svg-inline--fa fa-folder fa-2x sfm-nav-svg";
-      if (siblingSvg) {
-        const origClasses = (siblingSvg.getAttribute("class") || "").split(/\s+/);
-        const sizeClasses = origClasses.filter(c => c === "fa-2x" || c === "fa-lg" || c === "fa-sm" || c === "fa-fw" || c.startsWith("fa-w-"));
-        if (sizeClasses.length > 0) {
-          svgClassStr = `svg-inline--fa fa-folder ${sizeClasses.join(" ")} sfm-nav-svg`;
-        }
-      }
-      svg.setAttribute("class", svgClassStr);
-
-      const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-      path.setAttribute("fill", "currentColor");
-      path.setAttribute("d", "M10 4H4c-1.11 0-2 .89-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-8l-2-2z");
-      svg.appendChild(path);
-
-      const labelSpan = document.createElement("span");
-      if (siblingSpan) {
-        labelSpan.className = siblingSpan.className;
-        if (siblingSpan.getAttribute("style")) {
-          labelSpan.setAttribute("style", siblingSpan.getAttribute("style"));
-        }
-      }
-      labelSpan.className = (labelSpan.className + " sfm-nav-label").trim();
-      labelSpan.textContent = "Files";
-
-      if (siblingSvg && siblingSvg.parentElement && siblingSvg.parentElement !== anchor) {
-        const wrapper = document.createElement(siblingSvg.parentElement.tagName.toLowerCase());
-        wrapper.className = siblingSvg.parentElement.className;
-        if (siblingSvg.parentElement.getAttribute("style")) {
-          wrapper.setAttribute("style", siblingSvg.parentElement.getAttribute("style"));
-        }
-        wrapper.appendChild(svg);
-        newLink.appendChild(wrapper);
-      } else {
-        newLink.appendChild(svg);
-      }
-
-      if (siblingSvg && siblingSpan) {
-        newLink.appendChild(document.createTextNode(" "));
-      }
-      newLink.appendChild(labelSpan);
-
-      let newItem = null;
-      function syncActiveState() {
-        if (window.location.hash === "#file-manager") {
-          newLink.classList.add("active");
-          if (newItem) newItem.classList.add("active");
-        } else {
-          newLink.classList.remove("active");
-          if (newItem) newItem.classList.remove("active");
-        }
-      }
-      window.addEventListener("hashchange", syncActiveState);
-      syncActiveState();
-
-      newLink.addEventListener("click", function (e) {
-        e.preventDefault();
+      const a = document.createElement("a");
+      a.href = "#file-manager";
+      a.id = "sfm-nav-button";
+      a.title = "File Manager";
+      a.setAttribute("aria-label", "File Manager");
+      a.className = "minimal p-4 p-xl-2 d-flex d-xl-inline-block flex-column justify-content-between align-items-center btn btn-primary";
+      a.addEventListener("click", function (evt) {
+        evt.preventDefault();
         openFileManager();
       });
 
-      if (navItem !== anchor) {
-        // navItem is a distinct container (<div class="nav-item"> or <li>)
-        newItem = document.createElement(navItem.tagName.toLowerCase());
-        newItem.className = navItem.className;
-        newItem.id = "sfm-main-nav-item";
-        newItem.appendChild(newLink);
-        // Insert right after navItem as a true peer in the navbar row
-        if (navItem.nextSibling) {
-          navBar.insertBefore(newItem, navItem.nextSibling);
-        } else {
-          navBar.appendChild(newItem);
-        }
-      } else {
-        // anchor is a direct child of navBar
-        newLink.id = "sfm-main-nav-item";
-        newItem = newLink;
-        if (anchor.nextSibling) {
-          navBar.insertBefore(newLink, anchor.nextSibling);
-        } else {
-          navBar.appendChild(newLink);
-        }
-      }
+      const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      svg.setAttribute("aria-hidden", "true");
+      svg.setAttribute("focusable", "false");
+      svg.setAttribute("role", "img");
+      svg.setAttribute("viewBox", "0 0 512 512");
+      svg.setAttribute("class", "svg-inline--fa fa-icon nav-menu-icon d-block d-xl-inline mb-2 mb-xl-0 mr-xl-1");
+
+      const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      path.setAttribute("fill", "currentColor");
+      path.setAttribute("d", FOLDER_NAV_SVG_PATH);
+      svg.appendChild(path);
+
+      const span = document.createElement("span");
+      span.textContent = "Files";
+
+      a.appendChild(svg);
+      a.appendChild(span);
+      container.appendChild(a);
+
+      navBar.appendChild(container);
     }
 
-    setInterval(injectMainBarButton, 1000);
-    setTimeout(injectMainBarButton, 200);
+    setInterval(injectMainBarButtonFallback, 1000);
+    setTimeout(injectMainBarButtonFallback, 250);
 
     if (window.PluginApi.Event) {
       window.PluginApi.Event.addEventListener("stash:location", () => {
-        setTimeout(injectMainBarButton, 150);
+        setTimeout(injectMainBarButtonFallback, 150);
       });
     }
 
