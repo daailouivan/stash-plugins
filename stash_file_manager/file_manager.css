@@ -1291,3 +1291,82 @@
   color: #88c0d0;
   font-weight: 700;
 }
+
+
+/* Video Gesture Overlay for Double-Click Seek (prevents browser native fullscreen hijack) */
+.sfm-video-gesture-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 52px;
+  z-index: 10;
+  cursor: pointer;
+}
+
+/* Binge-Style Discovery Reel Pull Indicator & Spring-Back Animation */
+.sfm-reel-pull-indicator {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 28;
+  background: rgba(15, 18, 25, 0.94);
+  backdrop-filter: blur(12px);
+  border: 1px solid #88c0d0;
+  color: #eceff4;
+  padding: 0.45rem 1.1rem;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.75);
+  pointer-events: none;
+  max-width: 90%;
+  text-align: center;
+  animation: sfmPullPulse 0.25s ease-out;
+}
+
+.sfm-reel-pull-indicator.top {
+  top: 16px;
+}
+
+.sfm-reel-pull-indicator.bottom {
+  bottom: 64px;
+}
+
+.sfm-reel-pull-progress {
+  height: 3px;
+  background: #88c0d0;
+  border-radius: 2px;
+  margin-top: 5px;
+  transition: width 0.08s linear;
+}
+
+@keyframes sfmPullPulse {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -6px);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+.sfm-stream-select {
+  background-color: #2e3440;
+  color: #eceff4;
+  border: 1px solid #4c566a;
+  border-radius: 4px;
+  padding: 0.2rem 0.5rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.sfm-stream-select:hover,
+.sfm-stream-select:focus {
+  border-color: #88c0d0;
+  color: #88c0d0;
+}

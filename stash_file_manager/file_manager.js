@@ -288,11 +288,21 @@
     // Modal & Floating PIP: Binge Reel Video Player
     // (Features: Binge Fast-Forward/Rewind Controls, 1-Click PiP, Smooth Direct/Transcode Streaming, VLC Integration)
     // ==========================================
+    // ==========================================
+    // Modal & Floating PIP: Binge Reel Video Player (Clean Redesigned Interface)
+    // Features:
+    // - WebM & HLS Transcode Priority (fixes lost duration & timeline seeking)
+    // - Clean unified header with single PiP, VLC, and Link actions (no redundancy)
+    // - Double-click left/right seek ±10s with native fullscreen prevention
+    // - Binge discovery reel scrolling with pull-distance threshold & spring-back animation
+    // - 1-Click Native PiP + Draggable In-App Floating Mini Player
+    // ==========================================
     function BingeReelPlayerModal({ scene, scenes = [], onSelectScene, onClose, folderName, currentPath }) {
       const videoRef = useRef(null);
+      const videoContainerRef = useRef(null);
       const savedPlaybackTime = useRef(0);
 
-      // 1. Scene Index & Adjacent Navigation
+      // 1. Scene Navigation & Carousel Context
       const currentIndex = useMemo(() => {
         if (!scenes || !scenes.length || !scene) return 0;
         const idx = scenes.findIndex((s) => s.id === scene.id);
@@ -307,121 +317,116 @@
 
       const goToPrev = useCallback(() => {
         if (hasPrev && onSelectScene && prevScene) {
-          savedPlaybackTime.current = 0;
           onSelectScene(prevScene);
         }
       }, [hasPrev, onSelectScene, prevScene]);
 
       const goToNext = useCallback(() => {
         if (hasNext && onSelectScene && nextScene) {
-          savedPlaybackTime.current = 0;
           onSelectScene(nextScene);
         }
       }, [hasNext, onSelectScene, nextScene]);
 
-      // 2. Playback State, Speed, HUD Feedback & Fast-Forward/Rewind
+      // 2. Playback State, Speed & HUD Feedback
       const [isPlaying, setIsPlaying] = useState(true);
       const [playbackRate, setPlaybackRate] = useState(1);
       const [hudNotice, setHudNotice] = useState(null);
       const hudTimer = useRef(null);
-      const isHoldSeeking = useRef(false);
 
-      const triggerHud = (text) => {
-        if (hudTimer.current) clearTimeout(hudTimer.current);
-        setHudNotice(text);
-        hudTimer.current = setTimeout(() => {
-          setHudNotice(null);
-        }, 750);
+      const showHud = (msg) => {
+        clearTimeout(hudTimer.current);
+        setHudNotice(msg);
+        hudTimer.current = setTimeout(() => setHudNotice(null), 850);
       };
 
-      // Rewind / Fast-Forward helper
       const handleSeek = useCallback((seconds) => {
         const v = videoRef.current;
         if (!v) return;
-        const target = Math.max(0, Math.min(v.duration || Infinity, v.currentTime + seconds));
-        v.currentTime = target;
-        triggerHud(seconds > 0 ? `+${seconds}s ⏩` : `⏪ ${seconds}s`);
+        const targetTime = Math.max(0, Math.min(v.duration || Infinity, v.currentTime + seconds));
+        v.currentTime = targetTime;
+        showHud(seconds > 0 ? `+${seconds}s ⏩` : `⏪ ${Math.abs(seconds)}s`);
       }, []);
 
-      // Toggle Play / Pause
       const handleTogglePlay = useCallback(() => {
         const v = videoRef.current;
         if (!v) return;
         if (v.paused) {
-          v.play();
-          setIsPlaying(true);
-          triggerHud("▶ Play");
+          v.play().then(() => setIsPlaying(true)).catch(() => {});
+          showHud("▶ Play");
         } else {
           v.pause();
           setIsPlaying(false);
-          triggerHud("⏸ Pause");
+          showHud("⏸ Pause");
         }
       }, []);
 
-      // Cycle Playback Speed
       const handleCycleSpeed = useCallback(() => {
         const v = videoRef.current;
         if (!v) return;
         const speeds = [1, 1.25, 1.5, 2, 0.75];
-        const currentIdx = speeds.indexOf(v.playbackRate);
+        const currentIdx = speeds.indexOf(playbackRate);
         const nextSpeed = speeds[(currentIdx + 1) % speeds.length];
         v.playbackRate = nextSpeed;
         setPlaybackRate(nextSpeed);
-        triggerHud(`⚡ ${nextSpeed}x Speed`);
-      }, []);
+        showHud(`⚡ ${nextSpeed}x Speed`);
+      }, [playbackRate]);
 
-      // Press and hold fast-forward (Binge / Social Reel style: 2x speed while holding)
-      const handleHoldStart = () => {
-        const v = videoRef.current;
-        if (!v) return;
-        isHoldSeeking.current = true;
-        v.playbackRate = 2;
-        triggerHud("⏩ 2x Fast Forward");
-      };
-
-      const handleHoldEnd = () => {
-        const v = videoRef.current;
-        if (!v) return;
-        if (isHoldSeeking.current) {
-          isHoldSeeking.current = false;
-          v.playbackRate = playbackRate;
-          setHudNotice(null);
+      const handleToggleFullscreen = () => {
+        const elem = videoContainerRef.current || videoRef.current;
+        if (!elem) return;
+        if (!document.fullscreenElement) {
+          if (elem.requestFullscreen) elem.requestFullscreen();
+          else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
+        } else {
+          if (document.exitFullscreen) document.exitFullscreen();
+          else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
         }
       };
 
-      // Double-click on video sides: left side rewinds 10s, right side forwards 10s
-      const lastClickTime = useRef(0);
-      const handleVideoContainerClick = (e) => {
-        if (e.target.closest("button") || e.target.closest("a") || e.target.closest(".sfm-reel-overlay") || e.target.closest(".sfm-player-seek-bar")) return;
+      // 3. Double-Click Seek vs Fullscreen Prevention
+      const clickTimer = useRef(null);
+      const handleDoubleTapSeek = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
         const rect = e.currentTarget.getBoundingClientRect();
         const clickX = e.clientX - rect.left;
-        const width = rect.width;
-        const now = Date.now();
-
-        if (now - lastClickTime.current < 320) {
-          if (clickX < width * 0.4) {
-            handleSeek(-10);
-          } else if (clickX > width * 0.6) {
-            handleSeek(10);
-          } else {
-            handleTogglePlay();
-          }
-          lastClickTime.current = 0;
-          return;
+        const w = rect.width;
+        if (clickX < w * 0.4) {
+          handleSeek(-10);
+        } else if (clickX > w * 0.6) {
+          handleSeek(10);
+        } else {
+          handleTogglePlay();
         }
-        lastClickTime.current = now;
       };
 
-      // 3. Multi-Format Detection & Streaming Resolution
+      const handleGestureClick = (e) => {
+        if (e.target.closest("button") || e.target.closest("a") || e.target.closest("select")) return;
+        if (clickTimer.current) {
+          clearTimeout(clickTimer.current);
+          clickTimer.current = null;
+          handleDoubleTapSeek(e);
+        } else {
+          const clientX = e.clientX;
+          const currentTarget = e.currentTarget;
+          clickTimer.current = setTimeout(() => {
+            clickTimer.current = null;
+            handleTogglePlay();
+          }, 260);
+        }
+      };
+
+      // 4. Multi-Format Detection & Transcoding Resolution (WebM / HLS Priority)
       const filePath = scene?.files?.[0]?.path || scene?.files?.[0]?.basename || "";
       const fileExt = (filePath.split(".").pop() || "").toLowerCase();
+      const isNativeDirect = ["mp4", "m4v", "webm"].includes(fileExt);
       const extLabel = fileExt ? `.${fileExt.toUpperCase()}` : "VIDEO";
 
       const [streamMode, setStreamMode] = useState(() => {
         try {
-          return window.localStorage.getItem("sfm_stream_mode") || "direct";
+          return window.localStorage.getItem("sfm_stream_mode") || (isNativeDirect ? "direct" : "webm");
         } catch (e) {
-          return "direct";
+          return isNativeDirect ? "direct" : "webm";
         }
       });
       const [customStreamUrl, setCustomStreamUrl] = useState("");
@@ -429,63 +434,12 @@
       const [playerError, setPlayerError] = useState("");
       const [availableStreams, setAvailableStreams] = useState([]);
       const [directUrl, setDirectUrl] = useState(() => scene?.paths?.stream || `/scene/${scene?.id}/stream`);
-      const [transcodeUrl, setTranscodeUrl] = useState(() => `/scene/${scene?.id}/stream.mp4`);
-      const [isLoadingMedia, setIsLoadingMedia] = useState(true);
+      const [transcodeWebmUrl, setTranscodeWebmUrl] = useState(() => `/scene/${scene?.id}/stream.webm`);
+      const [transcodeHlsUrl, setTranscodeHlsUrl] = useState(() => `/scene/${scene?.id}/stream.m3u8`);
+      const [transcodeMp4Url, setTranscodeMp4Url] = useState(() => `/scene/${scene?.id}/stream.mp4`);
       const [copiedNotice, setCopiedNotice] = useState("");
 
-      // Picture-in-Picture States
-      const [isNativePip, setIsNativePip] = useState(false);
-      const [isFloatingPip, setIsFloatingPip] = useState(false);
-
-      useEffect(() => {
-        const v = videoRef.current;
-        if (!v) return;
-
-        const handleEnterPip = () => {
-          setIsNativePip(true);
-        };
-        const handleLeavePip = () => {
-          setIsNativePip(false);
-        };
-
-        v.addEventListener("enterpictureinpicture", handleEnterPip);
-        v.addEventListener("leavepictureinpicture", handleLeavePip);
-        return () => {
-          v.removeEventListener("enterpictureinpicture", handleEnterPip);
-          v.removeEventListener("leavepictureinpicture", handleLeavePip);
-        };
-      }, [scene?.id]);
-
-      // Dedicated 1-Click PiP activation
-      const handleTogglePip = async () => {
-        const v = videoRef.current;
-        if (v && document.pictureInPictureEnabled && !v.disablePictureInPicture) {
-          try {
-            if (document.pictureInPictureElement) {
-              await document.exitPictureInPicture();
-            } else {
-              await v.requestPictureInPicture();
-            }
-            return;
-          } catch (err) {
-            console.warn("[SFM Video Player] Native PiP request failed, falling back to in-page floating window:", err);
-          }
-        }
-        setIsFloatingPip(true);
-      };
-
-      // Restore to full modal from native or in-app PiP
-      const handleRestoreFromPip = async () => {
-        if (document.pictureInPictureElement) {
-          try {
-            await document.exitPictureInPicture();
-          } catch (e) {}
-        }
-        setIsNativePip(false);
-        setIsFloatingPip(false);
-      };
-
-      // Query fresh scene stream info from Stash GraphQL
+      // Query available Stash streams via GraphQL
       useEffect(() => {
         if (!scene?.id) return;
         let active = true;
@@ -493,11 +447,25 @@
         setPlayerError("");
         setPlayerNotice("");
         setCustomStreamUrl("");
-        setIsLoadingMedia(true);
 
         const initialDirect = scene?.paths?.stream || `/scene/${scene.id}/stream`;
+        const qIdx = initialDirect.indexOf("?");
+        const queryParams = qIdx !== -1 ? initialDirect.slice(qIdx) : "";
+
+        const defaultWebm = `/scene/${scene.id}/stream.webm${queryParams}`;
+        const defaultHls = `/scene/${scene.id}/stream.m3u8${queryParams}`;
+        const defaultMp4 = `/scene/${scene.id}/stream.mp4${queryParams}`;
+
         setDirectUrl(initialDirect);
-        setTranscodeUrl(`/scene/${scene.id}/stream.mp4`);
+        setTranscodeWebmUrl(defaultWebm);
+        setTranscodeHlsUrl(defaultHls);
+        setTranscodeMp4Url(defaultMp4);
+
+        // Notify user if non-native file defaults to WebM transcode
+        if (!isNativeDirect && streamMode === "direct") {
+          setStreamMode("webm");
+          setPlayerNotice(`Non-native format (.${fileExt.toUpperCase()}) detected: WebM Transcode enabled for timeline seeking.`);
+        }
 
         gqlFetch(
           `query ScenePlaybackDetails($id: ID!) {
@@ -529,13 +497,14 @@
             setDirectUrl(officialDirect);
             setAvailableStreams(streams);
 
-            const trans = streams.find(
-              (s) => s.url !== officialDirect && (s.mime_type?.includes("mp4") || s.url?.includes("stream.mp4") || s.label?.toLowerCase().includes("mp4"))
-            ) || streams.find((s) => s.url !== officialDirect && (s.mime_type?.includes("webm") || s.url?.includes("stream.webm")))
-              || streams.find((s) => s.url !== officialDirect);
+            // Prioritize WebM & HLS over MP4 to avoid loss of duration/seeking ability
+            const webm = streams.find((s) => s.url !== officialDirect && (s.mime_type?.includes("webm") || s.url?.includes(".webm") || s.label?.toLowerCase().includes("webm")));
+            const hls = streams.find((s) => s.url !== officialDirect && (s.mime_type?.includes("mpegurl") || s.url?.includes(".m3u8") || s.label?.toLowerCase().includes("hls")));
+            const mp4 = streams.find((s) => s.url !== officialDirect && (s.mime_type?.includes("mp4") || s.url?.includes("stream.mp4") || s.label?.toLowerCase().includes("mp4")));
 
-            const bestTransUrl = trans ? trans.url : `/scene/${scene.id}/stream.mp4`;
-            setTranscodeUrl(bestTransUrl);
+            if (webm) setTranscodeWebmUrl(webm.url);
+            if (hls) setTranscodeHlsUrl(hls.url);
+            if (mp4) setTranscodeMp4Url(mp4.url);
           })
           .catch((err) => {
             console.warn("[SFM Video Player] GraphQL stream query error:", err);
@@ -544,21 +513,23 @@
         return () => {
           active = false;
         };
-      }, [scene?.id]);
+      }, [scene?.id, isNativeDirect, fileExt]);
 
-      // Effective active stream URL
+      // Effective stream URL
       const streamUrl = useMemo(() => {
         if (!scene?.id) return "";
         if (customStreamUrl) return customStreamUrl;
-        if (streamMode === "transcode") return transcodeUrl;
-        return directUrl;
-      }, [scene?.id, streamMode, customStreamUrl, transcodeUrl, directUrl]);
+        if (streamMode === "direct") return directUrl;
+        if (streamMode === "webm") return transcodeWebmUrl;
+        if (streamMode === "hls") return transcodeHlsUrl;
+        if (streamMode === "mp4") return transcodeMp4Url;
+        return transcodeWebmUrl;
+      }, [scene?.id, streamMode, customStreamUrl, directUrl, transcodeWebmUrl, transcodeHlsUrl, transcodeMp4Url]);
 
       // Auto-reload video tag when streamUrl changes
       useEffect(() => {
         const v = videoRef.current;
         if (v && streamUrl) {
-          setIsLoadingMedia(true);
           v.load();
           const playPromise = v.play();
           if (playPromise !== undefined) {
@@ -572,24 +543,74 @@
         }
       }, [streamUrl]);
 
-      // Auto-recover on playback error
+      // Intelligent Fallback on playback error
       const handleVideoError = (e) => {
-        console.warn("[SFM Video Player] Video loading error:", streamUrl, e);
-        setIsLoadingMedia(false);
+        console.warn("[SFM Video Player] Playback error on stream:", streamUrl, e);
         if (streamMode === "direct" && !customStreamUrl) {
-          console.log("[SFM Video Player] Direct stream failed. Falling back to live transcode (MP4)...");
-          setStreamMode("transcode");
-          setPlayerNotice(`Direct stream format not supported by browser. Switched to Live Transcode (MP4). For instant zero-buffering playback, click "Open in VLC".`);
+          console.log("[SFM Video Player] Direct stream failed. Falling back to WebM Transcode...");
+          setStreamMode("webm");
+          setPlayerNotice("Direct stream format not supported by browser. Switched to WebM Transcode (full timeline seeking supported).");
+        } else if (streamMode === "webm" && !customStreamUrl) {
+          console.log("[SFM Video Player] WebM stream failed. Trying HLS stream...");
+          setStreamMode("hls");
+          setPlayerNotice("WebM stream failed. Switched to HLS Adaptive Stream.");
+        } else if (streamMode === "hls" && !customStreamUrl) {
+          setStreamMode("mp4");
+          setPlayerNotice("Switched to MP4 Transcode.");
         } else {
-          setPlayerError("Video playback failed. Browser cannot decode this format. Click 'Open in VLC' or 'Stash Player' for instant external playback.");
+          setPlayerError("Video playback failed. Browser cannot decode this stream. Use 'Open in VLC' for instant external playback.");
         }
       };
 
-      const handleCanPlay = () => {
-        setIsLoadingMedia(false);
+      // 5. Picture-in-Picture Modes (Native OS PiP & In-App Floating Mini Player)
+      const [isNativePip, setIsNativePip] = useState(false);
+      const [isFloatingPip, setIsFloatingPip] = useState(false);
+
+      useEffect(() => {
+        const v = videoRef.current;
+        if (!v) return;
+        const handleEnterPip = () => setIsNativePip(true);
+        const handleLeavePip = () => setIsNativePip(false);
+        v.addEventListener("enterpictureinpicture", handleEnterPip);
+        v.addEventListener("leavepictureinpicture", handleLeavePip);
+        return () => {
+          v.removeEventListener("enterpictureinpicture", handleEnterPip);
+          v.removeEventListener("leavepictureinpicture", handleLeavePip);
+        };
+      }, []);
+
+      const handleTogglePip = async () => {
+        const v = videoRef.current;
+        if (document.pictureInPictureElement) {
+          try {
+            await document.exitPictureInPicture();
+          } catch (e) {}
+          setIsNativePip(false);
+          return;
+        }
+        if (v && document.pictureInPictureEnabled && typeof v.requestPictureInPicture === "function") {
+          try {
+            await v.requestPictureInPicture();
+            setIsNativePip(true);
+            return;
+          } catch (err) {
+            console.warn("[SFM Video Player] Native PiP failed, opening floating window:", err);
+          }
+        }
+        setIsFloatingPip(true);
       };
 
-      // In-App Floating PIP Dragging
+      const handleRestoreFromPip = async () => {
+        if (document.pictureInPictureElement) {
+          try {
+            await document.exitPictureInPicture();
+          } catch (e) {}
+        }
+        setIsNativePip(false);
+        setIsFloatingPip(false);
+      };
+
+      // In-App Floating Mini Player Dragging
       const [pipPos, setPipPos] = useState(() => {
         const w = typeof window !== "undefined" ? window.innerWidth : 1200;
         const h = typeof window !== "undefined" ? window.innerHeight : 800;
@@ -622,9 +643,7 @@
           const clampedY = Math.max(10, Math.min(window.innerHeight - 220, dragStart.current.posY + dy));
           setPipPos({ x: clampedX, y: clampedY });
         };
-        const handleMouseUp = () => {
-          setIsDragging(false);
-        };
+        const handleMouseUp = () => setIsDragging(false);
         window.addEventListener("mousemove", handleMouseMove);
         window.addEventListener("mouseup", handleMouseUp);
         return () => {
@@ -633,22 +652,56 @@
         };
       }, [isDragging]);
 
-      // Binge-Style Wheel Scrolling (advance/previous video in folder)
-      const lastWheelTime = useRef(0);
+      // 6. Binge-Style Wheel Scrolling with Pull Distance Threshold & Spring-back Animation
+      const [pullOffset, setPullOffset] = useState(0);
+      const [isTransitioning, setIsTransitioning] = useState(false);
+      const accumulatedDelta = useRef(0);
+      const snapbackTimer = useRef(null);
+      const SCROLL_THRESHOLD = 140; // Requires deliberate pull distance to register change
+
       const handleWheel = useCallback(
         (e) => {
-          if (Math.abs(e.deltaY) < 30) return;
-          const now = Date.now();
-          if (now - lastWheelTime.current < 450) return;
-          if (e.deltaY > 0 && hasNext) {
-            lastWheelTime.current = now;
-            goToNext();
-          } else if (e.deltaY < 0 && hasPrev) {
-            lastWheelTime.current = now;
-            goToPrev();
+          if (isTransitioning) return;
+          if (e.target.closest("select") || e.target.closest(".sfm-scrollable")) return;
+          if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+
+          accumulatedDelta.current += e.deltaY * 0.7;
+
+          // Physics-style pull resistance
+          const rawOffset = -accumulatedDelta.current * 0.35;
+          const clampedOffset = Math.max(-130, Math.min(130, rawOffset));
+          setPullOffset(clampedOffset);
+
+          clearTimeout(snapbackTimer.current);
+
+          // Threshold check
+          if (accumulatedDelta.current > SCROLL_THRESHOLD && hasNext) {
+            accumulatedDelta.current = 0;
+            setIsTransitioning(true);
+            setPullOffset(-160); // Slide current up
+            setTimeout(() => {
+              goToNext();
+              setPullOffset(0);
+              setIsTransitioning(false);
+            }, 230);
+          } else if (accumulatedDelta.current < -SCROLL_THRESHOLD && hasPrev) {
+            accumulatedDelta.current = 0;
+            setIsTransitioning(true);
+            setPullOffset(160); // Slide current down
+            setTimeout(() => {
+              goToPrev();
+              setPullOffset(0);
+              setIsTransitioning(false);
+            }, 230);
+          } else {
+            // Snap back cleanly when user stops scrolling before threshold
+            snapbackTimer.current = setTimeout(() => {
+              accumulatedDelta.current = 0;
+              setPullOffset(0);
+            }, 240);
           }
         },
-        [hasNext, hasPrev, goToNext, goToPrev]
+        [hasNext, hasPrev, goToNext, goToPrev, isTransitioning]
       );
 
       // Keyboard Controls
@@ -678,44 +731,40 @@
           } else if (e.key === "ArrowRight" || e.key.toLowerCase() === "l") {
             e.preventDefault();
             handleSeek(10);
-          } else if (e.key === "[" || e.key === ",") {
-            e.preventDefault();
-            handleSeek(-5);
-          } else if (e.key === "]" || e.key === ".") {
-            e.preventDefault();
-            handleSeek(5);
-          } else if (e.key === ">") {
-            e.preventDefault();
-            handleCycleSpeed();
           } else if (e.key.toLowerCase() === "m") {
             const v = videoRef.current;
-            if (v) v.muted = !v.muted;
+            if (v) {
+              v.muted = !v.muted;
+              showHud(v.muted ? "🔇 Muted" : "🔊 Unmuted");
+            }
+          } else if (e.key.toLowerCase() === "f") {
+            e.preventDefault();
+            handleToggleFullscreen();
           }
         };
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
-      }, [onClose, goToNext, goToPrev, isNativePip, isFloatingPip, handleSeek, handleTogglePlay, handleCycleSpeed]);
+      }, [onClose, goToNext, goToPrev, isNativePip, isFloatingPip, handleSeek, handleTogglePlay]);
 
-      // Copy direct stream link to clipboard
+      // Copy direct stream link
       const handleCopyStreamLink = () => {
-        const fullUrl = window.location.origin + directUrl;
+        const fullUrl = `${window.location.origin}${streamUrl}`;
         if (navigator.clipboard && navigator.clipboard.writeText) {
           navigator.clipboard.writeText(fullUrl).then(() => {
-            setCopiedNotice("Direct stream URL copied! Paste into VLC, MPV, or IINA.");
+            setCopiedNotice("Stream URL copied to clipboard!");
             setTimeout(() => setCopiedNotice(""), 3500);
+          }).catch(() => {
+            prompt("Stream URL:", fullUrl);
           });
         } else {
-          prompt("Copy direct stream URL for external player:", fullUrl);
+          prompt("Stream URL:", fullUrl);
         }
       };
 
-      // Preserve playback time across PIP / Modal transitions
+      // Playback Time Tracking
       const handleTimeUpdate = (e) => {
         if (e.target && e.target.currentTime) {
           savedPlaybackTime.current = e.target.currentTime;
-        }
-        if (e.target) {
-          setIsPlaying(!e.target.paused);
         }
       };
       const handleLoadedMetadata = (e) => {
@@ -731,13 +780,12 @@
       const vlcUrl = `vlc://${window.location.origin}${directUrl}`;
 
       // -------------------------------------------------------------
-      // 1. Render: Native OS Picture-in-Picture Active Mode
+      // Mode 1: Native OS Picture-in-Picture Active Pill
       // -------------------------------------------------------------
       if (isNativePip) {
         return React.createElement(
           React.Fragment,
           null,
-          // Invisible video host so browser's native PiP continues playing uninterrupted
           React.createElement(
             "div",
             {
@@ -759,13 +807,10 @@
               controls: true,
               autoPlay: true,
               onError: handleVideoError,
-              onCanPlay: handleCanPlay,
-              onPlaying: handleCanPlay,
               onTimeUpdate: handleTimeUpdate,
               onLoadedMetadata: handleLoadedMetadata,
             })
           ),
-          // Floating Bottom-Right Dock Pill for easy 1-click restore
           React.createElement(
             "div",
             {
@@ -779,7 +824,7 @@
               {
                 className: "btn btn-sm btn-info py-0 px-2 mr-2 font-weight-bold",
                 onClick: handleRestoreFromPip,
-                title: "Enlarge / Restore to Full Video Player",
+                title: "Enlarge to Full Video Player",
               },
               "🗖 Enlarge"
             ),
@@ -797,7 +842,7 @@
       }
 
       // -------------------------------------------------------------
-      // 2. Render: Floating Draggable In-App Mini Player Mode
+      // Mode 2: In-App Draggable Floating Mini Player
       // -------------------------------------------------------------
       if (isFloatingPip) {
         return React.createElement(
@@ -855,7 +900,7 @@
                 {
                   className: "btn btn-sm btn-info py-0 px-2 mr-1 font-weight-bold",
                   onClick: () => setIsFloatingPip(false),
-                  title: "Enlarge / Restore to Full Modal Player",
+                  title: "Enlarge to Full Modal Player",
                 },
                 "🗖 Enlarge"
               ),
@@ -880,31 +925,9 @@
               autoPlay: true,
               className: "sfm-video-element",
               onError: handleVideoError,
-              onCanPlay: handleCanPlay,
-              onPlaying: handleCanPlay,
               onTimeUpdate: handleTimeUpdate,
               onLoadedMetadata: handleLoadedMetadata,
-            }),
-            // Mini PiP seek bar
-            React.createElement(
-              "div",
-              { className: "sfm-pip-seek-overlay", onClick: (e) => e.stopPropagation() },
-              React.createElement(
-                "button",
-                { className: "sfm-pip-seek-btn", onClick: () => handleSeek(-10), title: "Rewind 10s" },
-                "⏪ 10s"
-              ),
-              React.createElement(
-                "button",
-                { className: "sfm-pip-seek-btn sfm-pip-seek-play", onClick: handleTogglePlay, title: "Play / Pause" },
-                isPlaying ? "⏸" : "▶"
-              ),
-              React.createElement(
-                "button",
-                { className: "sfm-pip-seek-btn", onClick: () => handleSeek(10), title: "Fast-Forward 10s" },
-                "10s ⏩"
-              )
-            )
+            })
           ),
           React.createElement(
             "div",
@@ -928,7 +951,7 @@
       }
 
       // -------------------------------------------------------------
-      // 3. Render: Centered Modal Dialog with Binge Reel Overlay & Dedicated PiP
+      // Mode 3: Clean Redesigned Centered Modal Player
       // -------------------------------------------------------------
       return React.createElement(
         "div",
@@ -940,12 +963,13 @@
             onClick: (e) => e.stopPropagation(),
             onWheel: handleWheel,
           },
+          // Clean Unified Header
           React.createElement(
             "div",
             { className: "sfm-modal-header d-flex justify-content-between align-items-center flex-wrap gap-2" },
             React.createElement(
               "div",
-              { className: "d-flex align-items-center text-truncate mr-3", style: { flex: 1, minWidth: "200px" } },
+              { className: "d-flex align-items-center text-truncate mr-3", style: { flex: 1, minWidth: "220px" } },
               React.createElement("h5", { className: "mb-0 text-truncate font-weight-bold text-light mr-2" }, `▶ ${title}`),
               React.createElement("span", { className: "badge badge-secondary mr-2" }, extLabel),
               scene.studio?.name && React.createElement("span", { className: "badge badge-primary text-truncate" }, scene.studio.name)
@@ -953,88 +977,101 @@
             React.createElement(
               "div",
               { className: "d-flex align-items-center gap-2 flex-wrap" },
-              // Dedicated Picture-in-Picture Button (One-Click, No Menus)
+              // Unified Stream Engine Dropdown
               React.createElement(
-                "button",
+                "select",
                 {
-                  className: "btn btn-sm btn-info font-weight-bold mr-1 sfm-pip-action-btn",
-                  onClick: handleTogglePip,
-                  title: "One-Click Picture-in-Picture: floats video over screen and closes this dark window immediately",
-                },
-                "⧉ Picture-in-Picture"
-              ),
-              availableStreams.length > 1 &&
-                React.createElement(
-                  "select",
-                  {
-                    className: "sfm-stream-select mr-1",
-                    value: customStreamUrl || (streamMode === "transcode" ? transcodeUrl : directUrl),
-                    onChange: (e) => {
-                      setCustomStreamUrl(e.target.value);
-                      setPlayerError("");
-                    },
-                    title: "Select Specific Stash Stream Profile (Direct, HLS, Transcode)",
+                  className: "sfm-stream-select mr-1",
+                  value: customStreamUrl || streamMode,
+                  onChange: (e) => {
+                    const val = e.target.value;
+                    setPlayerError("");
+                    setPlayerNotice("");
+                    if (["direct", "webm", "hls", "mp4"].includes(val)) {
+                      setCustomStreamUrl("");
+                      setStreamMode(val);
+                      try {
+                        window.localStorage.setItem("sfm_stream_mode", val);
+                      } catch (err) {}
+                    } else {
+                      setCustomStreamUrl(val);
+                    }
                   },
-                  availableStreams.map((s, idx) =>
-                    React.createElement(
-                      "option",
-                      { key: idx, value: s.url },
-                      s.label || (s.mime_type ? s.mime_type.split("/")[1].toUpperCase() : `Stream #${idx + 1}`)
-                    )
+                  title: "Stream Engine: Choose Direct Stream or Transcode Profile",
+                },
+                React.createElement("option", { value: "direct" }, "⚡ Direct Stream"),
+                React.createElement("option", { value: "webm" }, "🔄 WebM Transcode (Best Seeking)"),
+                React.createElement("option", { value: "hls" }, "📺 HLS Adaptive Stream"),
+                React.createElement("option", { value: "mp4" }, "🎬 MP4 Transcode"),
+                availableStreams.filter((s) => !s.url.includes("stream.webm") && !s.url.includes("stream.m3u8") && !s.url.includes("stream.mp4")).map((s, idx) =>
+                  React.createElement(
+                    "option",
+                    { key: `custom-${idx}`, value: s.url },
+                    s.label || (s.mime_type ? s.mime_type.split("/")[1].toUpperCase() : `Custom Stream #${idx + 1}`)
                   )
-                ),
+                )
+              ),
+              // Single 1-Click PiP Button
               React.createElement(
                 "button",
                 {
-                  className: `btn btn-sm ${streamMode === "direct" ? "btn-outline-info" : "btn-warning"} mr-1`,
-                  onClick: () => {
-                    setCustomStreamUrl("");
-                    const nextMode = streamMode === "direct" ? "transcode" : "direct";
-                    setStreamMode(nextMode);
-                    try {
-                      window.localStorage.setItem("sfm_stream_mode", nextMode);
-                    } catch (e) {}
-                  },
-                  title: streamMode === "direct" ? "Direct Stream active (0s buffering). Click to switch to Live Transcode (MP4)." : "Live Transcode active. Click to switch to Direct Stream.",
+                  className: "btn btn-sm btn-info font-weight-bold mr-1",
+                  onClick: handleTogglePip,
+                  title: "Picture-in-Picture: float video over desktop or browser and browse other folders",
                 },
-                streamMode === "direct" ? "⚡ Direct Stream (Fast)" : "🔄 Transcode (MP4)"
+                "⧉ PiP"
               ),
+              // Fullscreen Button
+              React.createElement(
+                "button",
+                {
+                  className: "btn btn-sm btn-outline-light mr-1",
+                  onClick: handleToggleFullscreen,
+                  title: "Toggle Fullscreen (F)",
+                },
+                "⛶ Fullscreen"
+              ),
+              // Single VLC Button
               React.createElement(
                 "a",
                 {
                   href: vlcUrl,
                   className: "btn btn-sm btn-outline-warning mr-1",
-                  title: "Open in VLC Media Player (Instant zero-buffering hardware playback for AVI/MKV)",
+                  title: "Open direct video stream in VLC Media Player",
                 },
                 "🚀 VLC"
               ),
+              // Single Copy Link Button
               React.createElement(
                 "button",
                 {
                   className: "btn btn-sm btn-outline-secondary mr-1",
                   onClick: handleCopyStreamLink,
-                  title: "Copy Direct Stream URL to paste into VLC, MPV, or PotPlayer",
+                  title: "Copy stream URL to clipboard (paste into VLC, MPV, or PotPlayer)",
                 },
-                "📋 Link"
+                "📋 Copy Link"
               ),
+              // Single Stash Details Link
               React.createElement(
                 "a",
                 {
                   href: `/scenes/${scene.id}`,
                   target: "_blank",
                   rel: "noreferrer",
-                  className: "btn btn-sm btn-outline-success mr-2",
-                  title: "Open scene in Stash native full player (new tab)",
+                  className: "btn btn-sm btn-outline-info mr-2",
+                  title: "Open scene details in Stash",
                 },
                 "↗ Stash"
               ),
+              // Close Button
               React.createElement(
                 "button",
-                { className: "close text-light", onClick: onClose, title: "Close (Esc)" },
+                { className: "close text-light", onClick: onClose, title: "Close Player (Esc)" },
                 "×"
               )
             )
           ),
+          // Alert Notices (Clean, Non-Redundant)
           copiedNotice &&
             React.createElement(
               "div",
@@ -1045,66 +1082,56 @@
           playerNotice &&
             React.createElement(
               "div",
-              { className: "alert alert-warning py-1 px-3 mb-0 small rounded-0 d-flex justify-content-between align-items-center flex-wrap gap-2" },
+              { className: "alert alert-warning py-1 px-3 mb-0 small rounded-0 d-flex justify-content-between align-items-center" },
               React.createElement("span", null, `ℹ ${playerNotice}`),
-              React.createElement(
-                "div",
-                null,
-                React.createElement("a", { href: vlcUrl, className: "btn btn-xs btn-warning mr-2" }, "Open in VLC 🚀"),
-                React.createElement("button", { className: "close py-0", onClick: () => setPlayerNotice("") }, "×")
-              )
+              React.createElement("button", { className: "close py-0", onClick: () => setPlayerNotice("") }, "×")
             ),
           playerError &&
             React.createElement(
               "div",
-              { className: "alert alert-danger py-2 px-3 mb-0 small rounded-0 d-flex justify-content-between align-items-center flex-wrap gap-2" },
+              { className: "alert alert-danger py-1 px-3 mb-0 small rounded-0 d-flex justify-content-between align-items-center" },
               React.createElement("span", null, `⚠ ${playerError}`),
-              React.createElement(
-                "div",
-                { className: "d-flex gap-1" },
-                React.createElement("a", { href: vlcUrl, className: "btn btn-xs btn-warning py-0 px-2 mr-1" }, "Play in VLC 🚀"),
-                React.createElement(
-                  "button",
-                  {
-                    className: "btn btn-xs btn-outline-light py-0 px-2 mr-1",
-                    onClick: () => {
-                      setPlayerError("");
-                      setStreamMode((m) => (m === "direct" ? "transcode" : "direct"));
-                    },
-                  },
-                  "Switch Stream Mode"
-                ),
-                React.createElement(
-                  "a",
-                  {
-                    href: `/scenes/${scene.id}`,
-                    target: "_blank",
-                    rel: "noreferrer",
-                    className: "btn btn-xs btn-info py-0 px-2",
-                  },
-                  "Open in Stash ↗"
-                )
-              )
+              React.createElement("button", { className: "close py-0", onClick: () => setPlayerError("") }, "×")
             ),
+          // Main Video Container with Physics Pull Animation
           React.createElement(
             "div",
             {
-              className: "sfm-video-container position-relative",
-              onClick: handleVideoContainerClick,
-            },
-            // On-video PiP button badge (top right of video frame)
-            React.createElement(
-              "button",
-              {
-                className: "sfm-onvideo-pip-btn",
-                onClick: (e) => {
-                  e.stopPropagation();
-                  handleTogglePip();
-                },
-                title: "One-Click Picture-in-Picture: float video and continue browsing",
+              ref: videoContainerRef,
+              className: "sfm-video-container position-relative overflow-hidden",
+              style: {
+                transform: `translateY(${pullOffset}px)`,
+                transition: pullOffset === 0 ? "transform 0.26s cubic-bezier(0.2, 0.9, 0.3, 1)" : "none",
               },
-              "⧉ PiP"
-            ),
+            },
+            // Pull Up / Down Preview Indicators (Discovery Reel Animation)
+            pullOffset > 20 && hasPrev &&
+              React.createElement(
+                "div",
+                { className: "sfm-reel-pull-indicator top" },
+                `▲ Release to switch to: ${prevScene?.title || `Previous Scene`}`,
+                React.createElement("div", {
+                  className: "sfm-reel-pull-progress",
+                  style: { width: `${Math.min(100, (pullOffset / SCROLL_THRESHOLD) * 100)}%` },
+                })
+              ),
+            pullOffset < -20 && hasNext &&
+              React.createElement(
+                "div",
+                { className: "sfm-reel-pull-indicator bottom" },
+                `▼ Release to switch to: ${nextScene?.title || `Next Scene`}`,
+                React.createElement("div", {
+                  className: "sfm-reel-pull-progress",
+                  style: { width: `${Math.min(100, (-pullOffset / SCROLL_THRESHOLD) * 100)}%` },
+                })
+              ),
+            // Gesture Overlay for Double-Click Seek (prevents browser fullscreen hijack)
+            React.createElement("div", {
+              className: "sfm-video-gesture-overlay",
+              onClick: handleGestureClick,
+              onDoubleClick: handleDoubleTapSeek,
+              title: "Double click left/right sides to seek ±10s · Single click to toggle Play/Pause",
+            }),
             React.createElement("video", {
               ref: videoRef,
               src: streamUrl,
@@ -1112,57 +1139,10 @@
               autoPlay: true,
               className: "sfm-video-element",
               onError: handleVideoError,
-              onCanPlay: handleCanPlay,
-              onPlaying: handleCanPlay,
+              onDoubleClick: handleDoubleTapSeek,
               onTimeUpdate: handleTimeUpdate,
               onLoadedMetadata: handleLoadedMetadata,
             }),
-            // Binge-Style Fast-Forward / Rewind & Speed Overlay Bar
-            React.createElement(
-              "div",
-              { className: "sfm-player-seek-bar", onClick: (e) => e.stopPropagation() },
-              React.createElement(
-                "button",
-                {
-                  className: "sfm-seek-btn",
-                  onClick: () => handleSeek(-10),
-                  title: "Rewind 10 seconds (← or J)",
-                },
-                "⏪ 10s"
-              ),
-              React.createElement(
-                "button",
-                {
-                  className: "sfm-seek-btn sfm-seek-btn-play",
-                  onClick: handleTogglePlay,
-                  title: "Play / Pause (Space or K)",
-                },
-                isPlaying ? "⏸ Pause" : "▶ Play"
-              ),
-              React.createElement(
-                "button",
-                {
-                  className: "sfm-seek-btn",
-                  onClick: () => handleSeek(10),
-                  onMouseDown: handleHoldStart,
-                  onMouseUp: handleHoldEnd,
-                  onMouseLeave: handleHoldEnd,
-                  onTouchStart: handleHoldStart,
-                  onTouchEnd: handleHoldEnd,
-                  title: "Fast-Forward 10 seconds (→ or L) · Hold for 2x speed",
-                },
-                "10s ⏩"
-              ),
-              React.createElement(
-                "button",
-                {
-                  className: "sfm-seek-btn sfm-seek-btn-speed",
-                  onClick: handleCycleSpeed,
-                  title: "Cycle Playback Speed (1x, 1.25x, 1.5x, 2x)",
-                },
-                `⚡ ${playbackRate}x`
-              )
-            ),
             // On-screen animated HUD feedback badge
             hudNotice &&
               React.createElement(
@@ -1170,7 +1150,7 @@
                 { className: "sfm-player-hud" },
                 React.createElement("div", { className: "sfm-hud-pill" }, hudNotice)
               ),
-            // Binge-Style On-Screen Reel Overlay (prev/next chevrons & scene counter)
+            // Binge-Style On-Screen Reel Overlay (Chevrons & Counter)
             React.createElement(
               "div",
               { className: "sfm-reel-overlay", onClick: (e) => e.stopPropagation() },
@@ -1201,44 +1181,28 @@
               )
             )
           ),
+          // Clean Footer (Metadata & Shortcuts only, no redundant buttons)
           React.createElement(
             "div",
             { className: "p-3 bg-dark d-flex justify-content-between align-items-center flex-wrap gap-2 text-muted small" },
             React.createElement(
               "div",
-              { className: "d-flex align-items-center flex-wrap gap-2" },
-              scene.date && React.createElement("span", { className: "mr-3" }, `📅 ${scene.date}`),
-              scene.files?.[0]?.size && React.createElement("span", { className: "mr-3" }, `💾 ${formatBytes(scene.files[0].size)}`),
-              scene.files?.[0]?.duration && React.createElement("span", { className: "mr-3" }, `⏱ ${formatDuration(scene.files[0].duration)}`),
-              React.createElement("span", { className: "sfm-reel-shortcut-hint" }, "💡 Double-click sides: ±10s seek · Wheel/Up/Down: advance reel · Hold ⏩: 2x speed")
+              { className: "d-flex align-items-center flex-wrap gap-3" },
+              scene.files?.[0]?.duration && React.createElement("span", null, `⏱ ${formatDuration(scene.files[0].duration)}`),
+              scene.files?.[0]?.size && React.createElement("span", null, `💾 ${formatBytes(scene.files[0].size)}`),
+              scene.date && React.createElement("span", null, `📅 ${scene.date}`),
+              scene.files?.[0]?.video_codec && React.createElement("span", { className: "badge badge-dark" }, scene.files[0].video_codec.toUpperCase())
             ),
             React.createElement(
               "div",
-              { className: "d-flex align-items-center gap-2" },
-              React.createElement(
-                "button",
-                {
-                  className: "btn btn-sm btn-outline-info py-0 px-2",
-                  onClick: handleTogglePip,
-                  title: "Float in Picture-in-Picture window",
-                },
-                "⧉ Float PiP"
-              ),
-              React.createElement(
-                "a",
-                { href: vlcUrl, className: "btn btn-sm btn-outline-warning py-0 px-2", title: "Open stream in VLC" },
-                "VLC 🚀"
-              ),
-              React.createElement(
-                "a",
-                { href: `/scenes/${scene.id}`, target: "_blank", rel: "noreferrer", className: "btn btn-sm btn-outline-info py-0 px-2" },
-                "Scene Details ↗"
-              )
+              { className: "text-muted small" },
+              React.createElement("span", { className: "sfm-reel-shortcut-hint" }, "💡 Double-click sides: ±10s seek · Wheel pull: next/prev · F: Fullscreen · Space: Play")
             )
           )
         )
       );
     }
+
 
     // ==========================================
     // Modal: Folder-Scoped Filename Regex Parser (Feature 1)
