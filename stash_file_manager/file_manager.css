@@ -631,3 +631,175 @@ a#sfm-main-nav-item.active {
   height: 100%;
   outline: none;
 }
+
+/* ==========================================================================
+   Milestone 1: Scene Multi-Select & Selection Bar
+   ========================================================================== */
+
+.sfm-card-select-wrap {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 10;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  background: rgba(18, 21, 28, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: opacity 0.15s ease, background-color 0.15s ease;
+  opacity: 0;
+}
+
+.sfm-scene-card:hover .sfm-card-select-wrap,
+.sfm-card-select-wrap.sfm-selected {
+  opacity: 1;
+}
+
+.sfm-card-select-wrap.sfm-selected {
+  background: #88c0d0;
+}
+
+.sfm-card-checkbox {
+  cursor: pointer;
+  margin: 0;
+  width: 14px;
+  height: 14px;
+  accent-color: #88c0d0;
+}
+
+.sfm-card-selected {
+  border-color: #88c0d0 !important;
+  box-shadow: 0 0 0 2px rgba(136, 192, 208, 0.4) !important;
+}
+
+/* Floating Bulk Action Bar */
+.sfm-floating-bulk-bar {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1050;
+  animation: sfmSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes sfmSlideUp {
+  from {
+    transform: translate(-50%, 30px);
+    opacity: 0;
+  }
+  to {
+    transform: translate(-50%, 0);
+    opacity: 1;
+  }
+}
+
+.sfm-bulk-inner {
+  background: #1e232d;
+  border: 1px solid #3b4252;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.65);
+  border-radius: 30px;
+  padding: 0.45rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+/* ==========================================================================
+   Milestone 2: Detailed Table / List View
+   ========================================================================== */
+
+.sfm-table-wrap {
+  background-color: #1a1e27;
+  border: 1px solid #282e3d;
+  border-radius: 8px;
+  overflow-x: auto;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+.sfm-data-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 0;
+  font-size: 0.88rem;
+}
+
+.sfm-data-table th {
+  background-color: #151821;
+  color: #9aa8b8;
+  font-weight: 600;
+  padding: 0.65rem 0.75rem;
+  border-bottom: 2px solid #2e3440;
+  white-space: nowrap;
+}
+
+.sfm-data-table td {
+  padding: 0.55rem 0.75rem;
+  border-bottom: 1px solid #242935;
+  color: #eceff4;
+  vertical-align: middle;
+}
+
+.sfm-data-table tr:hover td {
+  background-color: rgba(136, 192, 208, 0.05);
+}
+
+.sfm-row-selected td {
+  background-color: rgba(136, 192, 208, 0.12) !important;
+}
+
+.sfm-table-thumb-wrap {
+  position: relative;
+  width: 64px;
+  height: 36px;
+  border-radius: 4px;
+  overflow: hidden;
+  background-color: #0b0d13;
+  cursor: pointer;
+  display: inline-block;
+}
+
+.sfm-table-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.sfm-table-play-icon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #ffffff;
+  font-size: 0.75rem;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+}
+
+.sfm-table-thumb-wrap:hover .sfm-table-play-icon {
+  opacity: 1;
+}
+
+.sfm-table-title {
+  color: #eceff4;
+  font-weight: 500;
+  text-decoration: none;
+  display: inline-block;
+  line-height: 1.25;
+}
+
+.sfm-table-title:hover {
+  color: #88c0d0;
+  text-decoration: none;
+}
+
+.sfm-table-subtext {
+  font-size: 0.75rem;
+  color: #6c7a89;
+  line-height: 1.2;
+  margin-top: 0.15rem;
+  font-family: SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}

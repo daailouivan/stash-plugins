@@ -735,7 +735,7 @@
     // ==========================================
     // Scene Card Component with Hover Preview (Feature 3)
     // ==========================================
-    function SceneCard({ scene, onPlay }) {
+    function SceneCard({ scene, onPlay, isSelected, onToggleSelect }) {
       const [isHovered, setIsHovered] = useState(false);
       const thumbUrl = scene.paths?.screenshot || `/scene/${scene.id}/screenshot`;
       const previewVideoUrl = scene.paths?.preview || `/scene/${scene.id}/preview`;
@@ -745,7 +745,25 @@
 
       return React.createElement(
         "div",
-        { className: "sfm-scene-card" },
+        { className: `sfm-scene-card ${isSelected ? "sfm-card-selected" : ""}` },
+        // Selection Checkbox Overlay
+        React.createElement(
+          "div",
+          {
+            className: `sfm-card-select-wrap ${isSelected ? "sfm-selected" : ""}`,
+            onClick: (e) => {
+              e.stopPropagation();
+              onToggleSelect(scene.id);
+            },
+            title: isSelected ? "Deselect Scene" : "Select Scene",
+          },
+          React.createElement("input", {
+            type: "checkbox",
+            checked: !!isSelected,
+            onChange: () => {},
+            className: "sfm-card-checkbox",
+          })
+        ),
         React.createElement(
           "div",
           {
@@ -809,6 +827,164 @@
     }
 
     // ==========================================
+    // Detailed Table/List View Component (Milestone 2)
+    // ==========================================
+    function SceneTableView({ scenes, onPlay, selectedIds, onToggleSelect, onSelectAll }) {
+      const allSelected = scenes.length > 0 && scenes.every((s) => selectedIds.has(s.id));
+
+      return React.createElement(
+        "div",
+        { className: "sfm-table-wrap" },
+        React.createElement(
+          "table",
+          { className: "sfm-data-table" },
+          React.createElement(
+            "thead",
+            null,
+            React.createElement(
+              "tr",
+              null,
+              React.createElement(
+                "th",
+                { style: { width: "40px", textAlign: "center" } },
+                React.createElement("input", {
+                  type: "checkbox",
+                  checked: allSelected,
+                  onChange: onSelectAll,
+                  title: "Select All / None",
+                })
+              ),
+              React.createElement("th", { style: { width: "80px" } }, "Preview"),
+              React.createElement("th", null, "Title & Filename"),
+              React.createElement("th", { style: { width: "130px" } }, "Studio"),
+              React.createElement("th", { style: { width: "150px" } }, "Performers"),
+              React.createElement("th", { style: { width: "85px" } }, "Duration"),
+              React.createElement("th", { style: { width: "90px" } }, "Size"),
+              React.createElement("th", { style: { width: "100px" } }, "Date"),
+              React.createElement("th", { style: { width: "85px" } }, "Rating"),
+              React.createElement("th", { style: { width: "90px", textAlign: "center" } }, "Actions")
+            )
+          ),
+          React.createElement(
+            "tbody",
+            null,
+            scenes.map((scene) => {
+              const isSelected = selectedIds.has(scene.id);
+              const thumbUrl = scene.paths?.screenshot || `/scene/${scene.id}/screenshot`;
+              const duration = formatDuration(scene.files?.[0]?.duration);
+              const size = formatBytes(scene.files?.[0]?.size);
+              const studioName = scene.studio?.name;
+              const performers = scene.performers?.map((p) => p.name).join(", ");
+              const filename = scene.files?.[0]?.basename || "";
+
+              return React.createElement(
+                "tr",
+                { key: scene.id, className: isSelected ? "sfm-row-selected" : "" },
+                React.createElement(
+                  "td",
+                  { style: { textAlign: "center" } },
+                  React.createElement("input", {
+                    type: "checkbox",
+                    checked: isSelected,
+                    onChange: () => onToggleSelect(scene.id),
+                  })
+                ),
+                React.createElement(
+                  "td",
+                  null,
+                  React.createElement(
+                    "div",
+                    {
+                      className: "sfm-table-thumb-wrap",
+                      onClick: () => onPlay(scene),
+                      title: "Click to play inline",
+                    },
+                    React.createElement("img", {
+                      src: thumbUrl,
+                      alt: scene.title || "",
+                      className: "sfm-table-thumb",
+                      loading: "lazy",
+                    }),
+                    React.createElement("span", { className: "sfm-table-play-icon" }, "▶")
+                  )
+                ),
+                React.createElement(
+                  "td",
+                  null,
+                  React.createElement(
+                    "a",
+                    {
+                      href: `/scenes/${scene.id}`,
+                      target: "_blank",
+                      rel: "noreferrer",
+                      className: "sfm-table-title",
+                    },
+                    scene.title || filename || `Scene #${scene.id}`
+                  ),
+                  filename &&
+                    scene.title &&
+                    React.createElement("div", { className: "sfm-table-subtext" }, filename)
+                ),
+                React.createElement(
+                  "td",
+                  null,
+                  studioName
+                    ? React.createElement("span", { className: "badge badge-primary text-truncate d-inline-block", style: { maxWidth: "120px" } }, studioName)
+                    : React.createElement("span", { className: "text-muted small" }, "—")
+                ),
+                React.createElement(
+                  "td",
+                  null,
+                  performers
+                    ? React.createElement("span", { className: "text-info small text-truncate d-inline-block", style: { maxWidth: "140px" } }, performers)
+                    : React.createElement("span", { className: "text-muted small" }, "—")
+                ),
+                React.createElement("td", { className: "small text-muted" }, duration || "—"),
+                React.createElement("td", { className: "small text-muted" }, size),
+                React.createElement("td", { className: "small text-muted" }, scene.date || "—"),
+                React.createElement(
+                  "td",
+                  null,
+                  scene.rating100
+                    ? React.createElement("span", { className: "text-warning small" }, `★ ${(scene.rating100 / 20).toFixed(1)}`)
+                    : React.createElement("span", { className: "text-muted small" }, "—")
+                ),
+                React.createElement(
+                  "td",
+                  { style: { textAlign: "center" } },
+                  React.createElement(
+                    "div",
+                    { className: "btn-group btn-group-sm" },
+                    React.createElement(
+                      "button",
+                      {
+                        className: "btn btn-outline-info py-0 px-2",
+                        onClick: () => onPlay(scene),
+                        title: "Play video",
+                      },
+                      "▶"
+                    ),
+                    React.createElement(
+                      "a",
+                      {
+                        href: `/scenes/${scene.id}`,
+                        target: "_blank",
+                        rel: "noreferrer",
+                        className: "btn btn-outline-secondary py-0 px-2",
+                        title: "Open scene details",
+                      },
+                      "↗"
+                    )
+                  )
+                )
+              );
+            })
+          )
+        )
+      );
+    }
+
+    // ==========================================
     // Main App Component (Features 5, 1, 2, 3, 4)
     // ==========================================
     function FileManagerView({ onClose }) {
@@ -833,10 +1009,42 @@
         }
       });
 
+      // Milestone 2: View Mode (Grid Cards vs Table View)
+      const [viewMode, setViewMode] = useState(() => {
+        try {
+          return window.localStorage.getItem("sfm_view_mode") || "grid";
+        } catch (e) {
+          return "grid";
+        }
+      });
+
+      // Milestone 1: Scene Multi-Selection
+      const [selectedSceneIds, setSelectedSceneIds] = useState(new Set());
+
       // Modals
       const [showBatchModal, setShowBatchModal] = useState(false);
       const [showParserModal, setShowParserModal] = useState(false);
       const [playingScene, setPlayingScene] = useState(null);
+
+      const handleToggleViewMode = (mode) => {
+        setViewMode(mode);
+        try {
+          window.localStorage.setItem("sfm_view_mode", mode);
+        } catch (e) {}
+      };
+
+      const handleToggleSelect = (id) => {
+        setSelectedSceneIds((prev) => {
+          const next = new Set(prev);
+          if (next.has(id)) next.delete(id);
+          else next.add(id);
+          return next;
+        });
+      };
+
+      const handleClearSelection = () => {
+        setSelectedSceneIds(new Set());
+      };
 
       // Save hide empty preference
       const handleToggleHideEmpty = (val) => {
@@ -1121,6 +1329,23 @@
         window.location.href = `/scenes?c=${encodeURIComponent(JSON.stringify(filterCriterion))}`;
       };
 
+      // Milestone 3: Folder-Scoped Metadata Scan
+      const handleScanFolder = async () => {
+        if (!currentPath) return;
+        setNotification(`Starting Stash filesystem scan for: ${currentPath}...`);
+        try {
+          const mutation = `
+            mutation ScanPath($paths: [String!]) {
+              metadataScan(input: { paths: $paths })
+            }
+          `;
+          await gqlFetch(mutation, { paths: [currentPath] });
+          setNotification(`Stash scan task triggered for "${currentPath}". Check Settings -> Tasks.`);
+        } catch (e) {
+          setNotification(`Scan failed: ${e.message}`);
+        }
+      };
+
       if (loading) {
         return React.createElement(
           "div",
@@ -1140,6 +1365,20 @@
           )
         );
       }
+
+      const handleSelectAllFolderScenes = () => {
+        const visibleIds = filteredAndSortedScenes.map((s) => s.id);
+        const allInFolderSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedSceneIds.has(id));
+        setSelectedSceneIds((prev) => {
+          const next = new Set(prev);
+          if (allInFolderSelected) {
+            visibleIds.forEach((id) => next.delete(id));
+          } else {
+            visibleIds.forEach((id) => next.add(id));
+          }
+          return next;
+        });
+      };
 
       const segments = currentPath ? currentPath.split("/").filter(Boolean) : [];
 
@@ -1236,6 +1475,12 @@
                       "✏️ Batch Edit"
                     )
                   ),
+                currentPath &&
+                  React.createElement(
+                    "button",
+                    { className: "btn btn-sm btn-outline-success", onClick: handleScanFolder, title: "Trigger Stash filesystem scan on this folder path" },
+                    "📡 Scan Folder"
+                  ),
                 React.createElement(
                   "button",
                   { className: "btn btn-sm btn-outline-secondary", onClick: handleRescan, title: "Clear cache and rebuild tree" },
@@ -1304,6 +1549,28 @@
                   React.createElement("option", { value: "name_desc" }, "Name (Z-A)"),
                   React.createElement("option", { value: "count_desc" }, "Count (High-Low)"),
                   React.createElement("option", { value: "count_asc" }, "Count (Low-High)")
+                ),
+                React.createElement(
+                  "div",
+                  { className: "btn-group btn-group-sm ml-2", role: "group" },
+                  React.createElement(
+                    "button",
+                    {
+                      className: `btn btn-sm ${viewMode === "grid" ? "btn-info" : "btn-outline-secondary"}`,
+                      onClick: () => handleToggleViewMode("grid"),
+                      title: "Grid Card View",
+                    },
+                    "⊞ Cards"
+                  ),
+                  React.createElement(
+                    "button",
+                    {
+                      className: `btn btn-sm ${viewMode === "list" ? "btn-info" : "btn-outline-secondary"}`,
+                      onClick: () => handleToggleViewMode("list"),
+                      title: "Detailed Table View",
+                    },
+                    "☰ Table"
+                  )
                 )
               )
             )
@@ -1348,30 +1615,55 @@
                 })
               )
             ),
-          // Direct Scenes Section
+          // Direct Scenes Section (Milestone 1 & 2)
           filteredAndSortedScenes.length > 0 &&
             React.createElement(
               "div",
               { className: "mb-4" },
               React.createElement(
-                "h6",
-                { className: "text-muted font-weight-bold mb-3" },
-                `Scenes (${filteredAndSortedScenes.length})`
-              ),
-              React.createElement(
                 "div",
-                { className: "row" },
-                filteredAndSortedScenes.map((scene) =>
-                  React.createElement(
-                    "div",
-                    { key: scene.id, className: "col-12 col-sm-6 col-md-4 col-lg-3 col-xl-2 mb-3" },
-                    React.createElement(SceneCard, {
-                      scene,
-                      onPlay: (s) => setPlayingScene(s),
-                    })
-                  )
+                { className: "d-flex justify-content-between align-items-center mb-3" },
+                React.createElement(
+                  "div",
+                  { className: "sfm-section-header mb-0" },
+                  React.createElement("span", null, `Scenes (${filteredAndSortedScenes.length})`),
+                  selectedSceneIds.size > 0 &&
+                    React.createElement("span", { className: "badge badge-info ml-2" }, `${selectedSceneIds.size} selected`)
+                ),
+                React.createElement(
+                  "button",
+                  {
+                    className: "btn btn-sm btn-outline-secondary py-0 px-2",
+                    onClick: handleSelectAllFolderScenes,
+                    title: "Select or deselect all visible scenes in folder",
+                  },
+                  filteredAndSortedScenes.every((s) => selectedSceneIds.has(s.id)) ? "Deselect All" : "Select All"
                 )
-              )
+              ),
+              viewMode === "list"
+                ? React.createElement(SceneTableView, {
+                    scenes: filteredAndSortedScenes,
+                    onPlay: (s) => setPlayingScene(s),
+                    selectedIds: selectedSceneIds,
+                    onToggleSelect: handleToggleSelect,
+                    onSelectAll: handleSelectAllFolderScenes,
+                  })
+                : React.createElement(
+                    "div",
+                    { className: "row" },
+                    filteredAndSortedScenes.map((scene) =>
+                      React.createElement(
+                        "div",
+                        { key: scene.id, className: "col-12 col-sm-6 col-md-4 col-lg-3 col-xl-2 mb-3" },
+                        React.createElement(SceneCard, {
+                          scene,
+                          onPlay: (s) => setPlayingScene(s),
+                          isSelected: selectedSceneIds.has(scene.id),
+                          onToggleSelect: handleToggleSelect,
+                        })
+                      )
+                    )
+                  )
             ),
           filteredAndSortedSubfolders.length === 0 &&
             filteredAndSortedScenes.length === 0 &&
@@ -1383,21 +1675,92 @@
                 ? React.createElement("button", { className: "btn btn-outline-secondary mt-2", onClick: () => setSearchQuery("") }, "Clear Search")
                 : React.createElement("button", { className: "btn btn-outline-secondary mt-2", onClick: () => setCurrentPath("") }, "Return to Root")
             ),
+          // Floating Bulk Action Bar (Milestone 1)
+          selectedSceneIds.size > 0 &&
+            React.createElement(
+              "div",
+              { className: "sfm-floating-bulk-bar" },
+              React.createElement(
+                "div",
+                { className: "sfm-bulk-inner" },
+                React.createElement(
+                  "span",
+                  { className: "badge badge-info py-1 px-2 font-weight-bold" },
+                  `${selectedSceneIds.size} selected`
+                ),
+                React.createElement(
+                  "div",
+                  { className: "btn-group btn-group-sm" },
+                  React.createElement(
+                    "button",
+                    {
+                      className: "btn btn-sm btn-primary",
+                      onClick: () => setShowBatchModal(true),
+                      title: "Batch edit selected scenes",
+                    },
+                    "✏️ Bulk Edit"
+                  ),
+                  React.createElement(
+                    "button",
+                    {
+                      className: "btn btn-sm btn-outline-warning",
+                      onClick: () => setShowParserModal(true),
+                      title: "Regex parse selected scenes",
+                    },
+                    "🔍 Parse"
+                  ),
+                  React.createElement(
+                    "button",
+                    {
+                      className: "btn btn-sm btn-outline-info",
+                      onClick: () => {
+                        const ids = Array.from(selectedSceneIds);
+                        const filterCriterion = {
+                          type: "ids",
+                          value: ids,
+                          modifier: "INCLUDES",
+                        };
+                        window.open(`/scenes?c=${encodeURIComponent(JSON.stringify(filterCriterion))}`, "_blank");
+                      },
+                      title: "Open selected in Stash native grid",
+                    },
+                    "↗️ Grid"
+                  ),
+                  React.createElement(
+                    "button",
+                    {
+                      className: "btn btn-sm btn-outline-light",
+                      onClick: handleClearSelection,
+                      title: "Clear selection",
+                    },
+                    "✕ Clear"
+                  )
+                )
+              )
+            ),
           // Modals
           showBatchModal &&
             React.createElement(BatchMetadataModal, {
-              currentFolder: currentFolderName,
-              sceneCount: allDescendantIds.length,
-              sceneIds: allDescendantIds,
+              currentFolder: selectedSceneIds.size > 0 ? `${selectedSceneIds.size} selected scenes` : currentFolderName,
+              sceneCount: selectedSceneIds.size > 0 ? selectedSceneIds.size : allDescendantIds.length,
+              sceneIds: selectedSceneIds.size > 0 ? Array.from(selectedSceneIds) : allDescendantIds,
               onClose: () => setShowBatchModal(false),
-              onApplied: handleRescan,
+              onApplied: () => {
+                handleClearSelection();
+                handleRescan();
+              },
             }),
           showParserModal &&
             React.createElement(FilenameParserModal, {
-              currentFolder: currentFolderName,
-              directScenes: currentNode ? currentNode.directScenes : [],
+              currentFolder: selectedSceneIds.size > 0 ? `${selectedSceneIds.size} selected scenes` : currentFolderName,
+              directScenes: selectedSceneIds.size > 0
+                ? (currentNode ? currentNode.directScenes.filter((s) => selectedSceneIds.has(s.id)) : [])
+                : (currentNode ? currentNode.directScenes : []),
               onClose: () => setShowParserModal(false),
-              onApplied: handleRescan,
+              onApplied: () => {
+                handleClearSelection();
+                handleRescan();
+              },
             }),
           playingScene &&
             React.createElement(InlinePlayerModal, {
