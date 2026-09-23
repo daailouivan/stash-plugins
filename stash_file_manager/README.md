@@ -61,6 +61,9 @@ Eliminate wasted vertical space with compact folder layouts tailored to any libr
 
 ## 📋 Changelog & Development History
 
+### [v2.5.2] — 2026-09-23 13:28:00
+* **Fixed Right Action Buttons Clipping:** Resolved an issue where buttons above the Previous Video button (Close, Stash, VLC, Copy Link, Transcode) were cut off and invisible. Removed a legacy conflicting CSS rule that inadvertently applied `transform: translateY(-50%)` to `top: 18px`, pushing the top half of the button column out of the container. Consolidated to a clean `transform: none; top: 18px; right: 18px;` rule ensuring the complete button stack is fully visible.
+
 ### [v2.5.1] — 2026-09-23 13:20:00
 * **Fixed Stash Plugin Manifest Schema Error:** Removed extraneous `id:` field from `stash_file_manager.yml`. In Stash, `plugin.Config` uses `name:` in the plugin manifest (with the plugin ID derived from the directory name), resolving the YAML unmarshal error `field id not found in type plugin.Config` during package update and plugin reload.
 
