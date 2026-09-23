@@ -29,7 +29,7 @@ A high-performance directory navigation file manager for Stash:
 * **🎬 Multi-Format Video Player (Bug Fix):** Seamless playback for `.mkv`, `.avi`, `.wmv`, and `.mp4` via automatic Stash live transcoding and error recovery.
 * **📱 Binge-Style Directory Reel:** Scroll up/down with mouse wheel, keyboard arrows, or swipe to browse through videos in the folder.
 * **⧉ Draggable Floating PIP Player:** Mini-player window draggable anywhere across the screen while keeping the file manager fully interactive.
-* **🧭 Navigation History & Folder Memory:** Browser Back button steps back through folders instead of turning off the file manager; last visited folder is preserved across sessions.
+* **🧭 Navigation History & In-App Back/Up:** Dedicated **◀ Back** and **▲ Up** buttons plus seamless browser Back/Forward synchronization with zero history corruption or stuck pages.
 * **🔍 Regex Filename Parser:** Folder-scoped pattern tester with live matching preview tables.
 * **⚡ In-Memory Trie Cache:** Instant directory loading using `sessionStorage` and IndexedDB caching.
 

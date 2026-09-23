@@ -22,7 +22,7 @@ Eliminate wasted vertical space with compact folder layouts tailored to any libr
 ### 2. 🎬 Multi-Format Video Player & Binge-Style Reel Navigation
 ![Binge Reel & Draggable PIP Player](./assets/showcase_reel_and_pip.svg)
 
-* **Multi-Format Bug Fix (Universal Streaming):** Solves native browser playback failure for non-MP4 formats. Native files (`.mp4`, `.webm`) stream directly, while non-MP4 formats (`.mkv`, `.avi`, `.wmv`, `.flv`, `.mov`, `.ts`) automatically route through Stash's live ffmpeg transcoder (`/scene/{id}/stream.mp4`).
+* **Multi-Format Playback & Stream Selection:** Direct stream integration with Stash API key authentication, automatic error fallback to live transcode (MP4/WebM/HLS), custom stream profile selector, and instant Stash Player link for unsupported proprietary codecs.
 * **Automatic Error Recovery:** If direct streaming fails in your browser, the player automatically falls back to live transcoding without interrupting your session.
 * **Stream Switcher:** Toggle between `⚡ Direct Stream` and `🔄 Transcode (MP4)` on demand.
 * **📱 Binge-Style Directory Reel:**
@@ -42,7 +42,7 @@ Eliminate wasted vertical space with compact folder layouts tailored to any libr
 ---
 
 ### 4. 🧭 Browser History & Folder Location Retention (QoL Improvements)
-* **URL Hash Synchronization:** The active directory path is synchronized to the browser address bar (`#file-manager?path=...`).
+* **In-App & Browser History Navigation:** Dedicated **◀ Back** and **▲ Up** toolbar buttons for instant folder navigation without page reload; seamless browser Back/Forward synchronization with zero history corruption or stuck pages.
 * **Browser Back / Forward Support:** Hitting your browser's Back button ("previous page") steps back to the parent folder instead of abruptly closing the file manager. The workspace only closes when navigating back past the root directory.
 * **Persistent Folder Memory:** Remembers your last visited directory in `localStorage`. Clicking the "Files" navbar button or returning from Stash reloads your exact folder level without requiring re-navigation.
 * **Native Grid Launcher:** The `↗ Grid` button opens the Stash native scene card grid in a new tab, keeping your file browser location open and intact.

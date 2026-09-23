@@ -976,3 +976,52 @@
 .sfm-pip-footer {
   border-top: 1px solid #2e3440;
 }
+
+/* ==========================================================================
+   Navigation Toolbar: In-App Back and Up Buttons
+   ========================================================================== */
+
+.sfm-nav-history-group {
+  margin-right: 0.5rem;
+  display: inline-flex;
+}
+
+.sfm-nav-history-group .btn {
+  font-size: 0.8rem;
+  padding: 0.15rem 0.5rem;
+  background-color: #242933;
+  border-color: #3b4252;
+  color: #d8dee9;
+  transition: all 0.15s ease;
+}
+
+.sfm-nav-history-group .btn:hover:not(:disabled) {
+  background-color: #3b4252;
+  border-color: #88c0d0;
+  color: #88c0d0;
+}
+
+.sfm-nav-history-group .btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  background-color: #1a1e27;
+  border-color: #282e3d;
+}
+
+/* Stream selector dropdown in Binge Reel Player */
+.sfm-stream-select {
+  background-color: #242933;
+  border: 1px solid #434c5e;
+  color: #eceff4;
+  font-size: 0.82rem;
+  padding: 0.2rem 0.45rem;
+  border-radius: 4px;
+  outline: none;
+  max-width: 180px;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.sfm-stream-select:focus {
+  border-color: #88c0d0;
+}

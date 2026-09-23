@@ -235,7 +235,7 @@
 
     // ==========================================
     // Modal & Floating PIP: Binge Reel Video Player
-    // (Features: Multi-format Transcode Fallback, Binge Scroll Reel, Floating Draggable PIP)
+    // (Features: Robust Direct + Transcode Fallback, Binge Scroll Reel, Floating Draggable PIP)
     // ==========================================
     function BingeReelPlayerModal({ scene, scenes = [], onSelectScene, onClose, folderName, currentPath }) {
       const videoRef = useRef(null);
@@ -256,12 +256,14 @@
 
       const goToPrev = useCallback(() => {
         if (hasPrev && onSelectScene && prevScene) {
+          savedPlaybackTime.current = 0;
           onSelectScene(prevScene);
         }
       }, [hasPrev, onSelectScene, prevScene]);
 
       const goToNext = useCallback(() => {
         if (hasNext && onSelectScene && nextScene) {
+          savedPlaybackTime.current = 0;
           onSelectScene(nextScene);
         }
       }, [hasNext, onSelectScene, nextScene]);
@@ -269,27 +271,41 @@
       // 2. Multi-Format Detection & Transcoding Resolution
       const filePath = scene?.files?.[0]?.path || scene?.files?.[0]?.basename || "";
       const fileExt = (filePath.split(".").pop() || "").toLowerCase();
-      const isNativeDirectSupported = ["mp4", "m4v", "webm"].includes(fileExt);
+      const extLabel = fileExt ? `.${fileExt.toUpperCase()}` : "VIDEO";
 
-      // Default non-MP4 formats (MKV, AVI, WMV, FLV, TS, etc.) to live transcode
-      const [streamMode, setStreamMode] = useState(() => (isNativeDirectSupported ? "direct" : "transcode"));
+      const [streamMode, setStreamMode] = useState("direct");
+      const [customStreamUrl, setCustomStreamUrl] = useState("");
       const [playerNotice, setPlayerNotice] = useState("");
       const [playerError, setPlayerError] = useState("");
       const [availableStreams, setAvailableStreams] = useState([]);
+      const [directUrl, setDirectUrl] = useState(() => scene?.paths?.stream || `/scene/${scene?.id}/stream`);
+      const [transcodeUrl, setTranscodeUrl] = useState(() => `/scene/${scene?.id}/stream.mp4`);
+      const [isLoadingMedia, setIsLoadingMedia] = useState(true);
 
-      useEffect(() => {
-        setStreamMode(isNativeDirectSupported ? "direct" : "transcode");
-        setPlayerNotice(isNativeDirectSupported ? "" : `Non-native format (.${fileExt.toUpperCase()}) detected: Live Transcode (MP4) enabled.`);
-        setPlayerError("");
-      }, [scene?.id, isNativeDirectSupported, fileExt]);
-
-      // Query available Stash transcoded streams via GraphQL for this scene
+      // Fetch fresh scene stream paths from Stash GraphQL
       useEffect(() => {
         if (!scene?.id) return;
         let active = true;
+        savedPlaybackTime.current = 0;
+        setPlayerError("");
+        setPlayerNotice("");
+        setCustomStreamUrl("");
+        setIsLoadingMedia(true);
+
+        const initialDirect = scene?.paths?.stream || `/scene/${scene.id}/stream`;
+        setDirectUrl(initialDirect);
+        setTranscodeUrl(`/scene/${scene.id}/stream.mp4`);
+
         gqlFetch(
-          `query SceneStreams($id: ID!) {
+          `query ScenePlaybackDetails($id: ID!) {
             findScene(id: $id) {
+              id
+              title
+              paths {
+                stream
+                screenshot
+                preview
+              }
               sceneStreams {
                 url
                 mime_type
@@ -300,36 +316,75 @@
           { id: scene.id }
         )
           .then((res) => {
-            if (active && res?.findScene?.sceneStreams?.length) {
-              setAvailableStreams(res.findScene.sceneStreams);
-            }
+            if (!active) return;
+            const data = res?.findScene;
+            if (!data) return;
+
+            const officialDirect = data.paths?.stream || initialDirect;
+            const streams = data.sceneStreams || [];
+
+            setDirectUrl(officialDirect);
+            setAvailableStreams(streams);
+
+            // Find best transcode stream (MP4 / WebM / HLS)
+            const trans = streams.find(
+              (s) => s.url !== officialDirect && (s.mime_type?.includes("mp4") || s.url?.includes("stream.mp4") || s.label?.toLowerCase().includes("mp4"))
+            ) || streams.find((s) => s.url !== officialDirect && (s.mime_type?.includes("webm") || s.url?.includes("stream.webm")))
+              || streams.find((s) => s.url !== officialDirect);
+
+            const bestTransUrl = trans ? trans.url : `/scene/${scene.id}/stream.mp4`;
+            setTranscodeUrl(bestTransUrl);
           })
-          .catch(() => {});
+          .catch((err) => {
+            console.warn("[SFM Video Player] GraphQL stream query error:", err);
+          });
+
         return () => {
           active = false;
         };
       }, [scene?.id]);
 
-      // Compute effective stream URL
+      // Effective active stream URL
       const streamUrl = useMemo(() => {
         if (!scene?.id) return "";
-        if (streamMode === "transcode") {
-          const trans = availableStreams.find((s) => s.mime_type === "video/mp4" && s.url.includes("transcode"));
-          return trans ? trans.url : `/scene/${scene.id}/stream.mp4`;
+        if (customStreamUrl) return customStreamUrl;
+        if (streamMode === "transcode") return transcodeUrl;
+        return directUrl;
+      }, [scene?.id, streamMode, customStreamUrl, transcodeUrl, directUrl]);
+
+      // Auto-reload video tag when streamUrl changes
+      useEffect(() => {
+        const v = videoRef.current;
+        if (v && streamUrl) {
+          setIsLoadingMedia(true);
+          v.load();
+          const playPromise = v.play();
+          if (playPromise !== undefined) {
+            playPromise.catch((err) => {
+              if (err.name === "NotAllowedError") {
+                v.muted = true;
+                v.play().catch(() => {});
+              }
+            });
+          }
         }
-        return `/scene/${scene.id}/stream`;
-      }, [scene?.id, streamMode, availableStreams]);
+      }, [streamUrl]);
 
       // Auto-recover on playback error
       const handleVideoError = (e) => {
         console.warn("[SFM Video Player] Video loading error:", streamUrl, e);
-        if (streamMode === "direct") {
-          console.log("[SFM Video Player] Direct stream failed. Falling back to live transcode (stream.mp4)...");
+        setIsLoadingMedia(false);
+        if (streamMode === "direct" && !customStreamUrl) {
+          console.log("[SFM Video Player] Direct stream failed. Automatically falling back to live transcode (MP4)...");
           setStreamMode("transcode");
-          setPlayerNotice("Direct stream failed for this file container. Switched to Live Transcode (MP4).");
+          setPlayerNotice(`Direct stream format not supported by browser. Automatically switched to live transcoded stream.`);
         } else {
-          setPlayerError("Video playback failed. Direct and transcoded streams could not be decoded.");
+          setPlayerError("Video playback failed. Browser could not decode this stream. Try switching stream format below or click 'Open in Stash Player'.");
         }
+      };
+
+      const handleCanPlay = () => {
+        setIsLoadingMedia(false);
       };
 
       // 3. Floating Picture-in-Picture (PIP) Window State & Dragging
@@ -347,7 +402,7 @@
 
       const handleHeaderMouseDown = (e) => {
         if (!isPip) return;
-        if (e.target.closest("button") || e.target.closest("a") || e.target.closest("input")) return;
+        if (e.target.closest("button") || e.target.closest("a") || e.target.closest("input") || e.target.closest("select")) return;
         setIsDragging(true);
         dragStart.current = {
           mouseX: e.clientX,
@@ -398,7 +453,7 @@
       // Keyboard Controls
       useEffect(() => {
         const handleKeyDown = (e) => {
-          if (e.target && (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA" || e.target.isContentEditable)) return;
+          if (e.target && (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA" || e.target.tagName === "SELECT" || e.target.isContentEditable)) return;
           if (e.key === "Escape") {
             onClose();
           } else if (e.key === "ArrowDown" || e.key === "PageDown" || e.key.toLowerCase() === "j") {
@@ -445,7 +500,6 @@
 
       if (!scene) return null;
       const title = scene.title || scene.files?.[0]?.basename || `Scene #${scene.id}`;
-      const extLabel = fileExt ? `.${fileExt.toUpperCase()}` : "VIDEO";
 
       // -------------------------------------------------------------
       // Render: Floating Draggable PIP Window Mode
@@ -469,13 +523,13 @@
             {
               className: "sfm-pip-header",
               onMouseDown: handleHeaderMouseDown,
-              title: "Drag to move floating player anywhere on screen",
+              style: { cursor: isDragging ? "grabbing" : "grab" },
             },
             React.createElement(
               "div",
               { className: "d-flex align-items-center text-truncate mr-2", style: { flex: 1 } },
-              React.createElement("span", { className: "sfm-drag-handle mr-2" }, "⠿"),
-              React.createElement("span", { className: "text-truncate font-weight-bold small text-light" }, title)
+              React.createElement("span", { className: "mr-1 text-muted", style: { cursor: "grab" } }, "⠿"),
+              React.createElement("span", { className: "font-weight-bold text-truncate small" }, title)
             ),
             React.createElement(
               "div",
@@ -505,7 +559,10 @@
                 "button",
                 {
                   className: `btn btn-sm ${streamMode === "transcode" ? "btn-warning" : "btn-outline-info"} py-0 px-1 mr-1`,
-                  onClick: () => setStreamMode((m) => (m === "direct" ? "transcode" : "direct")),
+                  onClick: () => {
+                    setCustomStreamUrl("");
+                    setStreamMode((m) => (m === "direct" ? "transcode" : "direct"));
+                  },
                   title: `Toggle Stream Mode (Current: ${streamMode === "direct" ? "Direct" : "Transcode MP4"})`,
                 },
                 streamMode === "direct" ? "⚡" : "🔄"
@@ -540,6 +597,8 @@
               autoPlay: true,
               className: "sfm-video-element",
               onError: handleVideoError,
+              onCanPlay: handleCanPlay,
+              onPlaying: handleCanPlay,
               onTimeUpdate: handleTimeUpdate,
               onLoadedMetadata: handleLoadedMetadata,
             })
@@ -578,33 +637,68 @@
           },
           React.createElement(
             "div",
-            { className: "sfm-modal-header d-flex justify-content-between align-items-center" },
+            { className: "sfm-modal-header d-flex justify-content-between align-items-center flex-wrap gap-2" },
             React.createElement(
               "div",
-              { className: "d-flex align-items-center text-truncate mr-3", style: { flex: 1 } },
+              { className: "d-flex align-items-center text-truncate mr-3", style: { flex: 1, minWidth: "200px" } },
               React.createElement("h5", { className: "mb-0 text-truncate font-weight-bold text-light mr-2" }, `▶ ${title}`),
-              React.createElement("span", { className: "badge badge-secondary" }, extLabel)
+              React.createElement("span", { className: "badge badge-secondary mr-2" }, extLabel),
+              scene.studio?.name && React.createElement("span", { className: "badge badge-primary text-truncate" }, scene.studio.name)
             ),
             React.createElement(
               "div",
-              { className: "d-flex align-items-center gap-2" },
+              { className: "d-flex align-items-center gap-2 flex-wrap" },
+              availableStreams.length > 1 &&
+                React.createElement(
+                  "select",
+                  {
+                    className: "sfm-stream-select mr-1",
+                    value: customStreamUrl || (streamMode === "transcode" ? transcodeUrl : directUrl),
+                    onChange: (e) => {
+                      setCustomStreamUrl(e.target.value);
+                      setPlayerError("");
+                    },
+                    title: "Select Specific Stash Stream Profile",
+                  },
+                  availableStreams.map((s, idx) =>
+                    React.createElement(
+                      "option",
+                      { key: idx, value: s.url },
+                      s.label || (s.mime_type ? s.mime_type.split("/")[1].toUpperCase() : `Stream #${idx + 1}`)
+                    )
+                  )
+                ),
               React.createElement(
                 "button",
                 {
-                  className: `btn btn-sm ${streamMode === "transcode" ? "btn-warning" : "btn-outline-info"} mr-2`,
-                  onClick: () => setStreamMode((m) => (m === "direct" ? "transcode" : "direct")),
-                  title: "Switch between Direct Stream and Stash Live Transcode (MP4)",
+                  className: `btn btn-sm ${streamMode === "transcode" ? "btn-warning" : "btn-outline-info"} mr-1`,
+                  onClick: () => {
+                    setCustomStreamUrl("");
+                    setStreamMode((m) => (m === "direct" ? "transcode" : "direct"));
+                  },
+                  title: "Toggle between Direct Stream and Stash Live Transcode (MP4)",
                 },
                 streamMode === "direct" ? "⚡ Direct Stream" : "🔄 Transcode (MP4)"
               ),
               React.createElement(
                 "button",
                 {
-                  className: "btn btn-sm btn-outline-light mr-2",
+                  className: "btn btn-sm btn-outline-light mr-1",
                   onClick: () => setIsPip(true),
                   title: "Pop out into Floating Draggable PIP Player (browse files while playing)",
                 },
                 "⧉ Float PIP"
+              ),
+              React.createElement(
+                "a",
+                {
+                  href: `/scenes/${scene.id}`,
+                  target: "_blank",
+                  rel: "noreferrer",
+                  className: "btn btn-sm btn-outline-success mr-2",
+                  title: "Open scene in Stash's native full player (new tab)",
+                },
+                "↗ Stash Player"
               ),
               React.createElement(
                 "button",
@@ -623,8 +717,33 @@
           playerError &&
             React.createElement(
               "div",
-              { className: "alert alert-danger py-1 px-3 mb-0 small rounded-0" },
-              `⚠ ${playerError}`
+              { className: "alert alert-danger py-2 px-3 mb-0 small rounded-0 d-flex justify-content-between align-items-center flex-wrap gap-2" },
+              React.createElement("span", null, `⚠ ${playerError}`),
+              React.createElement(
+                "div",
+                { className: "d-flex gap-1" },
+                React.createElement(
+                  "button",
+                  {
+                    className: "btn btn-xs btn-outline-light py-0 px-2 mr-1",
+                    onClick: () => {
+                      setPlayerError("");
+                      setStreamMode((m) => (m === "direct" ? "transcode" : "direct"));
+                    },
+                  },
+                  "Try Alternative Stream"
+                ),
+                React.createElement(
+                  "a",
+                  {
+                    href: `/scenes/${scene.id}`,
+                    target: "_blank",
+                    rel: "noreferrer",
+                    className: "btn btn-xs btn-info py-0 px-2",
+                  },
+                  "Open in Stash Player ↗"
+                )
+              )
             ),
           React.createElement(
             "div",
@@ -636,6 +755,8 @@
               autoPlay: true,
               className: "sfm-video-element",
               onError: handleVideoError,
+              onCanPlay: handleCanPlay,
+              onPlaying: handleCanPlay,
               onTimeUpdate: handleTimeUpdate,
               onLoadedMetadata: handleLoadedMetadata,
             }),
@@ -676,7 +797,6 @@
             React.createElement(
               "div",
               { className: "d-flex align-items-center flex-wrap gap-2" },
-              scene.studio?.name && React.createElement("span", { className: "badge badge-primary mr-2" }, scene.studio.name),
               scene.date && React.createElement("span", { className: "mr-3" }, `📅 ${scene.date}`),
               scene.files?.[0]?.size && React.createElement("span", { className: "mr-3" }, `💾 ${formatBytes(scene.files[0].size)}`),
               scene.files?.[0]?.duration && React.createElement("span", { className: "mr-3" }, `⏱ ${formatSeconds(scene.files[0].duration)}`),
@@ -687,8 +807,13 @@
               { className: "d-flex align-items-center gap-2" },
               React.createElement(
                 "a",
-                { href: `/scenes/${scene.id}`, target: "_blank", rel: "noreferrer", className: "btn btn-sm btn-outline-info" },
-                "Open Scene Details ↗"
+                { href: directUrl, target: "_blank", download: true, className: "btn btn-sm btn-outline-secondary py-0 px-2", title: "Direct stream link / download" },
+                "Stream URL 🔗"
+              ),
+              React.createElement(
+                "a",
+                { href: `/scenes/${scene.id}`, target: "_blank", rel: "noreferrer", className: "btn btn-sm btn-outline-info py-0 px-2" },
+                "Scene Details ↗"
               )
             )
           )
@@ -1392,6 +1517,15 @@
     // ==========================================
     // History & URL Path Synchronization
     // ==========================================
+    function normalizePath(p) {
+      if (!p) return "";
+      try {
+        return decodeURIComponent(p).replace(/\\/g, "/").replace(/^\/+|\/+$/g, "");
+      } catch (e) {
+        return p.replace(/\\/g, "/").replace(/^\/+|\/+$/g, "");
+      }
+    }
+
     function buildHashForPath(path) {
       if (!path) return "#file-manager";
       return `#file-manager?path=${encodeURIComponent(path)}`;
@@ -1403,43 +1537,79 @@
       const qIdx = hash.indexOf("?");
       if (qIdx !== -1) {
         const params = new URLSearchParams(hash.slice(qIdx + 1));
-        return params.get("path") || "";
+        return normalizePath(params.get("path") || "");
       }
       if (hash.startsWith("#file-manager/")) {
-        return decodeURIComponent(hash.slice("#file-manager/".length)) || "";
+        return normalizePath(decodeURIComponent(hash.slice("#file-manager/".length)) || "");
       }
       return "";
     }
+
     // ==========================================
     // Main App Component (Features 5, 1, 2, 3, 4)
     // ==========================================
     function FileManagerView({ onClose, initialPath }) {
       const [trie, setTrie] = useState(null);
       
+      const historyStack = useRef([]);
+
       // History & Folder Memory Synchronization
       const [currentPath, setCurrentPath] = useState(() => {
-        if (typeof initialPath === "string") return initialPath;
+        if (typeof initialPath === "string") return normalizePath(initialPath);
         const fromHash = getPathFromHash();
         if (fromHash !== null) return fromHash;
-        return localStorage.getItem("sfm_last_folder_path") || "";
+        return normalizePath(localStorage.getItem("sfm_last_folder_path") || "");
       });
 
       const navigateToFolder = useCallback((nextPath) => {
-        setCurrentPath(nextPath);
-        localStorage.setItem("sfm_last_folder_path", nextPath);
-        const targetHash = buildHashForPath(nextPath);
-        if (window.location.hash !== targetHash) {
-          window.history.pushState({ sfmPath: nextPath }, "", targetHash);
+        const normalizedNext = normalizePath(nextPath);
+        if (normalizedNext !== currentPath) {
+          historyStack.current.push(currentPath);
         }
-      }, []);
+        setCurrentPath(normalizedNext);
+        localStorage.setItem("sfm_last_folder_path", normalizedNext);
+        const targetHash = buildHashForPath(normalizedNext);
+        const currentHashDecoded = normalizePath(getPathFromHash());
+        if (currentHashDecoded !== normalizedNext) {
+          window.history.pushState({ sfmPath: normalizedNext }, "", targetHash);
+        }
+      }, [currentPath]);
+
+      // Handle in-app Go Back (steps backward through folder history)
+      const handleGoBackInHistory = useCallback(() => {
+        if (historyStack.current.length > 0) {
+          const prev = historyStack.current.pop();
+          const normalizedPrev = normalizePath(prev);
+          setCurrentPath(normalizedPrev);
+          localStorage.setItem("sfm_last_folder_path", normalizedPrev);
+          const targetHash = buildHashForPath(normalizedPrev);
+          if (normalizePath(getPathFromHash()) !== normalizedPrev) {
+            window.history.pushState({ sfmPath: normalizedPrev }, "", targetHash);
+          }
+        } else if (currentPath) {
+          const segs = currentPath.split("/").filter(Boolean);
+          const parent = segs.slice(0, -1).join("/");
+          navigateToFolder(parent);
+        }
+      }, [currentPath, navigateToFolder]);
+
+      const handleGoUpOneLevel = useCallback(() => {
+        if (!currentPath) return;
+        const segs = currentPath.split("/").filter(Boolean);
+        const parent = segs.slice(0, -1).join("/");
+        navigateToFolder(parent);
+      }, [currentPath, navigateToFolder]);
 
       // Listen to popstate (browser back/forward) and hash changes to navigate folders without closing
       useEffect(() => {
         const handleLocationChange = () => {
           const p = getPathFromHash();
           if (p !== null) {
-            setCurrentPath(p);
-            localStorage.setItem("sfm_last_folder_path", p);
+            const normalized = normalizePath(p);
+            if (normalized !== currentPath) {
+              setCurrentPath(normalized);
+              localStorage.setItem("sfm_last_folder_path", normalized);
+            }
           }
         };
         window.addEventListener("popstate", handleLocationChange);
@@ -1448,18 +1618,26 @@
           window.removeEventListener("popstate", handleLocationChange);
           window.removeEventListener("hashchange", handleLocationChange);
         };
-      }, []);
+      }, [currentPath]);
 
       // Custom event listener for inter-component folder navigation
       useEffect(() => {
         const handleCustomPath = (e) => {
           if (e.detail && typeof e.detail.path === "string") {
-            navigateToFolder(e.detail.path);
+            const p = normalizePath(e.detail.path);
+            if (e.detail.isBrowserNav) {
+              if (p !== currentPath) {
+                setCurrentPath(p);
+                localStorage.setItem("sfm_last_folder_path", p);
+              }
+            } else {
+              navigateToFolder(p);
+            }
           }
         };
         window.addEventListener("sfm:set-path", handleCustomPath);
         return () => window.removeEventListener("sfm:set-path", handleCustomPath);
-      }, [navigateToFolder]);
+      }, [navigateToFolder, currentPath]);
 
       const [loading, setLoading] = useState(true);
       const [statusText, setStatusText] = useState("Checking cache...");
@@ -1594,7 +1772,7 @@
                   studio { id name }
                   performers { id name }
                   tags { id name }
-                  paths { screenshot preview }
+                  paths { screenshot preview stream }
                   files { path basename size duration }
                 }
               }
@@ -1905,8 +2083,32 @@
                 "div",
                 { className: "sfm-breadcrumbs-wrap" },
                 React.createElement(
+                  "div",
+                  { className: "btn-group btn-group-sm mr-2 sfm-nav-history-group" },
+                  React.createElement(
+                    "button",
+                    {
+                      className: "btn btn-sm btn-outline-secondary py-0 px-2",
+                      onClick: handleGoBackInHistory,
+                      disabled: historyStack.current.length === 0 && !currentPath,
+                      title: "Go back to previous folder (or parent)",
+                    },
+                    "◀ Back"
+                  ),
+                  React.createElement(
+                    "button",
+                    {
+                      className: "btn btn-sm btn-outline-secondary py-0 px-2",
+                      onClick: handleGoUpOneLevel,
+                      disabled: !currentPath,
+                      title: "Go up to parent directory",
+                    },
+                    "▲ Up"
+                  )
+                ),
+                React.createElement(
                   "button",
-                  { className: "sfm-crumb-btn", onClick: () => navigateToFolder(""), title: "Return to Root" },
+                  { className: `sfm-crumb-btn ${!currentPath ? "sfm-crumb-active" : ""}`, onClick: () => navigateToFolder(""), title: "Return to Root" },
                   React.createElement(IconFolder, { size: 16, color: "#88c0d0" }),
                   React.createElement("span", { className: "ml-1" }, "Root")
                 ),
@@ -2437,8 +2639,8 @@
       }
     }
 
-    function openFileManager(targetPath) {
-      const path = typeof targetPath === "string" ? targetPath : (getPathFromHash() !== null ? getPathFromHash() : (localStorage.getItem("sfm_last_folder_path") || ""));
+    function openFileManager(targetPath, isBrowserNav = false) {
+      const path = typeof targetPath === "string" ? normalizePath(targetPath) : (getPathFromHash() !== null ? getPathFromHash() : normalizePath(localStorage.getItem("sfm_last_folder_path") || ""));
       let root = document.getElementById("sfm-workspace-root");
       if (!root) {
         root = document.createElement("div");
@@ -2447,22 +2649,29 @@
         ReactDOM.render(React.createElement(FileManagerView, { onClose: closeWorkspace, initialPath: path }), root);
       } else {
         root.style.display = "block";
-        window.dispatchEvent(new CustomEvent("sfm:set-path", { detail: { path } }));
+        window.dispatchEvent(new CustomEvent("sfm:set-path", { detail: { path, isBrowserNav } }));
       }
 
-      const expectedHash = buildHashForPath(path);
-      if (window.location.hash !== expectedHash) {
-        window.history.pushState({ sfmPath: path }, "", expectedHash);
+      if (!isBrowserNav) {
+        const expectedHash = buildHashForPath(path);
+        if (normalizePath(getPathFromHash()) !== normalizePath(path)) {
+          window.history.pushState({ sfmPath: path }, "", expectedHash);
+        }
       }
     }
 
     // Listen to hash and popstate changes
     window.addEventListener("hashchange", () => {
       const path = getPathFromHash();
+      const root = document.getElementById("sfm-workspace-root");
       if (path !== null) {
-        openFileManager(path);
+        if (root) {
+          root.style.display = "block";
+          window.dispatchEvent(new CustomEvent("sfm:set-path", { detail: { path, isBrowserNav: true } }));
+        } else {
+          openFileManager(path, true);
+        }
       } else {
-        const root = document.getElementById("sfm-workspace-root");
         if (root) {
           root.style.display = "none";
         }
@@ -2471,10 +2680,15 @@
 
     window.addEventListener("popstate", () => {
       const path = getPathFromHash();
+      const root = document.getElementById("sfm-workspace-root");
       if (path !== null) {
-        openFileManager(path);
+        if (root) {
+          root.style.display = "block";
+          window.dispatchEvent(new CustomEvent("sfm:set-path", { detail: { path, isBrowserNav: true } }));
+        } else {
+          openFileManager(path, true);
+        }
       } else {
-        const root = document.getElementById("sfm-workspace-root");
         if (root) {
           root.style.display = "none";
         }
@@ -2482,7 +2696,7 @@
     });
 
     if (window.location.hash.startsWith("#file-manager")) {
-      setTimeout(() => openFileManager(), 200);
+      setTimeout(() => openFileManager(undefined, true), 200);
     }
 
     if (register && register.route) {

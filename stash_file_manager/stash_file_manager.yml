@@ -1,6 +1,6 @@
 name: Path File Manager
 description: Hierarchical directory file-manager navigation for Stash with customizable folder views, Binge-style reel player, draggable PIP player, and regex metadata parser.
-version: 2.0.0
+version: 2.0.1
 url: https://github.com/stashapp/stash
 ui:
   javascript:
