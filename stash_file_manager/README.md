@@ -61,6 +61,9 @@ Eliminate wasted vertical space with compact folder layouts tailored to any libr
 
 ## 📋 Changelog & Development History
 
+### [v2.5.1] — 2026-09-23 13:20:00
+* **Fixed Stash Plugin Manifest Schema Error:** Removed extraneous `id:` field from `stash_file_manager.yml`. In Stash, `plugin.Config` uses `name:` in the plugin manifest (with the plugin ID derived from the directory name), resolving the YAML unmarshal error `field id not found in type plugin.Config` during package update and plugin reload.
+
 ### [v2.5.0] — 2026-09-23 12:15:00
 * **MPEG-4 (.mp4) vs H.264 (.mp4) Smart Codec Detection:** Added codec-level inspection querying `video_codec`. MPEG-4 Part 2 / ASP (`mpeg4`, `mp4v`, `divx`, `xvid`) in `.mp4` containers automatically defaults to HLS transcode (as browsers cannot decode MPEG-4 natively), while `h264.mp4` streams directly. Runtime decoder errors also instantly auto-fallback to HLS.
 * **Unified 36px Circular Buttons & Alignment:** Resized all circular buttons to `36px` to match the close button, aligned them vertically along `right: 18px`, starting from the close button at the top.
