@@ -1,0 +1,92 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 520" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bg3" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0d111a" />
+      <stop offset="100%" stop-color="#171e2c" />
+    </linearGradient>
+    <filter id="pShadow" x="-5%" y="-5%" width="110%" height="115%">
+      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#000000" flood-opacity="0.7" />
+    </filter>
+  </defs>
+
+  <rect width="1000" height="520" rx="8" fill="url(#bg3)" stroke="#2e3440" stroke-width="2" />
+
+  <!-- Header -->
+  <g transform="translate(40, 35)">
+    <text x="0" y="20" font-family="sans-serif" font-size="22" font-weight="800" fill="#88c0d0">🎬 Binge-Style Reel Player &amp; Floating Draggable PIP</text>
+    <text x="0" y="44" font-family="sans-serif" font-size="13" fill="#81a1c1">Universal format playback (auto-transcoding for MKV/AVI/WMV) with vertical reel scrolling and picture-in-picture window.</text>
+  </g>
+
+  <!-- Left: Binge-Style Reel Player Modal -->
+  <g transform="translate(40, 95)" filter="url(#pShadow)">
+    <rect width="530" height="380" rx="8" fill="#12151c" stroke="#3b4252" stroke-width="1.5" />
+    <rect width="530" height="38" rx="8" fill="#1c202a" />
+    <text x="16" y="24" font-family="sans-serif" font-size="13" font-weight="700" fill="#eceff4">▶ Studio Alpha - 2026-04-12.mkv</text>
+    
+    <!-- Controls in Modal Header -->
+    <rect x="360" y="8" width="85" height="22" rx="4" fill="#252b38" stroke="#88c0d0" stroke-width="1" />
+    <text x="402" y="23" font-family="sans-serif" font-size="10" font-weight="700" fill="#88c0d0" text-anchor="middle">🔄 Transcode</text>
+
+    <rect x="452" y="8" width="60" height="22" rx="4" fill="#2e3440" />
+    <text x="482" y="23" font-family="sans-serif" font-size="10" font-weight="700" fill="#eceff4" text-anchor="middle">⧉ PIP</text>
+
+    <!-- Video Area -->
+    <rect x="14" y="50" width="502" height="270" rx="4" fill="#000000" />
+    
+    <!-- Video Scrub Frame -->
+    <circle cx="265" cy="180" r="28" fill="#88c0d0" fill-opacity="0.85" />
+    <polygon points="260,168 276,180 260,192" fill="#0e1117" />
+
+    <!-- Binge-Style Side Reel Navigation Pill -->
+    <g transform="translate(460, 110)">
+      <rect width="40" height="110" rx="20" fill="rgba(20,24,34,0.9)" stroke="#88c0d0" stroke-width="1.5" />
+      
+      <!-- Up Arrow -->
+      <circle cx="20" cy="22" r="14" fill="#2e3440" />
+      <text x="20" y="27" font-family="sans-serif" font-size="14" fill="#88c0d0" text-anchor="middle">▲</text>
+      
+      <!-- Counter -->
+      <text x="20" y="58" font-family="sans-serif" font-size="11" font-weight="800" fill="#88c0d0" text-anchor="middle">4/18</text>
+      <text x="20" y="70" font-family="sans-serif" font-size="8" fill="#81a1c1" text-anchor="middle">REEL</text>
+      
+      <!-- Down Arrow -->
+      <circle cx="20" cy="90" r="14" fill="#2e3440" />
+      <text x="20" y="95" font-family="sans-serif" font-size="14" fill="#88c0d0" text-anchor="middle">▼</text>
+    </g>
+
+    <!-- Bottom Metadata -->
+    <g transform="translate(16, 335)">
+      <text x="0" y="16" font-family="sans-serif" font-size="11" fill="#81a1c1">🏢 Studio Alpha • 📅 2026-04-12 • 💾 4.8 GB • ⏱ 38:15 • 💡 Mouse wheel / Up-Down arrows scroll reel</text>
+    </g>
+  </g>
+
+  <!-- Right: Floating Draggable PIP Showcase -->
+  <g transform="translate(600, 95)" filter="url(#pShadow)">
+    <rect width="360" height="380" rx="8" fill="#141822" stroke="#434c5e" stroke-width="1.5" />
+    <rect width="360" height="38" rx="8" fill="#1f2533" />
+    <text x="16" y="24" font-family="sans-serif" font-size="14" font-weight="700" fill="#88c0d0">⧉ Floating PIP Feature</text>
+
+    <!-- Diagram of Draggable Mini Window -->
+    <g transform="translate(20, 55)">
+      <rect width="320" height="190" rx="6" fill="#10131a" stroke="#88c0d0" stroke-width="1.5" />
+      <rect width="320" height="30" rx="6" fill="#1b212e" />
+      <text x="12" y="20" font-family="sans-serif" font-size="13" fill="#88c0d0">⠿</text>
+      <text x="28" y="19" font-family="sans-serif" font-size="11" font-weight="700" fill="#eceff4">Float Anywhere On Screen</text>
+      <text x="270" y="20" font-family="sans-serif" font-size="12" fill="#81a1c1">▲ ▼ 🗖 ×</text>
+      
+      <rect x="10" y="38" width="300" height="115" rx="4" fill="#05070a" />
+      <circle cx="160" cy="95" r="16" fill="#88c0d0" />
+      <polygon points="156,88 168,95 156,102" fill="#000" />
+      <text x="160" y="170" font-family="sans-serif" font-size="10" fill="#7b889b" text-anchor="middle">Position: Drag from header bar</text>
+    </g>
+
+    <!-- Feature Description -->
+    <g transform="translate(24, 268)">
+      <text x="0" y="16" font-family="sans-serif" font-size="12" font-weight="700" fill="#88c0d0">✓ Background Interactive:</text>
+      <text x="0" y="34" font-family="sans-serif" font-size="11" fill="#d8dee9">Browse folders, search, &amp; batch edit while video plays.</text>
+
+      <text x="0" y="60" font-family="sans-serif" font-size="12" font-weight="700" fill="#88c0d0">✓ Multi-Format Bug Fix:</text>
+      <text x="0" y="78" font-family="sans-serif" font-size="11" fill="#d8dee9">MKV, AVI, WMV automatically play via live MP4 transcode.</text>
+    </g>
+  </g>
+</svg>

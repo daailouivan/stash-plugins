@@ -1,26 +1,54 @@
-# Stash Plugins
+# Stash Plugins Repository
 
-A collection of custom plugins for [Stash](https://github.com/stashapp/stash).
+![Stash Path File Manager Hero](./assets/hero_banner.svg)
 
-## Available Plugins
-
-### [Path File Manager](./stash_file_manager)
-A hierarchical, file-manager style navigation interface for Stash:
-- **Directory Tree Navigation:** In-memory Path Trie parsing all scene file paths into browsable folders and subfolders.
-- **Top Bar Integration:** Native FontAwesome folder icon embedded seamlessly in Stash's top navigation bar.
-- **Large Library Optimization:** Automatic `sessionStorage` caching for instant loading on repeat visits.
-- **Filename Regex Parser:** Interactive live preview and batch extraction of titles, dates, studios, and performers from file names.
-- **Instant Search & Sorting:** Real-time search and multi-criteria sorting for both folders and scenes.
-- **Inline Video Player & Hover Previews:** Hover scrub previews and full modal streaming without leaving the workspace.
-- **Comprehensive Batch Editor:** Batch assignment of Studios, Performers, Tags, and star ratings across entire folder trees.
+A collection of community plugins for [Stash](https://github.com/stashapp/stash).
 
 ---
 
-## Installation
+## 📦 Stash Plugin Repository Source (One-Click Install)
 
-To install any plugin, copy its folder into your Stash `plugins` directory:
+You can add this repository directly to Stash to browse, install, and update plugins with a single click:
 
-- **Windows:** `%USERPROFILE%\.stash\plugins\`
-- **Linux / Docker:** `~/.stash/plugins/` or `/root/.stash/plugins/`
+1. Open Stash and go to **Settings → Plugins**.
+2. Under the **Available Plugins** section, click **Add Source**.
+3. Fill out the fields:
+   - **Name:** `Stash Community Plugins`
+   - **Source URL:** `https://raw.githubusercontent.com/<username>/<repo>/main/index.yml`
+4. Click **Confirm / Add**.
+5. Select any plugin from **Available Plugins** and click **Install**!
 
-In Stash, go to **Settings → Plugins** and click **Reload Plugins**.
+---
+
+## 🛠 Available Plugins
+
+### [Path File Manager](./stash_file_manager) (v2.0)
+
+A high-performance directory navigation file manager for Stash:
+* **📁 3 Customizable Folder Views:** Compact Cards Grid, Space-Efficient List Strip (30+ folders per screen), and Detail Table View with direct Stash Grid and Scan actions.
+* **🎬 Multi-Format Video Player (Bug Fix):** Seamless playback for `.mkv`, `.avi`, `.wmv`, and `.mp4` via automatic Stash live transcoding and error recovery.
+* **📱 Binge-Style Directory Reel:** Scroll up/down with mouse wheel, keyboard arrows, or swipe to browse through videos in the folder.
+* **⧉ Draggable Floating PIP Player:** Mini-player window draggable anywhere across the screen while keeping the file manager fully interactive.
+* **🧭 Navigation History & Folder Memory:** Browser Back button steps back through folders instead of turning off the file manager; last visited folder is preserved across sessions.
+* **🔍 Regex Filename Parser:** Folder-scoped pattern tester with live matching preview tables.
+* **⚡ In-Memory Trie Cache:** Instant directory loading using `sessionStorage` and IndexedDB caching.
+
+---
+
+## 💻 Manual Git Installation
+
+If you prefer installing via Git CLI:
+
+**Linux / macOS / Docker:**
+```bash
+cd ~/.stash/plugins
+git clone https://github.com/<username>/<repo>.git stash_file_manager
+```
+
+**Windows (PowerShell):**
+```powershell
+cd $env:USERPROFILE\.stash\plugins
+git clone https://github.com/<username>/<repo>.git stash_file_manager
+```
+
+After cloning, open Stash, navigate to **Settings → Plugins**, and click **Reload Plugins**.

@@ -1,0 +1,131 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 480" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bg2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0e1117" />
+      <stop offset="100%" stop-color="#161c28" />
+    </linearGradient>
+    <filter id="cardShadow" x="-5%" y="-5%" width="110%" height="115%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#000000" flood-opacity="0.5" />
+    </filter>
+  </defs>
+
+  <rect width="1000" height="480" rx="8" fill="url(#bg2)" stroke="#2e3440" stroke-width="2" />
+  
+  <!-- Header -->
+  <g transform="translate(40, 40)">
+    <text x="0" y="20" font-family="sans-serif" font-size="22" font-weight="800" fill="#88c0d0">📁 3 Customizable Folder Navigation Views</text>
+    <text x="0" y="44" font-family="sans-serif" font-size="13" fill="#81a1c1">Switch effortlessly between compact cards, space-efficient list chips, or classic file manager tables.</text>
+  </g>
+
+  <!-- View 1: Compact Cards Grid -->
+  <g transform="translate(40, 105)">
+    <rect width="280" height="330" rx="8" fill="#141722" stroke="#2c3344" stroke-width="1.5" />
+    <rect width="280" height="36" rx="8" fill="#1c212d" />
+    <text x="16" y="24" font-family="sans-serif" font-size="13" font-weight="700" fill="#eceff4">田 1. Compact Cards Grid</text>
+
+    <!-- Card A -->
+    <g transform="translate(16, 52)">
+      <rect width="248" height="68" rx="6" fill="#1c212e" stroke="#353e52" stroke-width="1" />
+      <path d="M12 15h6l2 2h10c.8 0 1.5.6 1.5 1.4v10.8c0 .8-.7 1.4-1.5 1.4H12c-.8 0-1.5-.6-1.5-1.4V16.4c0-.8.7-1.4 1.5-1.4z" fill="#81a1c1" />
+      <text x="40" y="28" font-family="sans-serif" font-size="12" font-weight="700" fill="#eceff4">Photoshoots</text>
+      <text x="40" y="44" font-family="sans-serif" font-size="10" fill="#88c0d0">32 scenes</text>
+      <rect x="180" y="32" width="56" height="18" rx="9" fill="#252b38" />
+      <text x="208" y="45" font-family="sans-serif" font-size="9" fill="#7b889b" text-anchor="middle">62.4 GB</text>
+    </g>
+
+    <!-- Card B -->
+    <g transform="translate(16, 130)">
+      <rect width="248" height="68" rx="6" fill="#1c212e" stroke="#353e52" stroke-width="1" />
+      <path d="M12 15h6l2 2h10c.8 0 1.5.6 1.5 1.4v10.8c0 .8-.7 1.4-1.5 1.4H12c-.8 0-1.5-.6-1.5-1.4V16.4c0-.8.7-1.4 1.5-1.4z" fill="#81a1c1" />
+      <text x="40" y="28" font-family="sans-serif" font-size="12" font-weight="700" fill="#eceff4">BTS Documentaries</text>
+      <text x="40" y="44" font-family="sans-serif" font-size="10" fill="#88c0d0">14 scenes</text>
+      <rect x="180" y="32" width="56" height="18" rx="9" fill="#252b38" />
+      <text x="208" y="45" font-family="sans-serif" font-size="9" fill="#7b889b" text-anchor="middle">28.1 GB</text>
+    </g>
+
+    <text x="16" y="235" font-family="sans-serif" font-size="11" fill="#81a1c1" font-weight="500">• Reduced padding (0.65rem)</text>
+    <text x="16" y="255" font-family="sans-serif" font-size="11" fill="#81a1c1" font-weight="500">• 82px height (40% more compact)</text>
+    <text x="16" y="275" font-family="sans-serif" font-size="11" fill="#81a1c1" font-weight="500">• Sleek dual-badge info</text>
+  </g>
+
+  <!-- View 2: Compact List View -->
+  <g transform="translate(345, 105)">
+    <rect width="280" height="330" rx="8" fill="#141722" stroke="#2c3344" stroke-width="1.5" />
+    <rect width="280" height="36" rx="8" fill="#1c212d" />
+    <text x="16" y="24" font-family="sans-serif" font-size="13" font-weight="700" fill="#eceff4">☰ 2. Compact List Strip</text>
+
+    <!-- Item 1 -->
+    <g transform="translate(16, 52)">
+      <rect width="248" height="34" rx="4" fill="#1a1e27" stroke="#2c3344" stroke-width="1" />
+      <path d="M8 10h4l1.5 1.5h7c.5 0 1 .4 1 1v6c0 .5-.5 1-1 1H8c-.5 0-1-.5-1-1v-8c0-.5.5-1 1-1z" fill="#81a1c1" />
+      <text x="28" y="22" font-family="sans-serif" font-size="12" font-weight="600" fill="#eceff4">2026 Releases</text>
+      <rect x="195" y="8" width="42" height="18" rx="4" fill="rgba(136,192,208,0.15)" />
+      <text x="216" y="21" font-family="sans-serif" font-size="10" font-weight="700" fill="#88c0d0" text-anchor="middle">64</text>
+    </g>
+
+    <!-- Item 2 -->
+    <g transform="translate(16, 94)">
+      <rect width="248" height="34" rx="4" fill="#1a1e27" stroke="#2c3344" stroke-width="1" />
+      <path d="M8 10h4l1.5 1.5h7c.5 0 1 .4 1 1v6c0 .5-.5 1-1 1H8c-.5 0-1-.5-1-1v-8c0-.5.5-1 1-1z" fill="#81a1c1" />
+      <text x="28" y="22" font-family="sans-serif" font-size="12" font-weight="600" fill="#eceff4">4K Full Length</text>
+      <rect x="195" y="8" width="42" height="18" rx="4" fill="rgba(136,192,208,0.15)" />
+      <text x="216" y="21" font-family="sans-serif" font-size="10" font-weight="700" fill="#88c0d0" text-anchor="middle">128</text>
+    </g>
+
+    <!-- Item 3 -->
+    <g transform="translate(16, 136)">
+      <rect width="248" height="34" rx="4" fill="#1a1e27" stroke="#2c3344" stroke-width="1" />
+      <path d="M8 10h4l1.5 1.5h7c.5 0 1 .4 1 1v6c0 .5-.5 1-1 1H8c-.5 0-1-.5-1-1v-8c0-.5.5-1 1-1z" fill="#81a1c1" />
+      <text x="28" y="22" font-family="sans-serif" font-size="12" font-weight="600" fill="#eceff4">Web Clips</text>
+      <rect x="195" y="8" width="42" height="18" rx="4" fill="rgba(136,192,208,0.15)" />
+      <text x="216" y="21" font-family="sans-serif" font-size="10" font-weight="700" fill="#88c0d0" text-anchor="middle">42</text>
+    </g>
+
+    <text x="16" y="235" font-family="sans-serif" font-size="11" fill="#81a1c1" font-weight="500">• Ultra space-efficient row chips</text>
+    <text x="16" y="255" font-family="sans-serif" font-size="11" fill="#81a1c1" font-weight="500">• Displays 30+ folders per screen</text>
+    <text x="16" y="275" font-family="sans-serif" font-size="11" fill="#81a1c1" font-weight="500">• Instant responsive reflow</text>
+  </g>
+
+  <!-- View 3: Detail Table View -->
+  <g transform="translate(650, 105)">
+    <rect width="310" height="330" rx="8" fill="#141722" stroke="#2c3344" stroke-width="1.5" />
+    <rect width="310" height="36" rx="8" fill="#1c212d" />
+    <text x="16" y="24" font-family="sans-serif" font-size="13" font-weight="700" fill="#eceff4">☷ 3. Detail Table View</text>
+
+    <!-- Mini Table Header -->
+    <g transform="translate(14, 48)">
+      <rect width="282" height="22" fill="#1b202c" />
+      <text x="8" y="15" font-family="sans-serif" font-size="10" font-weight="700" fill="#88c0d0">NAME</text>
+      <text x="140" y="15" font-family="sans-serif" font-size="10" font-weight="700" fill="#88c0d0">SCENES</text>
+      <text x="215" y="15" font-family="sans-serif" font-size="10" font-weight="700" fill="#88c0d0">SIZE</text>
+    </g>
+
+    <!-- Row 1 -->
+    <g transform="translate(14, 75)">
+      <text x="8" y="14" font-family="sans-serif" font-size="11" font-weight="600" fill="#eceff4">📁 Anime</text>
+      <text x="140" y="14" font-family="sans-serif" font-size="11" fill="#81a1c1">240 scenes</text>
+      <text x="215" y="14" font-family="sans-serif" font-size="11" fill="#7b889b">112 GB</text>
+      <line x1="0" y1="22" x2="282" y2="22" stroke="#252b38" stroke-width="1" />
+    </g>
+
+    <!-- Row 2 -->
+    <g transform="translate(14, 102)">
+      <text x="8" y="14" font-family="sans-serif" font-size="11" font-weight="600" fill="#eceff4">📁 Studio Alpha</text>
+      <text x="140" y="14" font-family="sans-serif" font-size="11" fill="#81a1c1">84 scenes</text>
+      <text x="215" y="14" font-family="sans-serif" font-size="11" fill="#7b889b">48 GB</text>
+      <line x1="0" y1="22" x2="282" y2="22" stroke="#252b38" stroke-width="1" />
+    </g>
+
+    <!-- Row 3 -->
+    <g transform="translate(14, 129)">
+      <text x="8" y="14" font-family="sans-serif" font-size="11" font-weight="600" fill="#eceff4">📁 VR 180</text>
+      <text x="140" y="14" font-family="sans-serif" font-size="11" fill="#81a1c1">32 scenes</text>
+      <text x="215" y="14" font-family="sans-serif" font-size="11" fill="#7b889b">94 GB</text>
+      <line x1="0" y1="22" x2="282" y2="22" stroke="#252b38" stroke-width="1" />
+    </g>
+
+    <text x="16" y="235" font-family="sans-serif" font-size="11" fill="#81a1c1" font-weight="500">• Classic file manager data grid</text>
+    <text x="16" y="255" font-family="sans-serif" font-size="11" fill="#81a1c1" font-weight="500">• Direct ↗ Grid and 🔍 Scan actions</text>
+    <text x="16" y="275" font-family="sans-serif" font-size="11" fill="#81a1c1" font-weight="500">• Sortable columns &amp; precise metrics</text>
+  </g>
+</svg>

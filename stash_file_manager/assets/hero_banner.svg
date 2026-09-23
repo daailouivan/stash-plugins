@@ -1,0 +1,195 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 500" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0e1117" />
+      <stop offset="50%" stop-color="#141824" />
+      <stop offset="100%" stop-color="#1a2030" />
+    </linearGradient>
+    <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#88c0d0" />
+      <stop offset="100%" stop-color="#81a1c1" />
+    </linearGradient>
+    <linearGradient id="cardGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#1e2330" />
+      <stop offset="100%" stop-color="#161a24" />
+    </linearGradient>
+    <filter id="shadow" x="-5%" y="-5%" width="110%" height="115%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000000" flood-opacity="0.65" />
+    </filter>
+  </defs>
+
+  <!-- Background Canvas -->
+  <rect width="1200" height="500" rx="12" fill="url(#bgGrad)" stroke="#2e3440" stroke-width="2" />
+
+  <!-- Top Decorative Header Line -->
+  <rect x="0" y="0" width="1200" height="4" fill="url(#accentGrad)" />
+
+  <!-- Brand Title Section -->
+  <g transform="translate(48, 55)">
+    <!-- Folder Brand Icon -->
+    <rect x="0" y="0" width="48" height="48" rx="8" fill="#88c0d0" fill-opacity="0.15" stroke="#88c0d0" stroke-width="1.5" />
+    <path d="M12 16h8l4 4h12c1.1 0 2 .9 2 2v14c0 1.1-.9 2-2 2H12c-1.1 0-2-.9-2-2V18c0-1.1.9-2 2-2z" fill="#88c0d0" />
+    
+    <text x="64" y="32" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="28" font-weight="800" fill="#eceff4" letter-spacing="-0.5px">
+      Stash Path File Manager
+    </text>
+    <rect x="375" y="14" width="60" height="22" rx="11" fill="#88c0d0" />
+    <text x="405" y="29" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12" font-weight="700" fill="#0e1117" text-anchor="middle">v2.0</text>
+    <text x="64" y="56" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="14" font-weight="400" fill="#81a1c1">
+      Native directory tree browsing, multi-format player, Binge-style reel, and floating PIP for Stash
+    </text>
+  </g>
+
+  <!-- Feature Highlights Pills -->
+  <g transform="translate(680, 58)">
+    <rect x="0" y="0" width="150" height="30" rx="15" fill="#2e3440" stroke="#434c5e" stroke-width="1" />
+    <text x="75" y="19" font-family="sans-serif" font-size="12" font-weight="600" fill="#88c0d0" text-anchor="middle">⚡ Trie Cache Index</text>
+
+    <rect x="160" y="0" width="150" height="30" rx="15" fill="#2e3440" stroke="#434c5e" stroke-width="1" />
+    <text x="235" y="19" font-family="sans-serif" font-size="12" font-weight="600" fill="#88c0d0" text-anchor="middle">📱 Binge Scroll Reel</text>
+
+    <rect x="320" y="0" width="150" height="30" rx="15" fill="#2e3440" stroke="#434c5e" stroke-width="1" />
+    <text x="395" y="19" font-family="sans-serif" font-size="12" font-weight="600" fill="#88c0d0" text-anchor="middle">⧉ Draggable PIP</text>
+  </g>
+
+  <!-- Mock Stash Main Navbar -->
+  <g transform="translate(48, 135)" filter="url(#shadow)">
+    <rect width="1104" height="48" rx="6" fill="#181c26" stroke="#2b3140" stroke-width="1" />
+    
+    <!-- Stash Logo & Native Nav Links -->
+    <text x="20" y="30" font-family="sans-serif" font-size="15" font-weight="800" fill="#ffffff" letter-spacing="1px">STASH</text>
+    
+    <!-- Scenes Link -->
+    <g transform="translate(100, 14)">
+      <path d="M4 3v10l8-5z" fill="#81a1c1" transform="scale(0.8)" />
+      <text x="18" y="14" font-family="sans-serif" font-size="13" font-weight="500" fill="#d8dee9">Scenes</text>
+    </g>
+
+    <!-- Images Link -->
+    <g transform="translate(190, 14)">
+      <rect x="2" y="2" width="11" height="11" rx="1" fill="none" stroke="#81a1c1" stroke-width="1.5" />
+      <text x="18" y="14" font-family="sans-serif" font-size="13" font-weight="500" fill="#d8dee9">Images</text>
+    </g>
+
+    <!-- Performers Link -->
+    <g transform="translate(275, 14)">
+      <circle cx="6" cy="5" r="3" fill="#81a1c1" />
+      <path d="M2 13c0-2.2 1.8-4 4-4s4 1.8 4 4" fill="#81a1c1" />
+      <text x="16" y="14" font-family="sans-serif" font-size="13" font-weight="500" fill="#d8dee9">Performers</text>
+    </g>
+
+    <!-- Binge Link -->
+    <g transform="translate(390, 14)">
+      <path d="M4 8a3 3 0 1 1 3 3 3 3 0 0 1-3-3zm7 0a3 3 0 1 1 3 3 3 3 0 0 1-3-3z" fill="#81a1c1" transform="scale(0.8)" />
+      <text x="18" y="14" font-family="sans-serif" font-size="13" font-weight="500" fill="#d8dee9">Binge</text>
+    </g>
+
+    <!-- Files Manager Button (ACTIVE) -->
+    <g transform="translate(470, 7)">
+      <rect x="0" y="0" width="85" height="34" rx="4" fill="#2e3440" stroke="#88c0d0" stroke-width="1.2" />
+      <path d="M10 11h4l2 2h6c.6 0 1 .4 1 1v7c0 .6-.4 1-1 1H10c-.6 0-1-.4-1-1v-9c0-.6.4-1 1-1z" fill="#88c0d0" transform="scale(0.9)" />
+      <text x="28" y="22" font-family="sans-serif" font-size="13" font-weight="700" fill="#ffffff">Files</text>
+    </g>
+
+    <!-- Right Side Status -->
+    <text x="1080" y="30" font-family="sans-serif" font-size="12" fill="#6c7a89" text-anchor="end">Library: 14,820 Scenes Indexed</text>
+  </g>
+
+  <!-- Mock File Manager Workspace Card Grid & Views -->
+  <g transform="translate(48, 205)" filter="url(#shadow)">
+    <rect width="1104" height="260" rx="8" fill="#12151c" stroke="#262c3b" stroke-width="1" />
+
+    <!-- Action & Breadcrumb Bar -->
+    <g transform="translate(20, 18)">
+      <text x="0" y="18" font-family="sans-serif" font-size="14" font-weight="700" fill="#88c0d0">📁 Root</text>
+      <text x="60" y="18" font-family="sans-serif" font-size="14" fill="#4c566a">›</text>
+      <text x="75" y="18" font-family="sans-serif" font-size="14" font-weight="700" fill="#88c0d0">4K VR</text>
+      <text x="130" y="18" font-family="sans-serif" font-size="14" fill="#4c566a">›</text>
+      <text x="145" y="18" font-family="sans-serif" font-size="14" font-weight="700" fill="#eceff4">Studio Production</text>
+      <rect x="290" y="3" width="130" height="20" rx="10" fill="#1f2430" />
+      <text x="355" y="17" font-family="sans-serif" font-size="11" fill="#81a1c1" text-anchor="middle">24 direct · 182 total (412 GB)</text>
+
+      <!-- View Selector Buttons -->
+      <g transform="translate(860, 0)">
+        <rect x="0" y="0" width="64" height="24" rx="4" fill="#88c0d0" />
+        <text x="32" y="16" font-family="sans-serif" font-size="11" font-weight="700" fill="#0e1117" text-anchor="middle">田 Cards</text>
+
+        <rect x="70" y="0" width="64" height="24" rx="4" fill="#252b38" stroke="#3b4252" stroke-width="1" />
+        <text x="102" y="16" font-family="sans-serif" font-size="11" font-weight="500" fill="#d8dee9" text-anchor="middle">☰ List</text>
+
+        <rect x="140" y="0" width="70" height="24" rx="4" fill="#252b38" stroke="#3b4252" stroke-width="1" />
+        <text x="175" y="16" font-family="sans-serif" font-size="11" font-weight="500" fill="#d8dee9" text-anchor="middle">☷ Details</text>
+      </g>
+    </g>
+
+    <!-- Horizontal Divider -->
+    <line x1="20" y1="52" x2="1084" y2="52" stroke="#222735" stroke-width="1" />
+
+    <!-- Compact Folder Cards Preview -->
+    <g transform="translate(20, 68)">
+      <!-- Card 1 -->
+      <g transform="translate(0, 0)">
+        <rect width="200" height="82" rx="6" fill="#1a1e27" stroke="#2c3344" stroke-width="1" />
+        <path d="M16 18h8l3 3h15c1 0 2 .8 2 1.8v15.4c0 1-.8 1.8-2 1.8H16c-1 0-2-.8-2-1.8V19.8c0-1 .8-1.8 2-1.8z" fill="#81a1c1" />
+        <text x="50" y="32" font-family="sans-serif" font-size="13" font-weight="700" fill="#eceff4">Series 01</text>
+        <text x="50" y="48" font-family="sans-serif" font-size="11" fill="#88c0d0">18 scenes</text>
+        <rect x="120" y="36" width="68" height="18" rx="9" fill="#252b38" />
+        <text x="154" y="49" font-family="sans-serif" font-size="10" fill="#7b889b" text-anchor="middle">48.2 GB</text>
+      </g>
+
+      <!-- Card 2 -->
+      <g transform="translate(216, 0)">
+        <rect width="200" height="82" rx="6" fill="#1a1e27" stroke="#2c3344" stroke-width="1" />
+        <path d="M16 18h8l3 3h15c1 0 2 .8 2 1.8v15.4c0 1-.8 1.8-2 1.8H16c-1 0-2-.8-2-1.8V19.8c0-1 .8-1.8 2-1.8z" fill="#81a1c1" />
+        <text x="50" y="32" font-family="sans-serif" font-size="13" font-weight="700" fill="#eceff4">Behind The Scenes</text>
+        <text x="50" y="48" font-family="sans-serif" font-size="11" fill="#88c0d0">12 scenes</text>
+        <rect x="120" y="36" width="68" height="18" rx="9" fill="#252b38" />
+        <text x="154" y="49" font-family="sans-serif" font-size="10" fill="#7b889b" text-anchor="middle">24.6 GB</text>
+      </g>
+
+      <!-- Card 3 -->
+      <g transform="translate(432, 0)">
+        <rect width="200" height="82" rx="6" fill="#1a1e27" stroke="#2c3344" stroke-width="1" />
+        <path d="M16 18h8l3 3h15c1 0 2 .8 2 1.8v15.4c0 1-.8 1.8-2 1.8H16c-1 0-2-.8-2-1.8V19.8c0-1 .8-1.8 2-1.8z" fill="#81a1c1" />
+        <text x="50" y="32" font-family="sans-serif" font-size="13" font-weight="700" fill="#eceff4">Bonus Interviews</text>
+        <text x="50" y="48" font-family="sans-serif" font-size="11" fill="#88c0d0">6 scenes</text>
+        <rect x="120" y="36" width="68" height="18" rx="9" fill="#252b38" />
+        <text x="154" y="49" font-family="sans-serif" font-size="10" fill="#7b889b" text-anchor="middle">12.1 GB</text>
+      </g>
+
+      <!-- Floating PIP Window Preview Overlay -->
+      <g transform="translate(670, -20)" filter="url(#shadow)">
+        <rect width="380" height="180" rx="8" fill="#141822" stroke="#434c5e" stroke-width="1.5" />
+        <rect width="380" height="32" rx="8" fill="#1e2330" />
+        <!-- Drag Handle and Title -->
+        <text x="14" y="21" font-family="sans-serif" font-size="14" fill="#88c0d0">⠿</text>
+        <text x="32" y="21" font-family="sans-serif" font-size="12" font-weight="700" fill="#eceff4">Scene 03 - Sunset Reel.mkv</text>
+        <rect x="235" y="6" width="38" height="20" rx="4" fill="#ebcb8b" />
+        <text x="254" y="19" font-family="sans-serif" font-size="9" font-weight="700" fill="#000" text-anchor="middle">MKV</text>
+        <rect x="280" y="6" width="55" height="20" rx="4" fill="#2e3440" stroke="#88c0d0" stroke-width="1" />
+        <text x="307" y="19" font-family="sans-serif" font-size="10" font-weight="700" fill="#88c0d0" text-anchor="middle">🔄 MP4</text>
+        <text x="358" y="21" font-family="sans-serif" font-size="14" fill="#eceff4">×</text>
+
+        <!-- Video Simulation -->
+        <rect x="12" y="42" width="356" height="110" rx="4" fill="#080a0f" />
+        <!-- Play Button and Reel Pills -->
+        <circle cx="190" cy="97" r="20" fill="#88c0d0" fill-opacity="0.8" />
+        <polygon points="186,88 198,97 186,106" fill="#0e1117" />
+        <!-- Floating Reel Navigation Pill -->
+        <g transform="translate(325, 62)">
+          <rect width="32" height="70" rx="16" fill="rgba(20,24,34,0.85)" stroke="#88c0d0" stroke-width="1" />
+          <text x="16" y="22" font-family="sans-serif" font-size="12" fill="#eceff4" text-anchor="middle">▲</text>
+          <text x="16" y="42" font-family="sans-serif" font-size="9" font-weight="700" fill="#88c0d0" text-anchor="middle">3/18</text>
+          <text x="16" y="60" font-family="sans-serif" font-size="12" fill="#eceff4" text-anchor="middle">▼</text>
+        </g>
+        <!-- Footer Info -->
+        <text x="20" y="166" font-family="sans-serif" font-size="10" fill="#6c7a89">Draggable Floating PIP • Live Transcode active</text>
+      </g>
+    </g>
+
+    <!-- Bottom Status Strip -->
+    <g transform="translate(20, 220)">
+      <text x="0" y="16" font-family="sans-serif" font-size="12" fill="#81a1c1">💡 Quality of Life: Browser Back button steps up folders • Last location preserved across Stash</text>
+    </g>
+  </g>
+</svg>
