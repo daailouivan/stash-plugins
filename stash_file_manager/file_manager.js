@@ -526,14 +526,56 @@
         return transcodeWebmUrl;
       }, [scene?.id, streamMode, customStreamUrl, directUrl, transcodeWebmUrl, transcodeHlsUrl, transcodeMp4Url]);
 
-      // Auto-reload video tag when streamUrl changes
+      // Stream Loading Engine: Handles Segmented HLS Protocol vs Progressive Container Transcodes
+      const hlsInstanceRef = useRef(null);
+
       useEffect(() => {
         const v = videoRef.current;
-        if (v && streamUrl) {
+        if (!v || !streamUrl) return;
+
+        // Cleanup any active HLS instance
+        if (hlsInstanceRef.current) {
+          hlsInstanceRef.current.destroy();
+          hlsInstanceRef.current = null;
+        }
+
+        const isHlsUrl = streamUrl.includes(".m3u8") || streamMode === "hls";
+
+        if (isHlsUrl) {
+          // Native HLS support (Safari, iOS, WebKit)
+          if (v.canPlayType("application/vnd.apple.mpegurl")) {
+            v.src = streamUrl;
+            v.load();
+            const p = v.play();
+            if (p) p.then(() => setIsPlaying(true)).catch(() => {});
+          } else if (window.Hls && window.Hls.isSupported()) {
+            // MSE Hls.js
+            const hls = new window.Hls({ enableWorker: true, lowLatencyMode: false });
+            hlsInstanceRef.current = hls;
+            hls.loadSource(streamUrl);
+            hls.attachMedia(v);
+            hls.on(window.Hls.Events.MANIFEST_PARSED, () => {
+              v.play().then(() => setIsPlaying(true)).catch(() => {});
+            });
+            hls.on(window.Hls.Events.ERROR, (event, data) => {
+              if (data.fatal) {
+                console.warn("[SFM Video Player] HLS fatal error, falling back to WebM progressive container:", data);
+                setStreamMode("webm");
+                setPlayerNotice("HLS stream failed in this browser. Switched to WebM Progressive Container.");
+              }
+            });
+          } else {
+            console.warn("[SFM Video Player] HLS protocol requires native WebKit or Hls.js. Falling back to WebM container transcode.");
+            setStreamMode("webm");
+            setPlayerNotice("HLS protocol requires MSE library in this browser. Switched to WebM Progressive Container.");
+          }
+        } else {
+          // Progressive container streams (Direct, WebM, MP4)
+          v.src = streamUrl;
           v.load();
-          const playPromise = v.play();
-          if (playPromise !== undefined) {
-            playPromise.then(() => setIsPlaying(true)).catch((err) => {
+          const p = v.play();
+          if (p) {
+            p.then(() => setIsPlaying(true)).catch((err) => {
               if (err.name === "NotAllowedError") {
                 v.muted = true;
                 v.play().then(() => setIsPlaying(true)).catch(() => {});
@@ -541,7 +583,14 @@
             });
           }
         }
-      }, [streamUrl]);
+
+        return () => {
+          if (hlsInstanceRef.current) {
+            hlsInstanceRef.current.destroy();
+            hlsInstanceRef.current = null;
+          }
+        };
+      }, [streamUrl, streamMode]);
 
       // Intelligent Fallback on playback error
       const handleVideoError = (e) => {
@@ -999,10 +1048,10 @@
                   },
                   title: "Stream Engine: Choose Direct Stream or Transcode Profile",
                 },
-                React.createElement("option", { value: "direct" }, "⚡ Direct Stream"),
-                React.createElement("option", { value: "webm" }, "🔄 WebM Transcode (Best Seeking)"),
-                React.createElement("option", { value: "hls" }, "📺 HLS Adaptive Stream"),
-                React.createElement("option", { value: "mp4" }, "🎬 MP4 Transcode"),
+                React.createElement("option", { value: "direct" }, "⚡ Direct Play (Original File)"),
+                React.createElement("option", { value: "hls" }, "📺 HLS (Segmented Protocol)"),
+                React.createElement("option", { value: "webm" }, "🔄 WebM (Progressive Container)"),
+                React.createElement("option", { value: "mp4" }, "🎬 MP4 (Progressive Container)"),
                 availableStreams.filter((s) => !s.url.includes("stream.webm") && !s.url.includes("stream.m3u8") && !s.url.includes("stream.mp4")).map((s, idx) =>
                   React.createElement(
                     "option",
