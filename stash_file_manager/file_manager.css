@@ -1370,3 +1370,46 @@
   border-color: #88c0d0;
   color: #88c0d0;
 }
+
+
+/* ==========================================================================
+   Responsive Grid & Dynamic Thumbnail Card Size Sliders
+   ========================================================================== */
+
+.sfm-size-slider-wrap {
+  display: inline-flex;
+  align-items: center;
+  user-select: none;
+  background: rgba(30, 35, 46, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  padding: 0.15rem 0.5rem;
+}
+
+.sfm-size-slider {
+  width: 76px;
+  height: 4px;
+  background: #3b4252;
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+  accent-color: #88c0d0;
+  vertical-align: middle;
+  transition: opacity 0.15s ease;
+}
+
+.sfm-size-slider:hover {
+  background: #4c566a;
+}
+
+.sfm-folder-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--sfm-folder-card-size, 160px), 1fr));
+  gap: 0.65rem;
+}
+
+.sfm-scene-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--sfm-scene-card-size, 240px), 1fr));
+  gap: 0.85rem;
+}

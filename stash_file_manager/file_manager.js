@@ -2136,6 +2136,35 @@
         }
       });
 
+      // Thumbnail Card Size States (Persisted in localStorage)
+      const [folderCardSize, setFolderCardSize] = useState(() => {
+        try {
+          return Number(window.localStorage.getItem("sfm_folder_card_size")) || 160;
+        } catch (e) {
+          return 160;
+        }
+      });
+      const handleSetFolderCardSize = (size) => {
+        setFolderCardSize(size);
+        try {
+          window.localStorage.setItem("sfm_folder_card_size", String(size));
+        } catch (e) {}
+      };
+
+      const [sceneCardSize, setSceneCardSize] = useState(() => {
+        try {
+          return Number(window.localStorage.getItem("sfm_scene_card_size")) || 240;
+        } catch (e) {
+          return 240;
+        }
+      });
+      const handleSetSceneCardSize = (size) => {
+        setSceneCardSize(size);
+        try {
+          window.localStorage.setItem("sfm_scene_card_size", String(size));
+        } catch (e) {}
+      };
+
       // Folder View Mode: Compact Cards vs List vs Detail Table
       const [folderViewMode, setFolderViewMode] = useState(() => {
         try {
@@ -2712,28 +2741,7 @@
                   React.createElement("option", { value: "count_desc" }, "Count (High-Low)"),
                   React.createElement("option", { value: "count_asc" }, "Count (Low-High)")
                 ),
-                React.createElement(
-                  "div",
-                  { className: "btn-group btn-group-sm ml-2", role: "group" },
-                  React.createElement(
-                    "button",
-                    {
-                      className: `btn btn-sm ${viewMode === "grid" ? "btn-info" : "btn-outline-secondary"}`,
-                      onClick: () => handleToggleViewMode("grid"),
-                      title: "Grid Card View",
-                    },
-                    "⊞ Cards"
-                  ),
-                  React.createElement(
-                    "button",
-                    {
-                      className: `btn btn-sm ${viewMode === "list" ? "btn-info" : "btn-outline-secondary"}`,
-                      onClick: () => handleToggleViewMode("list"),
-                      title: "Detailed Table View",
-                    },
-                    "☰ Table"
-                  )
-                )
+
               )
             )
           ),
@@ -2770,44 +2778,70 @@
                   isSubfoldersCollapsed &&
                     React.createElement("span", { className: "text-muted small ml-2 font-italic" }, "(collapsed)")
                 ),
-                React.createElement(
-                  "div",
-                  { className: "btn-group btn-group-sm sfm-view-toggle-group" },
+                !isSubfoldersCollapsed &&
                   React.createElement(
-                    "button",
-                    {
-                      className: `btn btn-sm ${folderViewMode === "cards" ? "btn-info" : "btn-outline-secondary"} py-0 px-2`,
-                      onClick: () => { setIsSubfoldersCollapsed(false); handleSetFolderViewMode("cards"); },
-                      title: "Compact Cards View",
-                    },
-                    "田 Cards"
-                  ),
-                  React.createElement(
-                    "button",
-                    {
-                      className: `btn btn-sm ${folderViewMode === "list" ? "btn-info" : "btn-outline-secondary"} py-0 px-2`,
-                      onClick: () => { setIsSubfoldersCollapsed(false); handleSetFolderViewMode("list"); },
-                      title: "Compact List View",
-                    },
-                    "☰ List"
-                  ),
-                  React.createElement(
-                    "button",
-                    {
-                      className: `btn btn-sm ${folderViewMode === "detail" ? "btn-info" : "btn-outline-secondary"} py-0 px-2`,
-                      onClick: () => { setIsSubfoldersCollapsed(false); handleSetFolderViewMode("detail"); },
-                      title: "Detail Table View",
-                    },
-                    "☷ Details"
+                    "div",
+                    { className: "d-flex align-items-center flex-wrap gap-2" },
+                    folderViewMode === "cards" &&
+                      React.createElement(
+                        "div",
+                        {
+                          className: "d-flex align-items-center sfm-size-slider-wrap mr-2",
+                          title: `Adjust folder card thumbnail size: ${folderCardSize}px`,
+                        },
+                        React.createElement("span", { className: "sfm-slider-icon mr-1 text-muted small" }, "🔍"),
+                        React.createElement("input", {
+                          type: "range",
+                          className: "sfm-size-slider",
+                          min: 120,
+                          max: 300,
+                          step: 10,
+                          value: folderCardSize,
+                          onChange: (e) => handleSetFolderCardSize(Number(e.target.value)),
+                        })
+                      ),
+                    React.createElement(
+                      "div",
+                      { className: "btn-group btn-group-sm sfm-view-toggle-group" },
+                      React.createElement(
+                        "button",
+                        {
+                          className: `btn btn-sm ${folderViewMode === "cards" ? "btn-info" : "btn-outline-secondary"} py-0 px-2`,
+                          onClick: () => { setIsSubfoldersCollapsed(false); handleSetFolderViewMode("cards"); },
+                          title: "Compact Cards View",
+                        },
+                        "田 Cards"
+                      ),
+                      React.createElement(
+                        "button",
+                        {
+                          className: `btn btn-sm ${folderViewMode === "list" ? "btn-info" : "btn-outline-secondary"} py-0 px-2`,
+                          onClick: () => { setIsSubfoldersCollapsed(false); handleSetFolderViewMode("list"); },
+                          title: "Compact List View",
+                        },
+                        "☰ List"
+                      ),
+                      React.createElement(
+                        "button",
+                        {
+                          className: `btn btn-sm ${folderViewMode === "detail" ? "btn-info" : "btn-outline-secondary"} py-0 px-2`,
+                          onClick: () => { setIsSubfoldersCollapsed(false); handleSetFolderViewMode("detail"); },
+                          title: "Detail Table View",
+                        },
+                        "☷ Details"
+                      )
+                    )
                   )
-                )
               ),
               // Render Folder View based on mode (if not collapsed)
               !isSubfoldersCollapsed &&
                 (folderViewMode === "cards"
                   ? React.createElement(
                   "div",
-                  { className: "row" },
+                  {
+                    className: "sfm-folder-cards-grid",
+                    style: { "--sfm-folder-card-size": `${folderCardSize}px` },
+                  },
                   filteredAndSortedSubfolders.map((folderName) => {
                     const childNode = currentNode.folders[folderName];
                     const count = childNode ? childNode.allSceneIds.size : 0;
@@ -2815,22 +2849,19 @@
                     const nextPath = currentPath ? `${currentPath}/${folderName}` : folderName;
                     return React.createElement(
                       "div",
-                      { key: folderName, className: "col-6 col-sm-4 col-md-3 col-lg-2 col-xl-2 mb-2" },
+                      {
+                        key: folderName,
+                        className: "sfm-folder-card sfm-folder-card-compact",
+                        onClick: () => navigateToFolder(nextPath),
+                        title: `${folderName} (${count} scenes, ${size})`,
+                      },
+                      React.createElement("div", { className: "sfm-folder-icon-wrap" }, React.createElement(IconFolderCard, { size: Math.max(20, Math.min(36, Math.round(folderCardSize * 0.18))), color: "#81a1c1" })),
+                      React.createElement("div", { className: "sfm-folder-name" }, folderName),
                       React.createElement(
                         "div",
-                        {
-                          className: "sfm-folder-card sfm-folder-card-compact",
-                          onClick: () => navigateToFolder(nextPath),
-                          title: `${folderName} (${count} scenes, ${size})`,
-                        },
-                        React.createElement("div", { className: "sfm-folder-icon-wrap" }, React.createElement(IconFolderCard, { size: 28, color: "#81a1c1" })),
-                        React.createElement("div", { className: "sfm-folder-name" }, folderName),
-                        React.createElement(
-                          "div",
-                          { className: "sfm-folder-badges" },
-                          React.createElement("span", { className: "sfm-badge" }, `${count} scenes`),
-                          count > 0 && React.createElement("span", { className: "sfm-badge text-muted" }, size)
-                        )
+                        { className: "sfm-folder-badges" },
+                        React.createElement("span", { className: "sfm-badge" }, `${count} scenes`),
+                        count > 0 && React.createElement("span", { className: "sfm-badge text-muted" }, size)
                       )
                     );
                   })
@@ -2956,39 +2987,85 @@
               { className: "mb-4" },
               React.createElement(
                 "div",
-                { className: "d-flex justify-content-between align-items-center mb-3" },
+                { className: "d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2" },
                 React.createElement(
                   "div",
-                  {
-                    className: "sfm-section-header mb-0 sfm-collapsible-title",
-                    onClick: handleToggleFilesCollapsed,
-                    title: isFilesCollapsed ? "Click to expand Files" : "Click to collapse Files",
-                    style: { cursor: "pointer", userSelect: "none" },
-                  },
+                  { className: "d-flex align-items-center flex-wrap gap-2" },
                   React.createElement(
-                    "span",
-                    { className: "sfm-collapse-chevron mr-2 text-info font-weight-bold" },
-                    isFilesCollapsed ? "▶" : "▼"
-                  ),
-                  React.createElement("span", null, `Files / Scenes (${filteredAndSortedScenes.length})`),
-                  selectedSceneIds.size > 0 &&
-                    React.createElement("span", { className: "badge badge-info ml-2" }, `${selectedSceneIds.size} selected`),
-                  isFilesCollapsed &&
-                    React.createElement("span", { className: "text-muted small ml-2 font-italic" }, "(collapsed)")
-                ),
-                React.createElement(
-                  "div",
-                  { onClick: (e) => e.stopPropagation() },
-                  React.createElement(
-                    "button",
+                    "div",
                     {
-                      className: "btn btn-sm btn-outline-secondary py-0 px-2",
-                      onClick: handleSelectAllFolderScenes,
-                      title: "Select or deselect all visible scenes in folder",
+                      className: "sfm-section-header mb-0 sfm-collapsible-title",
+                      onClick: handleToggleFilesCollapsed,
+                      title: isFilesCollapsed ? "Click to expand Files" : "Click to collapse Files",
+                      style: { cursor: "pointer", userSelect: "none" },
                     },
-                    filteredAndSortedScenes.every((s) => selectedSceneIds.has(s.id)) ? "Deselect All" : "Select All"
+                    React.createElement(
+                      "span",
+                      { className: "sfm-collapse-chevron mr-2 text-info font-weight-bold" },
+                      isFilesCollapsed ? "▶" : "▼"
+                    ),
+                    React.createElement("span", null, `Files / Scenes (${filteredAndSortedScenes.length})`),
+                    selectedSceneIds.size > 0 &&
+                      React.createElement("span", { className: "badge badge-info ml-2" }, `${selectedSceneIds.size} selected`),
+                    isFilesCollapsed &&
+                      React.createElement("span", { className: "text-muted small ml-2 font-italic" }, "(collapsed)")
+                  ),
+                  !isFilesCollapsed &&
+                    React.createElement(
+                      "button",
+                      {
+                        className: "btn btn-sm btn-outline-secondary py-0 px-2 ml-2",
+                        onClick: handleSelectAllFolderScenes,
+                        title: "Select or deselect all visible scenes in folder",
+                      },
+                      filteredAndSortedScenes.every((s) => selectedSceneIds.has(s.id)) ? "Deselect All" : "Select All"
+                    )
+                ),
+                !isFilesCollapsed &&
+                  React.createElement(
+                    "div",
+                    { className: "d-flex align-items-center flex-wrap gap-2" },
+                    viewMode === "grid" &&
+                      React.createElement(
+                        "div",
+                        {
+                          className: "d-flex align-items-center sfm-size-slider-wrap mr-2",
+                          title: `Adjust scene thumbnail card size: ${sceneCardSize}px`,
+                        },
+                        React.createElement("span", { className: "sfm-slider-icon mr-1 text-muted small" }, "🔍"),
+                        React.createElement("input", {
+                          type: "range",
+                          className: "sfm-size-slider",
+                          min: 160,
+                          max: 420,
+                          step: 10,
+                          value: sceneCardSize,
+                          onChange: (e) => handleSetSceneCardSize(Number(e.target.value)),
+                        })
+                      ),
+                    React.createElement(
+                      "div",
+                      { className: "btn-group btn-group-sm sfm-view-toggle-group" },
+                      React.createElement(
+                        "button",
+                        {
+                          className: `btn btn-sm ${viewMode === "grid" ? "btn-info" : "btn-outline-secondary"} py-0 px-2`,
+                          onClick: () => handleToggleViewMode("grid"),
+                          title: "Grid Card View",
+                        },
+                        "⊞ Cards"
+                      ),
+                      React.createElement(
+                        "button",
+                        {
+                          className: `btn btn-sm ${viewMode === "list" ? "btn-info" : "btn-outline-secondary"} py-0 px-2`,
+                          onClick: () => handleToggleViewMode("list"),
+                          title: "Detailed Table View",
+                        },
+                        "☰ Table"
+                      )
+                    )
                   )
-                )
               ),
               !isFilesCollapsed &&
                 (viewMode === "list"
@@ -3001,18 +3078,18 @@
                   })
                 : React.createElement(
                     "div",
-                    { className: "row" },
+                    {
+                      className: "sfm-scene-cards-grid",
+                      style: { "--sfm-scene-card-size": `${sceneCardSize}px` },
+                    },
                     filteredAndSortedScenes.map((scene) =>
-                      React.createElement(
-                        "div",
-                        { key: scene.id, className: "col-12 col-sm-6 col-md-4 col-lg-3 col-xl-2 mb-3" },
-                        React.createElement(SceneCard, {
-                          scene,
-                          onPlay: (s) => setPlayingScene(s),
-                          isSelected: selectedSceneIds.has(scene.id),
-                          onToggleSelect: handleToggleSelect,
-                        })
-                      )
+                      React.createElement(SceneCard, {
+                        key: scene.id,
+                        scene,
+                        onPlay: (s) => setPlayingScene(s),
+                        isSelected: selectedSceneIds.has(scene.id),
+                        onToggleSelect: handleToggleSelect,
+                      })
                     )
                   )
             )
