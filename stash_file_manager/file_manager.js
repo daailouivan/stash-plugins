@@ -127,11 +127,24 @@
 
     async function saveStashPluginSettings(values) {
       try {
+        const payload = {
+          default_transcode_method: String(values.default_transcode_method || "direct"),
+          fallback_transcode_method: String(values.fallback_transcode_method || "hls"),
+          root_library_path: String(values.root_library_path || ""),
+          folder_view_mode: String(values.folder_view_mode || "cards"),
+          scene_view_mode: String(values.scene_view_mode || "cards"),
+          default_sort_field: String(values.default_sort_field || "name"),
+          default_sort_direction: String(values.default_sort_direction || "asc"),
+          folder_card_size: Number(values.folder_card_size) || 160,
+          scene_card_size: Number(values.scene_card_size) || 240,
+          remember_last_path: values.remember_last_path !== false,
+          auto_rebuild_tree_on_start: Boolean(values.auto_rebuild_tree_on_start),
+        };
         const data = await gqlFetch(
-          `mutation ConfigureSFM($plugin_id: ID!, $values: Map!) {
-            configurePlugin(plugin_id: $plugin_id, values: $values)
+          `mutation ConfigureSFM($plugin_id: ID!, $input: Map!) {
+            configurePlugin(plugin_id: $plugin_id, input: $input)
           }`,
-          { plugin_id: "stash_file_manager", values }
+          { plugin_id: "stash_file_manager", input: payload }
         );
         return data?.configurePlugin;
       } catch (e) {
@@ -337,13 +350,24 @@
     // - Dynamic transcode fallback: default 'direct', fallback 'hls' for non-native files, resets on scroll
     // - Seamless vertical reel track with connected adjacent top/bottom video slides
     // ==========================================
+// ==========================================
+    // Modal: Full-Bleed Binge Reel Player (v2.5.0)
+    // Features:
+    // - Persistent non-breaking PiP with zero lingering player dialog (seamlessly restores on PiP enlarge)
+    // - Automatic MPEG-4 vs H.264 detection: MPEG-4 .mp4 automatically defaults to HLS transcode
+    // - Compact 36px circular button stack aligned starting with the close button at top right
+    // - Increased divider spacer gaps around previous/next buttons
+    // - TikTok-style scroll threshold: requires > 50% pull to advance, snaps back to center otherwise
+    // - Elevated metadata description overlay (sits comfortably above the scrubbing bar)
+    // - Synchronized in-app settings with native Stash config.yml plugin settings
+    // ==========================================
     function BingeReelPlayerModal({ scene, scenes = [], onSelectScene, onClose, folderName, currentPath }) {
       const videoRef = useRef(null);
       const videoContainerRef = useRef(null);
       const hlsInstanceRef = useRef(null);
       const hideTimeoutRef = useRef(null);
 
-      // 1. Scene Navigation & Adjacent Previews
+      // 1. Scene Navigation & Previews
       const currentIndex = useMemo(() => {
         return scenes.findIndex((s) => s.id === scene?.id);
       }, [scenes, scene?.id]);
@@ -362,23 +386,38 @@
         if (hasNext) onSelectScene(nextScene);
       }, [hasNext, onSelectScene, nextScene]);
 
-      // 2. Format & Metadata Resolution
+      // 2. Format & Codec Resolution (MPEG-4 vs H.264 Detection)
       const filePath = scene?.files?.[0]?.path || scene?.files?.[0]?.basename || "";
       const fileExt = (filePath.split(".").pop() || "").toLowerCase();
-      const isNativeDirect = ["mp4", "m4v", "webm"].includes(fileExt);
+      const rawCodec = (scene?.files?.[0]?.video_codec || "").toLowerCase();
+
+      // Browsers do not support MPEG-4 Part 2 / ASP (mpeg4, mp4v, divx, xvid) natively even in .mp4 containers
+      const isUnsupportedCodec =
+        rawCodec.includes("mpeg4") ||
+        rawCodec.includes("mp4v") ||
+        rawCodec.includes("divx") ||
+        rawCodec.includes("xvid") ||
+        rawCodec.includes("mpeg2") ||
+        rawCodec.includes("wmv") ||
+        rawCodec.includes("flv") ||
+        rawCodec.includes("vc1") ||
+        rawCodec.includes("msmpeg");
+
+      const isNativeDirect = ["mp4", "m4v", "webm"].includes(fileExt) && !isUnsupportedCodec;
       const extLabel = fileExt ? `.${fileExt.toUpperCase()}` : "VIDEO";
+      const codecBadge = rawCodec ? rawCodec.toUpperCase() : "";
       const title = scene?.title || scene?.files?.[0]?.basename || `Scene #${scene?.id}`;
       const fileSize = formatBytes(scene?.files?.[0]?.size);
       const durationFormatted = formatDuration(scene?.files?.[0]?.duration);
       const dateStr = scene?.date || "";
-      const videoCodec = (scene?.files?.[0]?.video_codec || "").toUpperCase();
       const studioName = scene?.studio?.name || "";
 
-      // 3. Transcode Mode & Fallback Strategy (Configurable & Non-Sticky across Reel Scroll)
+      // 3. Transcode Mode & Fallback Strategy
       const defaultMethod = window.__SFM_DEFAULT_TRANSCODE_METHOD__ || "direct";
       const fallbackMethod = window.__SFM_FALLBACK_TRANSCODE_METHOD__ || "hls";
 
-      const [streamMode, setStreamMode] = useState(() => (isNativeDirect ? defaultMethod : fallbackMethod));
+      const targetMode = isNativeDirect ? defaultMethod : fallbackMethod;
+      const [streamMode, setStreamMode] = useState(() => targetMode);
       const [customStreamUrl, setCustomStreamUrl] = useState("");
       const [availableStreams, setAvailableStreams] = useState([]);
       const [playerNotice, setPlayerNotice] = useState("");
@@ -391,17 +430,16 @@
       const [transcodeHlsUrl, setTranscodeHlsUrl] = useState(() => `/scene/${scene?.id}/stream.m3u8`);
       const [transcodeMp4Url, setTranscodeMp4Url] = useState(() => `/scene/${scene?.id}/stream.mp4`);
 
-      // Re-evaluate stream mode whenever scene.id changes (Fixes sticky WebM bug during scroll)
+      // Dynamically reset stream mode per-scene during scrolling
       useEffect(() => {
         setCustomStreamUrl("");
         setPlayerError("");
         setPlayerNotice("");
         setShowTranscodeMenu(false);
-        const targetMode = isNativeDirect ? defaultMethod : fallbackMethod;
         setStreamMode(targetMode);
-      }, [scene?.id, isNativeDirect, defaultMethod, fallbackMethod]);
+      }, [scene?.id, targetMode]);
 
-      // Query available streams via GraphQL
+      // Query available streams & fresh file codec via GraphQL
       useEffect(() => {
         if (!scene?.id) return;
         let active = true;
@@ -417,6 +455,15 @@
             findScene(id: $id) {
               id
               title
+              files {
+                id
+                path
+                basename
+                size
+                duration
+                video_codec
+                format
+              }
               paths {
                 stream
                 screenshot
@@ -499,7 +546,7 @@
         };
       }, [resetControlsTimer]);
 
-      // Setup Video Stream Player (Native or HLS)
+      // Setup Video Stream Player
       useEffect(() => {
         const v = videoRef.current;
         if (!v || !streamUrl) return;
@@ -555,13 +602,13 @@
         };
       }, [streamUrl, streamMode]);
 
-      // Intelligent Fallback on playback error
+      // Playback error handler
       const handleVideoError = (e) => {
         console.warn("[SFM Player] Playback error on stream:", streamUrl, e);
         if (streamMode === "direct" && !customStreamUrl) {
           const next = fallbackMethod === "direct" ? "hls" : fallbackMethod;
           setStreamMode(next);
-          setPlayerNotice(`Direct stream format not supported by browser. Switched to ${next.toUpperCase()} Transcode.`);
+          setPlayerNotice(`Direct stream format or codec unsupported by browser. Switched to ${next.toUpperCase()} Transcode.`);
         } else if (streamMode === "hls" && !customStreamUrl) {
           setStreamMode("webm");
           setPlayerNotice("HLS stream failed. Switched to WebM Progressive Container.");
@@ -569,7 +616,7 @@
           setStreamMode("mp4");
           setPlayerNotice("Switched to MP4 Transcode.");
         } else {
-          setPlayerError("Video playback failed. Browser cannot decode this stream. Use 'VLC' for instant external playback.");
+          setPlayerError("Video playback failed on all streams. Click 'VLC' on the right to open externally.");
         }
       };
 
@@ -671,15 +718,19 @@
         setTimeout(() => setHudNotice(""), 800);
       };
 
-      // 5. Non-Breaking Picture-in-Picture Implementation
-      // The video element REMAINS in the DOM to avoid detaching/killing the OS PiP window
-      const [isNativePip, setIsNativePip] = useState(false);
+      // 5. Persistent PiP with Zero Lingering Player (Restores smoothly on Enlarge)
+      const [isPipMode, setIsPipMode] = useState(false);
 
       useEffect(() => {
         const v = videoRef.current;
         if (!v) return;
-        const handleEnterPip = () => setIsNativePip(true);
-        const handleLeavePip = () => setIsNativePip(false);
+        const handleEnterPip = () => {
+          setIsPipMode(true);
+        };
+        const handleLeavePip = () => {
+          // Triggered when user clicks native "Back to Tab" / "Enlarge" button in PiP window
+          setIsPipMode(false);
+        };
         v.addEventListener("enterpictureinpicture", handleEnterPip);
         v.addEventListener("leavepictureinpicture", handleLeavePip);
         return () => {
@@ -695,14 +746,13 @@
           try {
             await document.exitPictureInPicture();
           } catch (e) {}
-          setIsNativePip(false);
+          setIsPipMode(false);
           return;
         }
         if (document.pictureInPictureEnabled && typeof v.requestPictureInPicture === "function") {
           try {
             await v.requestPictureInPicture();
-            setIsNativePip(true);
-            return;
+            setIsPipMode(true);
           } catch (err) {
             console.warn("[SFM Player] Native PiP request error:", err);
           }
@@ -729,55 +779,57 @@
         });
       };
 
-      // VLC stream URL
       const vlcUrl = `vlc://${window.location.origin}${directUrl}`;
 
-      // 6. Seamless Vertical Reel Scrolling
+      // 6. Seamless Vertical Reel Scrolling (TikTok-Style > 50% Threshold)
       const [pullOffset, setPullOffset] = useState(0);
       const [isTransitioning, setIsTransitioning] = useState(false);
       const wheelAccumulator = useRef(0);
-      const wheelResetTimer = useRef(null);
+      const wheelDebounceTimer = useRef(null);
 
       const handleWheel = (e) => {
         e.preventDefault();
         if (isTransitioning) return;
 
-        wheelAccumulator.current += e.deltaY;
-        const newOffset = -wheelAccumulator.current * 0.6;
+        const containerHeight = videoContainerRef.current?.clientHeight || window.innerHeight || 800;
+        const scrollThreshold = containerHeight * 0.5; // Over half the screen, like TikTok
 
-        if (wheelResetTimer.current) clearTimeout(wheelResetTimer.current);
-        wheelResetTimer.current = setTimeout(() => {
-          wheelAccumulator.current = 0;
-          setPullOffset(0);
-        }, 300);
+        wheelAccumulator.current += e.deltaY;
+        const newOffset = -wheelAccumulator.current * 0.7;
 
         if ((!hasPrev && newOffset > 0) || (!hasNext && newOffset < 0)) {
-          setPullOffset(newOffset * 0.2);
-          return;
+          setPullOffset(newOffset * 0.15);
+        } else {
+          setPullOffset(newOffset);
         }
 
-        setPullOffset(newOffset);
-
-        // Threshold reached: animate transition to adjacent video
-        if (newOffset > 85 && hasPrev) {
-          setIsTransitioning(true);
-          setPullOffset(window.innerHeight || 800);
-          setTimeout(() => {
-            goToPrev();
+        if (wheelDebounceTimer.current) clearTimeout(wheelDebounceTimer.current);
+        wheelDebounceTimer.current = setTimeout(() => {
+          const currentPull = -wheelAccumulator.current * 0.7;
+          if (currentPull > scrollThreshold && hasPrev) {
+            setIsTransitioning(true);
+            setPullOffset(containerHeight);
+            setTimeout(() => {
+              goToPrev();
+              setPullOffset(0);
+              wheelAccumulator.current = 0;
+              setIsTransitioning(false);
+            }, 260);
+          } else if (currentPull < -scrollThreshold && hasNext) {
+            setIsTransitioning(true);
+            setPullOffset(-containerHeight);
+            setTimeout(() => {
+              goToNext();
+              setPullOffset(0);
+              wheelAccumulator.current = 0;
+              setIsTransitioning(false);
+            }, 260);
+          } else {
+            // Anything less than half snaps smoothly back to center
             setPullOffset(0);
             wheelAccumulator.current = 0;
-            setIsTransitioning(false);
-          }, 240);
-        } else if (newOffset < -85 && hasNext) {
-          setIsTransitioning(true);
-          setPullOffset(-(window.innerHeight || 800));
-          setTimeout(() => {
-            goToNext();
-            setPullOffset(0);
-            wheelAccumulator.current = 0;
-            setIsTransitioning(false);
-          }, 240);
-        }
+          }
+        }, 180);
       };
 
       // Keyboard Controls
@@ -785,6 +837,9 @@
         const handleKeyDown = (e) => {
           if (["input", "textarea", "select"].includes(e.target.tagName?.toLowerCase())) return;
           if (e.key === "Escape") {
+            if (isPipMode && document.pictureInPictureElement) {
+              document.exitPictureInPicture().catch(() => {});
+            }
             onClose();
           } else if (e.key === "ArrowDown" || e.key === "PageDown") {
             e.preventDefault();
@@ -820,7 +875,7 @@
 
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
-      }, [onClose, goToNext, goToPrev, handleTogglePlay, duration]);
+      }, [onClose, goToNext, goToPrev, handleTogglePlay, duration, isPipMode]);
 
       // Formatted duration helper
       const formatTime = (secs) => {
@@ -830,445 +885,460 @@
         return `${m}:${s < 10 ? "0" : ""}${s}`;
       };
 
-      // Render Active Player Modal
+      // Render Active Player Modal or PiP Background Mode
       return React.createElement(
-        "div",
-        {
-          className: "sfm-reel-modal-backdrop",
-          onClick: onClose,
-          onMouseMove: resetControlsTimer,
-          onTouchStart: resetControlsTimer,
-        },
-        React.createElement(
-          "div",
-          {
-            className: "sfm-reel-modal-dialog",
-            onClick: (e) => e.stopPropagation(),
-            onWheel: handleWheel,
-          },
-          // Top-Right Quick Close Button
-          React.createElement(
-            "button",
-            {
-              className: "sfm-reel-close-btn",
-              onClick: onClose,
-              title: "Close Player (Esc)",
-            },
-            "✕"
-          ),
-
-          // Main Video Container with Seamless Reel Track
+        React.Fragment,
+        null,
+        // When in PiP mode, show small non-intrusive floating dock pill
+        isPipMode &&
           React.createElement(
             "div",
             {
-              ref: videoContainerRef,
-              className: "sfm-reel-video-container",
-              onMouseMove: resetControlsTimer,
+              className: "sfm-pip-return-pill shadow-lg",
+              onClick: async (e) => {
+                e.stopPropagation();
+                if (document.pictureInPictureElement) {
+                  try {
+                    await document.exitPictureInPicture();
+                  } catch (err) {}
+                }
+                setIsPipMode(false);
+              },
+              title: "Click to return video to player",
             },
-            // Seamless Vertical Track holding Adjacent Slides
+            React.createElement("span", { className: "sfm-pip-pill-icon mr-2" }, "⧉"),
+            React.createElement("span", { className: "sfm-pip-pill-title" }, `Playing: ${title}`),
+            React.createElement("span", { className: "sfm-pip-pill-action ml-2" }, "(Click to Enlarge)"),
+            React.createElement(
+              "button",
+              {
+                className: "sfm-pip-pill-close ml-2",
+                onClick: (e) => {
+                  e.stopPropagation();
+                  if (document.pictureInPictureElement) {
+                    document.exitPictureInPicture().catch(() => {});
+                  }
+                  onClose();
+                },
+                title: "Stop playback and close",
+              },
+              "✕"
+            )
+          ),
+
+        // Main Player Modal Backdrop (becomes transparent & detached when in PiP)
+        React.createElement(
+          "div",
+          {
+            className: `sfm-reel-modal-backdrop ${isPipMode ? "sfm-pip-detached" : ""}`,
+            onClick: onClose,
+            onMouseMove: resetControlsTimer,
+            onTouchStart: resetControlsTimer,
+          },
+          React.createElement(
+            "div",
+            {
+              className: `sfm-reel-modal-dialog ${isPipMode ? "sfm-pip-dialog-detached" : ""}`,
+              onClick: (e) => e.stopPropagation(),
+              onWheel: handleWheel,
+            },
+            // Main Video Container with Seamless Reel Track
             React.createElement(
               "div",
               {
-                className: "sfm-reel-track",
-                style: {
-                  transform: `translateY(${pullOffset}px)`,
-                  transition: isTransitioning
-                    ? "transform 0.24s cubic-bezier(0.2, 0.9, 0.3, 1)"
-                    : pullOffset === 0
-                    ? "transform 0.22s ease-out"
-                    : "none",
-                },
+                ref: videoContainerRef,
+                className: "sfm-reel-video-container",
+                onMouseMove: resetControlsTimer,
               },
-              // Slide -1: Previous Video Preview (Above)
-              hasPrev &&
-                React.createElement(
-                  "div",
-                  { className: "sfm-reel-slide sfm-reel-slide-prev" },
-                  React.createElement("img", {
-                    src: prevScene?.paths?.screenshot || `/scene/${prevScene?.id}/screenshot`,
-                    className: "sfm-reel-slide-poster",
-                    alt: "",
-                  }),
-                  React.createElement(
-                    "div",
-                    { className: "sfm-reel-slide-info" },
-                    React.createElement("span", { className: "sfm-badge mb-1" }, "▲ Previous Scene"),
-                    React.createElement("h4", { className: "text-light font-weight-bold" }, prevScene?.title || `Scene #${prevScene?.id}`),
-                    prevScene?.files?.[0]?.duration &&
-                      React.createElement("span", { className: "small text-muted" }, formatDuration(prevScene.files[0].duration))
-                  )
-                ),
-
-              // Slide 0: Current Active Video
+              // Seamless Vertical Track holding Adjacent Slides
               React.createElement(
                 "div",
-                { className: "sfm-reel-slide sfm-reel-slide-active" },
-                // Gesture Overlay for Double-Click Seek (Single click to play/pause)
-                React.createElement("div", {
-                  className: "sfm-video-gesture-overlay",
-                  onClick: handleGestureClick,
-                  onDoubleClick: handleDoubleTapSeek,
-                  title: "Double-click sides to seek ±10s · Single click to toggle Play/Pause",
-                }),
-                // Persistent Video Element (NEVER unmounted)
-                React.createElement("video", {
-                  ref: videoRef,
-                  controls: false, // Disables changing browser controls bar (resolves light pill vs black bar)
-                  playsInline: true,
-                  className: "sfm-reel-video-element",
-                  onError: handleVideoError,
-                  onTimeUpdate: handleTimeUpdate,
-                  onLoadedMetadata: handleLoadedMetadata,
-                  onPlay: () => setIsPlaying(true),
-                  onPause: () => setIsPlaying(false),
-                }),
-                // Active Picture-in-Picture Overlay Card
-                isNativePip &&
+                {
+                  className: "sfm-reel-track",
+                  style: {
+                    transform: `translateY(${pullOffset}px)`,
+                    transition: isTransitioning
+                      ? "transform 0.26s cubic-bezier(0.2, 0.9, 0.3, 1)"
+                      : pullOffset === 0
+                      ? "transform 0.24s cubic-bezier(0.2, 0.9, 0.3, 1)"
+                      : "none",
+                  },
+                },
+                // Slide -1: Previous Video Preview (Above)
+                hasPrev &&
                   React.createElement(
                     "div",
-                    { className: "sfm-pip-active-overlay" },
+                    { className: "sfm-reel-slide sfm-reel-slide-prev" },
+                    React.createElement("img", {
+                      src: prevScene?.paths?.screenshot || `/scene/${prevScene?.id}/screenshot`,
+                      className: "sfm-reel-slide-poster",
+                      alt: "",
+                    }),
                     React.createElement(
                       "div",
-                      { className: "sfm-pip-active-box" },
-                      React.createElement("div", { className: "sfm-pip-active-icon" }, "⧉"),
-                      React.createElement("h5", { className: "text-light mb-1" }, "Playing in Picture-in-Picture"),
-                      React.createElement("p", { className: "text-muted small mb-3" }, "Video is floating in a native window."),
-                      React.createElement(
-                        "button",
-                        {
-                          className: "btn btn-info btn-sm font-weight-bold",
-                          onClick: () => {
-                            if (document.pictureInPictureElement) document.exitPictureInPicture().catch(() => {});
-                          },
-                        },
-                        "🗖 Return Video to Player"
-                      )
+                      { className: "sfm-reel-slide-info" },
+                      React.createElement("span", { className: "sfm-badge mb-1" }, "▲ Previous Scene"),
+                      React.createElement("h4", { className: "text-light font-weight-bold" }, prevScene?.title || `Scene #${prevScene?.id}`),
+                      prevScene?.files?.[0]?.duration &&
+                        React.createElement("span", { className: "small text-muted" }, formatDuration(prevScene.files[0].duration))
+                    )
+                  ),
+
+                // Slide 0: Current Active Video (NEVER unmounted)
+                React.createElement(
+                  "div",
+                  { className: "sfm-reel-slide sfm-reel-slide-active" },
+                  React.createElement("div", {
+                    className: "sfm-video-gesture-overlay",
+                    onClick: handleGestureClick,
+                    onDoubleClick: handleDoubleTapSeek,
+                    title: "Double-click sides to seek ±10s · Single click to toggle Play/Pause",
+                  }),
+                  React.createElement("video", {
+                    ref: videoRef,
+                    controls: false, // Prevents browser control bar morphing
+                    playsInline: true,
+                    className: "sfm-reel-video-element",
+                    onError: handleVideoError,
+                    onTimeUpdate: handleTimeUpdate,
+                    onLoadedMetadata: handleLoadedMetadata,
+                    onPlay: () => setIsPlaying(true),
+                    onPause: () => setIsPlaying(false),
+                  })
+                ),
+
+                // Slide +1: Next Video Preview (Below)
+                hasNext &&
+                  React.createElement(
+                    "div",
+                    { className: "sfm-reel-slide sfm-reel-slide-next" },
+                    React.createElement("img", {
+                      src: nextScene?.paths?.screenshot || `/scene/${nextScene?.id}/screenshot`,
+                      className: "sfm-reel-slide-poster",
+                      alt: "",
+                    }),
+                    React.createElement(
+                      "div",
+                      { className: "sfm-reel-slide-info" },
+                      React.createElement("span", { className: "sfm-badge mb-1" }, "▼ Next Scene"),
+                      React.createElement("h4", { className: "text-light font-weight-bold" }, nextScene?.title || `Scene #${nextScene?.id}`),
+                      nextScene?.files?.[0]?.duration &&
+                        React.createElement("span", { className: "small text-muted" }, formatDuration(nextScene.files[0].duration))
                     )
                   )
               ),
 
-              // Slide +1: Next Video Preview (Below)
-              hasNext &&
+              // On-screen animated HUD feedback badge (e.g. ±10s seek)
+              hudNotice &&
                 React.createElement(
                   "div",
-                  { className: "sfm-reel-slide sfm-reel-slide-next" },
-                  React.createElement("img", {
-                    src: nextScene?.paths?.screenshot || `/scene/${nextScene?.id}/screenshot`,
-                    className: "sfm-reel-slide-poster",
-                    alt: "",
-                  }),
-                  React.createElement(
-                    "div",
-                    { className: "sfm-reel-slide-info" },
-                    React.createElement("span", { className: "sfm-badge mb-1" }, "▼ Next Scene"),
-                    React.createElement("h4", { className: "text-light font-weight-bold" }, nextScene?.title || `Scene #${nextScene?.id}`),
-                    nextScene?.files?.[0]?.duration &&
-                      React.createElement("span", { className: "small text-muted" }, formatDuration(nextScene.files[0].duration))
-                  )
-                )
-            ),
+                  { className: "sfm-player-hud" },
+                  React.createElement("div", { className: "sfm-hud-pill" }, hudNotice)
+                ),
 
-            // On-screen animated HUD feedback badge (e.g. ±10s seek)
-            hudNotice &&
+              // Status Notices
+              (copiedNotice || playerNotice || playerError) &&
+                React.createElement(
+                  "div",
+                  { className: "sfm-reel-top-notices" },
+                  copiedNotice && React.createElement("div", { className: "alert alert-success py-1 px-3 mb-1 small" }, `✓ ${copiedNotice}`),
+                  playerNotice && React.createElement("div", { className: "alert alert-warning py-1 px-3 mb-1 small" }, `ℹ ${playerNotice}`),
+                  playerError && React.createElement("div", { className: "alert alert-danger py-1 px-3 mb-1 small" }, `⚠ ${playerError}`)
+                ),
+
+              // ==========================================
+              // Right-Side Circular Action Bar
+              // Uniform 36px circular buttons, aligned right starting with Close button at top
+              // Order: [Close ✕] > [space] > [Stash ↗] > [VLC 🚀] > [Copy Link 📋] > [Transcode Dropdown] > [wide space] > [Prev ▲] > [Counter] > [Next ▼] > [wide space] > [PiP ⧉] > [Fullscreen ⛶]
+              // ==========================================
               React.createElement(
                 "div",
-                { className: "sfm-player-hud" },
-                React.createElement("div", { className: "sfm-hud-pill" }, hudNotice)
-              ),
-
-            // Status Notices (Copied, Transcode, Errors)
-            (copiedNotice || playerNotice || playerError) &&
-              React.createElement(
-                "div",
-                { className: "sfm-reel-top-notices" },
-                copiedNotice && React.createElement("div", { className: "alert alert-success py-1 px-3 mb-1 small" }, `✓ ${copiedNotice}`),
-                playerNotice && React.createElement("div", { className: "alert alert-warning py-1 px-3 mb-1 small" }, `ℹ ${playerNotice}`),
-                playerError && React.createElement("div", { className: "alert alert-danger py-1 px-3 mb-1 small" }, `⚠ ${playerError}`)
-              ),
-
-            // ==========================================
-            // Right-Side Circular Action Bar
-            // Order: [Stash > VLC > Copy Link > Transcode Dropdown > (space) > Prev/Counter/Next > (space) > PiP > Fullscreen]
-            // ==========================================
-            React.createElement(
-              "div",
-              {
-                className: `sfm-reel-actions-column ${isControlsVisible ? "sfm-visible" : "sfm-hidden"}`,
-                onClick: (e) => e.stopPropagation(),
-              },
-              // 1. Stash Scene Details
-              React.createElement(
-                "a",
                 {
-                  href: `/scenes/${scene.id}`,
-                  target: "_blank",
-                  rel: "noreferrer",
-                  className: "sfm-reel-circle-btn",
-                  title: "Open Scene Details in Stash",
+                  className: `sfm-reel-actions-column ${isControlsVisible ? "sfm-visible" : "sfm-hidden"}`,
+                  onClick: (e) => e.stopPropagation(),
                 },
-                "↗"
-              ),
-              // 2. Open Stream in VLC
-              React.createElement(
-                "a",
-                {
-                  href: vlcUrl,
-                  className: "sfm-reel-circle-btn sfm-btn-vlc",
-                  title: "Open Direct Stream in VLC Media Player",
-                },
-                "🚀"
-              ),
-              // 3. Copy Link
-              React.createElement(
-                "button",
-                {
-                  className: "sfm-reel-circle-btn",
-                  onClick: handleCopyStreamLink,
-                  title: "Copy Stream URL to Clipboard",
-                },
-                "📋"
-              ),
-              // 4. Transcode Dropdown Selector
-              React.createElement(
-                "div",
-                { className: "sfm-reel-transcode-wrap" },
+                // 1. Close Player Button (Aligned at top of circular column)
                 React.createElement(
                   "button",
                   {
-                    className: `sfm-reel-circle-btn ${streamMode !== "direct" ? "sfm-transcode-active" : ""}`,
-                    onClick: () => setShowTranscodeMenu((prev) => !prev),
-                    title: `Stream Engine (${streamMode.toUpperCase()}) — Click to change profile`,
+                    className: "sfm-reel-circle-btn sfm-reel-close-circle-btn",
+                    onClick: onClose,
+                    title: "Close Player (Esc)",
                   },
-                  streamMode === "direct" ? "⚡" : streamMode === "hls" ? "📺" : streamMode === "webm" ? "🔄" : "🎬"
+                  "✕"
                 ),
-                showTranscodeMenu &&
+                // Small Spacer
+                React.createElement("div", { className: "sfm-reel-spacer-small" }),
+                // 2. Stash Scene Details
+                React.createElement(
+                  "a",
+                  {
+                    href: `/scenes/${scene.id}`,
+                    target: "_blank",
+                    rel: "noreferrer",
+                    className: "sfm-reel-circle-btn",
+                    title: "Open Scene Details in Stash",
+                  },
+                  "↗"
+                ),
+                // 3. Open Stream in VLC
+                React.createElement(
+                  "a",
+                  {
+                    href: vlcUrl,
+                    className: "sfm-reel-circle-btn sfm-btn-vlc",
+                    title: "Open Stream in VLC Media Player",
+                  },
+                  "🚀"
+                ),
+                // 4. Copy Link
+                React.createElement(
+                  "button",
+                  {
+                    className: "sfm-reel-circle-btn",
+                    onClick: handleCopyStreamLink,
+                    title: "Copy Stream URL to Clipboard",
+                  },
+                  "📋"
+                ),
+                // 5. Transcode Dropdown Selector
+                React.createElement(
+                  "div",
+                  { className: "sfm-reel-transcode-wrap" },
                   React.createElement(
-                    "div",
-                    { className: "sfm-reel-transcode-menu" },
+                    "button",
+                    {
+                      className: `sfm-reel-circle-btn ${streamMode !== "direct" ? "sfm-transcode-active" : ""}`,
+                      onClick: () => setShowTranscodeMenu((prev) => !prev),
+                      title: `Stream Engine (${streamMode.toUpperCase()}) — Click to change profile`,
+                    },
+                    streamMode === "direct" ? "⚡" : streamMode === "hls" ? "📺" : streamMode === "webm" ? "🔄" : "🎬"
+                  ),
+                  showTranscodeMenu &&
                     React.createElement(
-                      "button",
-                      {
-                        className: `sfm-menu-item ${streamMode === "direct" && !customStreamUrl ? "active" : ""}`,
-                        onClick: () => {
-                          setCustomStreamUrl("");
-                          setStreamMode("direct");
-                          setShowTranscodeMenu(false);
-                        },
-                      },
-                      "⚡ Direct Stream (Raw File)"
-                    ),
-                    React.createElement(
-                      "button",
-                      {
-                        className: `sfm-menu-item ${streamMode === "hls" && !customStreamUrl ? "active" : ""}`,
-                        onClick: () => {
-                          setCustomStreamUrl("");
-                          setStreamMode("hls");
-                          setShowTranscodeMenu(false);
-                        },
-                      },
-                      "📺 HLS Stream (Adaptive)"
-                    ),
-                    React.createElement(
-                      "button",
-                      {
-                        className: `sfm-menu-item ${streamMode === "webm" && !customStreamUrl ? "active" : ""}`,
-                        onClick: () => {
-                          setCustomStreamUrl("");
-                          setStreamMode("webm");
-                          setShowTranscodeMenu(false);
-                        },
-                      },
-                      "🔄 WebM Transcode"
-                    ),
-                    React.createElement(
-                      "button",
-                      {
-                        className: `sfm-menu-item ${streamMode === "mp4" && !customStreamUrl ? "active" : ""}`,
-                        onClick: () => {
-                          setCustomStreamUrl("");
-                          setStreamMode("mp4");
-                          setShowTranscodeMenu(false);
-                        },
-                      },
-                      "🎬 MP4 Transcode"
-                    ),
-                    availableStreams.filter((s) => !s.url.includes("stream.webm") && !s.url.includes("stream.m3u8") && !s.url.includes("stream.mp4")).map((s, idx) =>
+                      "div",
+                      { className: "sfm-reel-transcode-menu" },
                       React.createElement(
                         "button",
                         {
-                          key: `custom-${idx}`,
-                          className: `sfm-menu-item ${customStreamUrl === s.url ? "active" : ""}`,
+                          className: `sfm-menu-item ${streamMode === "direct" && !customStreamUrl ? "active" : ""}`,
                           onClick: () => {
-                            setCustomStreamUrl(s.url);
+                            setCustomStreamUrl("");
+                            setStreamMode("direct");
                             setShowTranscodeMenu(false);
                           },
                         },
-                        s.label || (s.mime_type ? s.mime_type.split("/")[1].toUpperCase() : `Custom #${idx + 1}`)
+                        "⚡ Direct Stream (Raw File)"
+                      ),
+                      React.createElement(
+                        "button",
+                        {
+                          className: `sfm-menu-item ${streamMode === "hls" && !customStreamUrl ? "active" : ""}`,
+                          onClick: () => {
+                            setCustomStreamUrl("");
+                            setStreamMode("hls");
+                            setShowTranscodeMenu(false);
+                          },
+                        },
+                        "📺 HLS Stream (Adaptive)"
+                      ),
+                      React.createElement(
+                        "button",
+                        {
+                          className: `sfm-menu-item ${streamMode === "webm" && !customStreamUrl ? "active" : ""}`,
+                          onClick: () => {
+                            setCustomStreamUrl("");
+                            setStreamMode("webm");
+                            setShowTranscodeMenu(false);
+                          },
+                        },
+                        "🔄 WebM Transcode"
+                      ),
+                      React.createElement(
+                        "button",
+                        {
+                          className: `sfm-menu-item ${streamMode === "mp4" && !customStreamUrl ? "active" : ""}`,
+                          onClick: () => {
+                            setCustomStreamUrl("");
+                            setStreamMode("mp4");
+                            setShowTranscodeMenu(false);
+                          },
+                        },
+                        "🎬 MP4 Transcode"
+                      ),
+                      availableStreams.filter((s) => !s.url.includes("stream.webm") && !s.url.includes("stream.m3u8") && !s.url.includes("stream.mp4")).map((s, idx) =>
+                        React.createElement(
+                          "button",
+                          {
+                            key: `custom-${idx}`,
+                            className: `sfm-menu-item ${customStreamUrl === s.url ? "active" : ""}`,
+                            onClick: () => {
+                              setCustomStreamUrl(s.url);
+                              setShowTranscodeMenu(false);
+                            },
+                          },
+                          s.label || (s.mime_type ? s.mime_type.split("/")[1].toUpperCase() : `Custom #${idx + 1}`)
+                        )
                       )
                     )
-                  )
-              ),
-
-              // Spacer
-              React.createElement("div", { className: "sfm-reel-spacer" }),
-
-              // 5. Previous Video Button
-              React.createElement(
-                "button",
-                {
-                  className: "sfm-reel-circle-btn",
-                  onClick: goToPrev,
-                  disabled: !hasPrev,
-                  title: hasPrev ? `Previous: ${prevScene?.title || `Scene #${prevScene?.id}`}` : "First scene in folder",
-                },
-                "▲"
-              ),
-              // 6. Reel Counter Pill
-              React.createElement(
-                "div",
-                { className: "sfm-reel-counter-badge", title: `Folder: ${folderName || "Current"}` },
-                `${currentIndex + 1}/${totalScenes}`
-              ),
-              // 7. Next Video Button
-              React.createElement(
-                "button",
-                {
-                  className: "sfm-reel-circle-btn",
-                  onClick: goToNext,
-                  disabled: !hasNext,
-                  title: hasNext ? `Next: ${nextScene?.title || `Scene #${nextScene?.id}`}` : "Last scene in folder",
-                },
-                "▼"
-              ),
-
-              // Spacer
-              React.createElement("div", { className: "sfm-reel-spacer" }),
-
-              // 8. Picture-in-Picture Button
-              React.createElement(
-                "button",
-                {
-                  className: `sfm-reel-circle-btn ${isNativePip ? "sfm-btn-pip-active" : ""}`,
-                  onClick: handleTogglePip,
-                  title: isNativePip ? "Exit Picture-in-Picture" : "Picture-in-Picture Floating Window (P)",
-                },
-                "⧉"
-              ),
-              // 9. Fullscreen Button
-              React.createElement(
-                "button",
-                {
-                  className: "sfm-reel-circle-btn",
-                  onClick: handleToggleFullscreen,
-                  title: "Toggle Fullscreen (F)",
-                },
-                "⛶"
-              )
-            ),
-
-            // ==========================================
-            // TikTok / Instagram-Style Auto-Hiding Metadata Overlay (Bottom-Left)
-            // Shows Title, Format Badge, Studio Pill, Duration, Size, Date, Codec
-            // ==========================================
-            React.createElement(
-              "div",
-              { className: `sfm-reel-description-overlay ${isControlsVisible ? "sfm-visible" : "sfm-hidden"}` },
-              React.createElement(
-                "div",
-                { className: "d-flex align-items-center flex-wrap gap-2 mb-1" },
-                React.createElement("span", { className: "sfm-reel-title-text" }, `▶ ${title}`),
-                React.createElement("span", { className: "sfm-badge sfm-badge-primary" }, extLabel),
-                studioName && React.createElement("span", { className: "sfm-badge sfm-badge-studio" }, studioName)
-              ),
-              React.createElement(
-                "div",
-                { className: "sfm-reel-meta-line" },
-                durationFormatted && React.createElement("span", { className: "mr-2" }, `⏱ ${durationFormatted}`),
-                fileSize && fileSize !== "0 B" && React.createElement("span", { className: "mr-2" }, `💾 ${fileSize}`),
-                dateStr && React.createElement("span", { className: "mr-2" }, `📅 ${dateStr}`),
-                videoCodec && React.createElement("span", { className: "sfm-badge sfm-badge-dark" }, videoCodec)
-              )
-            ),
-
-            // ==========================================
-            // Auto-Hiding Custom Controls Bar at the Bottom
-            // Custom Timeline Scrubber, Play/Pause, Time, Volume (100% Constant & Dark across all Stream Profiles)
-            // ==========================================
-            React.createElement(
-              "div",
-              {
-                className: `sfm-reel-bottom-controls ${isControlsVisible ? "sfm-visible" : "sfm-hidden"}`,
-                onClick: (e) => e.stopPropagation(),
-              },
-              // Continuous Scrubber Timeline Bar
-              React.createElement(
-                "div",
-                {
-                  className: "sfm-reel-scrubber-track",
-                  onClick: handleScrubberClick,
-                  title: "Seek timeline",
-                },
-                React.createElement("div", {
-                  className: "sfm-reel-scrubber-buffered",
-                  style: { width: `${bufferedProgress}%` },
-                }),
-                React.createElement("div", {
-                  className: "sfm-reel-scrubber-played",
-                  style: { width: `${duration ? (currentTime / duration) * 100 : 0}%` },
-                }),
-                React.createElement("div", {
-                  className: "sfm-reel-scrubber-thumb",
-                  style: { left: `${duration ? (currentTime / duration) * 100 : 0}%` },
-                })
-              ),
-              // Controls Row (Play/Pause, Time Counter, Volume Slider)
-              React.createElement(
-                "div",
-                { className: "d-flex justify-content-between align-items-center mt-2" },
-                React.createElement(
-                  "div",
-                  { className: "d-flex align-items-center gap-3" },
-                  // Play/Pause Button
-                  React.createElement(
-                    "button",
-                    {
-                      className: "sfm-reel-play-btn",
-                      onClick: handleTogglePlay,
-                      title: isPlaying ? "Pause (Space)" : "Play (Space)",
-                    },
-                    isPlaying ? "⏸" : "▶"
-                  ),
-                  // Current Time / Duration
-                  React.createElement(
-                    "span",
-                    { className: "sfm-reel-time-text" },
-                    `${formatTime(currentTime)} / ${formatTime(duration)}`
-                  )
                 ),
-                // Volume Controls
+
+                // Wide Divider Spacer before Prev/Next Buttons
+                React.createElement("div", { className: "sfm-reel-spacer-wide" }),
+
+                // 6. Previous Video Button
+                React.createElement(
+                  "button",
+                  {
+                    className: "sfm-reel-circle-btn",
+                    onClick: goToPrev,
+                    disabled: !hasPrev,
+                    title: hasPrev ? `Previous: ${prevScene?.title || `Scene #${prevScene?.id}`}` : "First scene in folder",
+                  },
+                  "▲"
+                ),
+                // 7. Reel Counter Pill
                 React.createElement(
                   "div",
-                  { className: "d-flex align-items-center gap-2" },
-                  React.createElement(
-                    "button",
-                    {
-                      className: "sfm-reel-vol-btn",
-                      onClick: handleToggleMute,
-                      title: isMuted ? "Unmute" : "Mute",
-                    },
-                    isMuted || volume === 0 ? "🔇" : "🔊"
-                  ),
-                  React.createElement("input", {
-                    type: "range",
-                    className: "sfm-reel-vol-slider",
-                    min: 0,
-                    max: 1,
-                    step: 0.05,
-                    value: isMuted ? 0 : volume,
-                    onChange: handleVolumeChange,
-                    title: `Volume: ${Math.round((isMuted ? 0 : volume) * 100)}%`,
+                  { className: "sfm-reel-counter-badge", title: `Folder: ${folderName || "Current"}` },
+                  `${currentIndex + 1}/${totalScenes}`
+                ),
+                // 8. Next Video Button
+                React.createElement(
+                  "button",
+                  {
+                    className: "sfm-reel-circle-btn",
+                    onClick: goToNext,
+                    disabled: !hasNext,
+                    title: hasNext ? `Next: ${nextScene?.title || `Scene #${nextScene?.id}`}` : "Last scene in folder",
+                  },
+                  "▼"
+                ),
+
+                // Wide Divider Spacer after Prev/Next Buttons
+                React.createElement("div", { className: "sfm-reel-spacer-wide" }),
+
+                // 9. Picture-in-Picture Button
+                React.createElement(
+                  "button",
+                  {
+                    className: "sfm-reel-circle-btn",
+                    onClick: handleTogglePip,
+                    title: "Switch to Picture-in-Picture (P)",
+                  },
+                  "⧉"
+                ),
+                // 10. Fullscreen Button
+                React.createElement(
+                  "button",
+                  {
+                    className: "sfm-reel-circle-btn",
+                    onClick: handleToggleFullscreen,
+                    title: "Toggle Fullscreen (F)",
+                  },
+                  "⛶"
+                )
+              ),
+
+              // ==========================================
+              // Metadata Overlay (Elevated above Scrubbing Bar)
+              // Shows Title, Format Badge, Studio Pill, Duration, Size, Date, Codec
+              // ==========================================
+              React.createElement(
+                "div",
+                { className: `sfm-reel-description-overlay ${isControlsVisible ? "sfm-visible" : "sfm-hidden"}` },
+                React.createElement(
+                  "div",
+                  { className: "d-flex align-items-center flex-wrap gap-2 mb-1" },
+                  React.createElement("span", { className: "sfm-reel-title-text" }, `▶ ${title}`),
+                  React.createElement("span", { className: "sfm-badge sfm-badge-primary" }, extLabel),
+                  codecBadge && React.createElement("span", { className: "sfm-badge sfm-badge-codec" }, codecBadge),
+                  studioName && React.createElement("span", { className: "sfm-badge sfm-badge-studio" }, studioName)
+                ),
+                React.createElement(
+                  "div",
+                  { className: "sfm-reel-meta-line" },
+                  durationFormatted && React.createElement("span", { className: "mr-2" }, `⏱ ${durationFormatted}`),
+                  fileSize && fileSize !== "0 B" && React.createElement("span", { className: "mr-2" }, `💾 ${fileSize}`),
+                  dateStr && React.createElement("span", { className: "mr-2" }, `📅 ${dateStr}`)
+                )
+              ),
+
+              // ==========================================
+              // Bottom Scrubber Timeline Bar & Controls
+              // ==========================================
+              React.createElement(
+                "div",
+                {
+                  className: `sfm-reel-bottom-controls ${isControlsVisible ? "sfm-visible" : "sfm-hidden"}`,
+                  onClick: (e) => e.stopPropagation(),
+                },
+                // Scrubber Timeline Bar
+                React.createElement(
+                  "div",
+                  {
+                    className: "sfm-reel-scrubber-track",
+                    onClick: handleScrubberClick,
+                    title: "Seek timeline",
+                  },
+                  React.createElement("div", {
+                    className: "sfm-reel-scrubber-buffered",
+                    style: { width: `${bufferedProgress}%` },
+                  }),
+                  React.createElement("div", {
+                    className: "sfm-reel-scrubber-played",
+                    style: { width: `${duration ? (currentTime / duration) * 100 : 0}%` },
+                  }),
+                  React.createElement("div", {
+                    className: "sfm-reel-scrubber-thumb",
+                    style: { left: `${duration ? (currentTime / duration) * 100 : 0}%` },
                   })
+                ),
+                // Controls Row
+                React.createElement(
+                  "div",
+                  { className: "d-flex justify-content-between align-items-center mt-2" },
+                  React.createElement(
+                    "div",
+                    { className: "d-flex align-items-center gap-3" },
+                    React.createElement(
+                      "button",
+                      {
+                        className: "sfm-reel-play-btn",
+                        onClick: handleTogglePlay,
+                        title: isPlaying ? "Pause (Space)" : "Play (Space)",
+                      },
+                      isPlaying ? "⏸" : "▶"
+                    ),
+                    React.createElement(
+                      "span",
+                      { className: "sfm-reel-time-text" },
+                      `${formatTime(currentTime)} / ${formatTime(duration)}`
+                    )
+                  ),
+                  React.createElement(
+                    "div",
+                    { className: "d-flex align-items-center gap-2" },
+                    React.createElement(
+                      "button",
+                      {
+                        className: "sfm-reel-vol-btn",
+                        onClick: handleToggleMute,
+                        title: isMuted ? "Unmute" : "Mute",
+                      },
+                      isMuted || volume === 0 ? "🔇" : "🔊"
+                    ),
+                    React.createElement("input", {
+                      type: "range",
+                      className: "sfm-reel-vol-slider",
+                      min: 0,
+                      max: 1,
+                      step: 0.05,
+                      value: isMuted ? 0 : volume,
+                      onChange: handleVolumeChange,
+                      title: `Volume: ${Math.round((isMuted ? 0 : volume) * 100)}%`,
+                    })
+                  )
                 )
               )
             )
@@ -2021,6 +2091,24 @@
       const [isSaving, setIsSaving] = useState(false);
       const [saveNotice, setSaveNotice] = useState("");
 
+      useEffect(() => {
+        if (isOpen && settings) {
+          setFormData({
+            default_transcode_method: settings?.default_transcode_method || "direct",
+            fallback_transcode_method: settings?.fallback_transcode_method || "hls",
+            root_library_path: settings?.root_library_path || "",
+            folder_view_mode: settings?.folder_view_mode || "cards",
+            scene_view_mode: settings?.scene_view_mode || "cards",
+            default_sort_field: settings?.default_sort_field || "name",
+            default_sort_direction: settings?.default_sort_direction || "asc",
+            folder_card_size: settings?.folder_card_size || 160,
+            scene_card_size: settings?.scene_card_size || 240,
+            remember_last_path: settings?.remember_last_path !== false,
+            auto_rebuild_tree_on_start: !!settings?.auto_rebuild_tree_on_start,
+          });
+        }
+      }, [isOpen, settings]);
+
       const handleChange = (key, value) => {
         setFormData((prev) => ({ ...prev, [key]: value }));
       };
@@ -2630,7 +2718,7 @@
                   performers { id name }
                   tags { id name }
                   paths { screenshot preview stream }
-                  files { path basename size duration }
+                  files { id path basename size duration video_codec format }
                 }
               }
             }

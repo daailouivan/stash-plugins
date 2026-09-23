@@ -1877,3 +1877,193 @@
   max-width: 80%;
   pointer-events: auto;
 }
+
+/* ==========================================================================
+   Full-Bleed Binge Reel Player & Compact Circular Controls (v2.5.0)
+   ========================================================================== */
+
+.sfm-reel-actions-column {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  z-index: 55;
+  transition: opacity 0.3s cubic-bezier(0.2, 0.9, 0.3, 1);
+  pointer-events: auto;
+}
+
+.sfm-reel-circle-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(20, 24, 34, 0.84);
+  border: 1px solid rgba(136, 192, 208, 0.3);
+  color: #eceff4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.96rem;
+  cursor: pointer;
+  transition: all 0.16s ease;
+  backdrop-filter: blur(6px);
+  text-decoration: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
+}
+
+.sfm-reel-circle-btn:hover:not(:disabled) {
+  background: #88c0d0;
+  color: #0b0d13;
+  transform: scale(1.1);
+  border-color: #88c0d0;
+  box-shadow: 0 6px 18px rgba(136, 192, 208, 0.45);
+}
+
+.sfm-reel-circle-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.sfm-reel-close-circle-btn {
+  background: rgba(20, 24, 34, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+}
+
+.sfm-reel-close-circle-btn:hover {
+  background: rgba(235, 94, 85, 0.92) !important;
+  border-color: #eb5e55 !important;
+  color: #ffffff !important;
+  transform: scale(1.1);
+}
+
+.sfm-reel-spacer-small {
+  width: 20px;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.15);
+  margin: 3px 0;
+}
+
+.sfm-reel-spacer-wide {
+  width: 22px;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.22);
+  margin: 10px 0;
+}
+
+.sfm-reel-counter-badge {
+  background: rgba(15, 18, 26, 0.92);
+  border: 1px solid rgba(136, 192, 208, 0.28);
+  color: #88c0d0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.18rem 0.5rem;
+  border-radius: 10px;
+  letter-spacing: 0.02em;
+  backdrop-filter: blur(4px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+/* Metadata Description Overlay (Elevated above Scrubbing Bar) */
+.sfm-reel-description-overlay {
+  position: absolute;
+  bottom: 84px !important;
+  left: 24px;
+  max-width: calc(100% - 140px);
+  z-index: 35;
+  pointer-events: none;
+  transition: opacity 0.35s cubic-bezier(0.2, 0.9, 0.3, 1);
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.9);
+}
+
+.sfm-badge-codec {
+  background-color: rgba(163, 190, 140, 0.22);
+  color: #a3be8c;
+  font-size: 0.72rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+/* PiP Detached State & Floating Return Pill */
+.sfm-reel-modal-backdrop.sfm-pip-detached {
+  background: transparent !important;
+  pointer-events: none !important;
+  backdrop-filter: none !important;
+  z-index: 9999 !important;
+}
+
+.sfm-reel-modal-dialog.sfm-pip-dialog-detached {
+  position: fixed !important;
+  bottom: 0 !important;
+  right: 0 !important;
+  width: 1px !important;
+  height: 1px !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  overflow: hidden !important;
+}
+
+.sfm-pip-return-pill {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 10001;
+  background: rgba(18, 22, 32, 0.95);
+  border: 1px solid #88c0d0;
+  color: #eceff4;
+  padding: 0.45rem 0.9rem;
+  border-radius: 22px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-size: 0.84rem;
+  font-weight: 500;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+  transition: all 0.2s ease;
+  pointer-events: auto;
+}
+
+.sfm-pip-return-pill:hover {
+  background: #242b3d;
+  border-color: #81a1c1;
+  transform: translateY(-2px);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.75);
+}
+
+.sfm-pip-pill-icon {
+  color: #88c0d0;
+  font-size: 1.1rem;
+}
+
+.sfm-pip-pill-title {
+  max-width: 240px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sfm-pip-pill-action {
+  color: #88c0d0;
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+
+.sfm-pip-pill-close {
+  background: transparent;
+  border: none;
+  color: #d8dee9;
+  font-size: 0.85rem;
+  padding: 0 4px;
+  cursor: pointer;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sfm-pip-pill-close:hover {
+  color: #eb5e55;
+}

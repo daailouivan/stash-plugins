@@ -61,6 +61,15 @@ Eliminate wasted vertical space with compact folder layouts tailored to any libr
 
 ## 📋 Changelog & Development History
 
+### [v2.5.0] — 2026-09-23 12:15:00
+* **MPEG-4 (.mp4) vs H.264 (.mp4) Smart Codec Detection:** Added codec-level inspection querying `video_codec`. MPEG-4 Part 2 / ASP (`mpeg4`, `mp4v`, `divx`, `xvid`) in `.mp4` containers automatically defaults to HLS transcode (as browsers cannot decode MPEG-4 natively), while `h264.mp4` streams directly. Runtime decoder errors also instantly auto-fallback to HLS.
+* **Unified 36px Circular Buttons & Alignment:** Resized all circular buttons to `36px` to match the close button, aligned them vertically along `right: 18px`, starting from the close button at the top.
+* **Increased Spacer Dividers:** Enlarged the divider gaps above and below the Prev/Counter/Next navigation cluster for cleaner visual separation.
+* **TikTok-Style Scroll Threshold:** Re-engineered up/down scrolling with a true 50% threshold. Pulling less than half the screen height snaps the video smoothly back to center; only pulling over half transitions to the adjacent video.
+* **Elevated Metadata Description Overlay:** Moved the file name, format badge, and file size/duration block up (`bottom: 84px`), preventing any overlap with the timeline scrubbing bar.
+* **PiP Redesign — Zero Lingering Player with Seamless Enlarge:** Switching to PiP now completely dismisses the player modal dialog and backdrop so users can browse Stash with no lingering placeholder card. The `<video>` DOM node stays alive in the background; clicking either the floating return pill or the native PiP window's "Enlarge" button seamlessly restores the full player modal.
+* **Synchronized Native Stash Plugin Settings:** Fixed the GraphQL mutation argument from `values` to `input: $input` and added explicit `id: stash_file_manager` in manifest. In-app settings now seamlessly write to and read from Stash's native `config.yml` (`configuration.plugins.stash_file_manager`).
+
 ### [v2.4.0] — 2026-09-23 10:45:00
 * **Fixed Picture-in-Picture (PiP) Implementation:** Resolved broken PiP where an invisible video played in the background. The primary video element is now kept persistently mounted in the DOM, preventing browser PiP session decoupling and background audio desync.
 * **Unified Right-Side Circular Action Bar:** Moved all player function buttons from the top bar into sleek, circular buttons aligned vertically on the right, ordered exactly as: `[Stash ↗] > [VLC 🚀] > [Copy Link 📋] > [Transcode Dropdown ⚡/📺/🔄] > [space] > [Prev ▲] > [Counter 1/15] > [Next ▼] > [space] > [PiP ⧉] > [Fullscreen ⛶]`.

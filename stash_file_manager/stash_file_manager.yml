@@ -1,6 +1,7 @@
+id: stash_file_manager
 name: Path File Manager
 description: Hierarchical directory file-manager navigation for Stash with customizable folder views, Binge-style reel player, draggable PIP player, regex metadata parser, and native tasks.
-version: 2.4.0
+version: 2.5.0
 ui:
   javascript:
     - file_manager.js
@@ -34,7 +35,7 @@ settings:
   fallback_transcode_method:
     displayName: Fallback Transcode Mode
     type: STRING
-    description: "Automatic fallback transcode mode when non-native video formats (.avi, .flv, .wmv, .mpg) are detected: 'hls' (recommended) or 'webm'. Default: hls"
+    description: "Automatic fallback transcode mode when non-native video formats (.avi, .flv, .wmv, .mpg) or non-native codecs (MPEG-4, DivX) are detected: 'hls' (recommended) or 'webm'. Default: hls"
   root_library_path:
     displayName: Root Library Path Override
     type: STRING
