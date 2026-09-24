@@ -3755,6 +3755,15 @@
         );
       }
 
+      const handleSelectAllFolderScenes = useCallback(() => {
+        if (selectedSceneIds.size > 0) {
+          setSelectedSceneIds(new Set());
+        } else {
+          const visibleIds = filteredAndSortedScenes.map((s) => s.id);
+          setSelectedSceneIds(new Set(visibleIds));
+        }
+      }, [selectedSceneIds, filteredAndSortedScenes]);
+
       // Directory Keyboard Shortcuts (Milestone 1)
       useEffect(() => {
         const handleDirectoryKeyDown = (e) => {
@@ -3823,14 +3832,7 @@
         onClose,
       ]);
 
-      const handleSelectAllFolderScenes = () => {
-        if (selectedSceneIds.size > 0) {
-          setSelectedSceneIds(new Set());
-        } else {
-          const visibleIds = filteredAndSortedScenes.map((s) => s.id);
-          setSelectedSceneIds(new Set(visibleIds));
-        }
-      };
+
 
       const segments = currentPath ? currentPath.split("/").filter(Boolean) : [];
 
