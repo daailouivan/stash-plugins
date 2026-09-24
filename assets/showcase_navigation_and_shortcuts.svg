@@ -1,0 +1,238 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 520" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0e1117" />
+      <stop offset="50%" stop-color="#141824" />
+      <stop offset="100%" stop-color="#1a2030" />
+    </linearGradient>
+    <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#88c0d0" />
+      <stop offset="50%" stop-color="#81a1c1" />
+      <stop offset="100%" stop-color="#5e81ac" />
+    </linearGradient>
+    <linearGradient id="cardGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#1e2330" />
+      <stop offset="100%" stop-color="#161a24" />
+    </linearGradient>
+    <filter id="shadow" x="-5%" y="-5%" width="110%" height="115%">
+      <feDropShadow dx="0" dy="6" stdDeviation="10" flood-color="#000000" flood-opacity="0.6" />
+    </filter>
+  </defs>
+
+  <!-- Canvas Background -->
+  <rect width="1100" height="520" rx="12" fill="url(#bgGrad)" stroke="#2e3440" stroke-width="2" />
+  <rect x="0" y="0" width="1100" height="4" fill="url(#accentGrad)" />
+
+  <!-- Header & Title -->
+  <g transform="translate(40, 36)">
+    <text x="0" y="22" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="20" font-weight="800" fill="#eceff4">🧭 Precision Navigation, Aligned Controls &amp; Shortcuts</text>
+    <text x="0" y="44" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="13" fill="#81a1c1">Dedicated folder path control bar, recursive aggregation, dynamic selection bar, and zero-latency keyboard hotkeys.</text>
+  </g>
+
+  <!-- Panel 1: Top Search Bar & Header Line -->
+  <g transform="translate(40, 100)" filter="url(#shadow)">
+    <rect width="1020" height="56" rx="8" fill="#181c25" stroke="#2c3344" stroke-width="1.5" />
+    
+    <!-- Stash Brand -->
+    <g transform="translate(18, 14)">
+      <rect width="28" height="28" rx="6" fill="#88c0d0" fill-opacity="0.15" stroke="#88c0d0" stroke-width="1.2" />
+      <path d="M7 10h4l2 2h8c.6 0 1 .4 1 1v7c0 .6-.4 1-1 1H7c-.6 0-1-.4-1-1v-9c0-.6.4-1 1-1z" fill="#88c0d0" />
+      <text x="36" y="19" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="13" font-weight="700" fill="#eceff4">Stash File Manager</text>
+      <rect x="168" y="3" width="94" height="20" rx="10" fill="#242933" />
+      <text x="215" y="17" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10" fill="#81a1c1" text-anchor="middle">1,428 scenes</text>
+    </g>
+
+    <!-- Center Search Input -->
+    <g transform="translate(360, 12)">
+      <rect width="440" height="32" rx="16" fill="#141720" stroke="#3b4252" stroke-width="1" />
+      <circle cx="20" cy="16" r="5.5" fill="none" stroke="#81a1c1" stroke-width="1.5" />
+      <line x1="24" y1="20" x2="28" y2="24" stroke="#81a1c1" stroke-width="1.5" stroke-linecap="round" />
+      <text x="36" y="20" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11.5" fill="#81a1c1">Search folder or scenes... </text>
+      <rect x="230" y="7" width="96" height="18" rx="4" fill="#242a36" />
+      <text x="278" y="20" font-family="monospace" font-size="10" fill="#d8dee9" text-anchor="middle">Press / to focus</text>
+      <!-- Circular Clear Button -->
+      <circle cx="422" cy="16" r="9" fill="#2e3544" />
+      <text x="422" y="19.5" font-family="sans-serif" font-size="11" fill="#88c0d0" text-anchor="middle" font-weight="700">✕</text>
+    </g>
+
+    <!-- Settings Button -->
+    <g transform="translate(905, 14)">
+      <rect width="95" height="28" rx="6" fill="#242933" stroke="#3b4252" stroke-width="1" />
+      <circle cx="16" cy="14" r="4" fill="none" stroke="#d8dee9" stroke-width="1.5" />
+      <text x="48" y="18" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11" font-weight="600" fill="#d8dee9" text-anchor="middle">⚙ Settings</text>
+    </g>
+  </g>
+
+  <!-- Panel 2: Dedicated Path Control Line -->
+  <g transform="translate(40, 168)" filter="url(#shadow)">
+    <rect width="1020" height="52" rx="8" fill="#181c25" stroke="#282e3d" stroke-width="1.5" />
+
+    <!-- Group 1: Back & Up -->
+    <g transform="translate(14, 13)">
+      <rect width="50" height="26" rx="4" fill="#242933" stroke="#3b4252" stroke-width="1" />
+      <text x="25" y="17" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10.5" fill="#d8dee9" text-anchor="middle">◀ Back</text>
+      <rect x="52" y="0" width="42" height="26" rx="4" fill="#242933" stroke="#3b4252" stroke-width="1" />
+      <text x="73" y="17" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10.5" fill="#d8dee9" text-anchor="middle">▲ Up</text>
+    </g>
+
+    <!-- Group 2: Scan & Grid -->
+    <g transform="translate(114, 13)">
+      <rect width="84" height="26" rx="4" fill="#242933" stroke="#3b4252" stroke-width="1" />
+      <text x="42" y="17" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10.5" fill="#d8dee9" text-anchor="middle">◎ Scan Folder</text>
+      <rect x="86" y="0" width="76" height="26" rx="4" fill="#242933" stroke="#3b4252" stroke-width="1" />
+      <text x="124" y="17" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10.5" fill="#d8dee9" text-anchor="middle">⊞ Stash Grid</text>
+    </g>
+
+    <!-- Breadcrumbs with Truncation -->
+    <g transform="translate(285, 14)">
+      <text x="0" y="17" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11.5" font-weight="700" fill="#88c0d0">📁 Stash</text>
+      <text x="50" y="17" font-family="sans-serif" font-size="12" fill="#4c566a">›</text>
+      <text x="64" y="17" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11.5" fill="#88c0d0">Studios</text>
+      <text x="114" y="17" font-family="sans-serif" font-size="12" fill="#4c566a">›</text>
+      <rect x="125" y="0" width="82" height="24" rx="4" fill="#1c212c" />
+      <text x="166" y="16" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11" fill="#88c0d0" text-anchor="middle">2024 Series…</text>
+      <text x="214" y="17" font-family="sans-serif" font-size="12" fill="#4c566a">›</text>
+      <text x="228" y="17" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11.5" font-weight="700" fill="#eceff4">Episode 01</text>
+      <!-- Tree Stats Pill -->
+      <rect x="306" y="2" width="138" height="20" rx="10" fill="#242933" />
+      <text x="375" y="16" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="9.5" fill="#d8dee9" text-anchor="middle">8 direct · 36 in tree (18.4 GB)</text>
+    </g>
+
+    <!-- Right Sorts -->
+    <g transform="translate(790, 13)">
+      <rect width="105" height="26" rx="4" fill="#141720" stroke="#3b4252" stroke-width="1" />
+      <text x="8" y="17" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10" fill="#81a1c1">Scenes:</text>
+      <text x="52" y="17" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10" fill="#d8dee9">Title (A-Z) ▼</text>
+      <rect x="112" y="0" width="105" height="26" rx="4" fill="#141720" stroke="#3b4252" stroke-width="1" />
+      <text x="120" y="17" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10" fill="#81a1c1">Folders:</text>
+      <text x="166" y="17" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10" fill="#d8dee9">Name (A-Z) ▼</text>
+    </g>
+  </g>
+
+  <!-- Panel 3: Section Headers & Aligned Action Controls -->
+  <g transform="translate(40, 235)" filter="url(#shadow)">
+    <!-- Subfolders Header -->
+    <rect width="1020" height="46" rx="8" fill="#141822" stroke="#282e3d" stroke-width="1.2" />
+    <text x="18" y="28" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="13" font-weight="700" fill="#eceff4">Subfolders</text>
+    <rect x="98" y="13" width="28" height="20" rx="10" fill="#242933" />
+    <text x="112" y="27" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10" fill="#81a1c1" text-anchor="middle">6</text>
+
+    <!-- Subfolder Aligned Pills -->
+    <g transform="translate(138, 11)">
+      <!-- Include Sub-folders -->
+      <rect width="135" height="24" rx="4" fill="#88c0d0" />
+      <text x="67" y="16" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10" font-weight="700" fill="#181c25" text-anchor="middle">Include Sub-folders</text>
+      <!-- Folder Sort First -->
+      <rect x="142" y="0" width="112" height="24" rx="4" fill="#81a1c1" />
+      <text x="198" y="16" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10" font-weight="700" fill="#181c25" text-anchor="middle">Folder Sort First</text>
+      <!-- Hide Empty -->
+      <rect x="261" y="0" width="84" height="24" rx="4" fill="#242933" stroke="#3b4252" stroke-width="1" />
+      <text x="303" y="16" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10" fill="#d8dee9" text-anchor="middle">Hide Empty</text>
+    </g>
+
+    <!-- Subfolders View Switcher -->
+    <g transform="translate(860, 11)">
+      <rect width="144" height="24" rx="4" fill="#1e2330" stroke="#3b4252" stroke-width="1" />
+      <rect x="0" y="0" width="48" height="24" rx="4" fill="#88c0d0" />
+      <text x="24" y="16" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10.5" font-weight="700" fill="#181c25" text-anchor="middle">Cards</text>
+      <text x="72" y="16" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10.5" fill="#81a1c1" text-anchor="middle">List</text>
+      <text x="120" y="16" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10.5" fill="#81a1c1" text-anchor="middle">Details</text>
+    </g>
+  </g>
+
+  <!-- Panel 4: Files / Scenes Header & Floating Bulk Bar Mockup -->
+  <g transform="translate(40, 292)" filter="url(#shadow)">
+    <!-- Files / Scenes Header -->
+    <rect width="1020" height="46" rx="8" fill="#141822" stroke="#282e3d" stroke-width="1.2" />
+    <text x="18" y="28" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="13" font-weight="700" fill="#eceff4">Files / Scenes</text>
+    <rect x="112" y="13" width="34" height="20" rx="10" fill="#242933" />
+    <text x="129" y="27" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10" fill="#81a1c1" text-anchor="middle">36</text>
+
+    <!-- Indicators -->
+    <rect x="156" y="13" width="146" height="20" rx="4" fill="#88c0d0" fill-opacity="0.15" stroke="#88c0d0" stroke-width="1" />
+    <text x="229" y="27" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="9.5" fill="#88c0d0" text-anchor="middle">All Sub-folders Included</text>
+
+    <rect x="308" y="13" width="106" height="20" rx="4" fill="#81a1c1" fill-opacity="0.15" stroke="#81a1c1" stroke-width="1" />
+    <text x="361" y="27" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="9.5" fill="#81a1c1" text-anchor="middle">Folder Sort First</text>
+
+    <!-- Dynamic Select All Button in Header -->
+    <g transform="translate(424, 11)">
+      <rect width="90" height="24" rx="12" fill="#5e81ac" />
+      <text x="45" y="16" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10" font-weight="700" fill="#eceff4" text-anchor="middle">12 Selected</text>
+    </g>
+
+    <!-- Scenes View Switcher -->
+    <g transform="translate(900, 11)">
+      <rect width="104" height="24" rx="4" fill="#1e2330" stroke="#3b4252" stroke-width="1" />
+      <rect x="0" y="0" width="52" height="24" rx="4" fill="#88c0d0" />
+      <text x="26" y="16" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10.5" font-weight="700" fill="#181c25" text-anchor="middle">Cards</text>
+      <text x="78" y="16" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10.5" fill="#81a1c1" text-anchor="middle">Table</text>
+    </g>
+  </g>
+
+  <!-- Bottom Section Split: Floating Bulk Bar (Left) & Keyboard Shortcuts Card (Right) -->
+  <g transform="translate(40, 355)">
+    <!-- Floating Bulk Bar Mockup -->
+    <g transform="translate(0, 20)" filter="url(#shadow)">
+      <rect width="500" height="74" rx="12" fill="#181c25" stroke="#2e3440" stroke-width="1.5" />
+      <text x="18" y="24" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11" font-weight="700" fill="#81a1c1">FLOATING BULK ACTION BAR (BOTTOM)</text>
+      
+      <!-- Inner Floating Bar -->
+      <g transform="translate(18, 32)">
+        <rect width="464" height="34" rx="17" fill="#1e232d" stroke="#3b4252" stroke-width="1" />
+        <!-- Selected Count Button -->
+        <rect x="8" y="5" width="88" height="24" rx="12" fill="#5e81ac" />
+        <text x="52" y="21" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10" font-weight="700" fill="#eceff4" text-anchor="middle">12 Selected</text>
+
+        <!-- Actions -->
+        <g transform="translate(106, 5)">
+          <rect width="84" height="24" rx="4" fill="#88c0d0" />
+          <text x="42" y="16" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10" font-weight="700" fill="#181c25" text-anchor="middle">✎ Batch Edit</text>
+
+          <rect x="88" y="0" width="64" height="24" rx="4" fill="#242933" stroke="#ebcb8b" stroke-width="1" />
+          <text x="120" y="16" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10" fill="#ebcb8b" text-anchor="middle">🔍 Parse</text>
+
+          <rect x="156" y="0" width="84" height="24" rx="4" fill="#242933" stroke="#88c0d0" stroke-width="1" />
+          <text x="198" y="16" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10" fill="#88c0d0" text-anchor="middle">⊞ Stash Grid</text>
+
+          <rect x="244" y="0" width="58" height="24" rx="4" fill="#242933" stroke="#4c566a" stroke-width="1" />
+          <text x="273" y="16" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10" fill="#eceff4" text-anchor="middle">✕ Clear</text>
+        </g>
+      </g>
+    </g>
+
+    <!-- Keyboard Shortcuts Reference Card -->
+    <g transform="translate(525, 10)" filter="url(#shadow)">
+      <rect width="495" height="94" rx="12" fill="#181c25" stroke="#2e3440" stroke-width="1.5" />
+      <text x="18" y="24" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11" font-weight="700" fill="#88c0d0">⚡ DIRECTORY KEYBOARD NAVIGATION SHORTCUTS</text>
+
+      <g transform="translate(18, 38)">
+        <!-- Key 1: / -->
+        <rect x="0" y="0" width="28" height="22" rx="4" fill="#2e3440" stroke="#4c566a" stroke-width="1" />
+        <text x="14" y="15" font-family="monospace" font-size="12" font-weight="700" fill="#88c0d0" text-anchor="middle">/</text>
+        <text x="36" y="16" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10.5" fill="#d8dee9">Focus Search</text>
+
+        <!-- Key 2: Backspace -->
+        <rect x="120" y="0" width="76" height="22" rx="4" fill="#2e3440" stroke="#4c566a" stroke-width="1" />
+        <text x="158" y="15" font-family="monospace" font-size="10" font-weight="700" fill="#88c0d0" text-anchor="middle">Backspace</text>
+        <text x="204" y="16" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10.5" fill="#d8dee9">Go Up / Parent</text>
+
+        <!-- Key 3: Ctrl+A -->
+        <rect x="290" y="0" width="60" height="22" rx="4" fill="#2e3440" stroke="#4c566a" stroke-width="1" />
+        <text x="320" y="15" font-family="monospace" font-size="10" font-weight="700" fill="#88c0d0" text-anchor="middle">Ctrl + A</text>
+        <text x="358" y="16" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10.5" fill="#d8dee9">Select All</text>
+
+        <!-- Key 4: Esc -->
+        <g transform="translate(0, 26)">
+          <rect x="0" y="0" width="38" height="22" rx="4" fill="#2e3440" stroke="#4c566a" stroke-width="1" />
+          <text x="19" y="15" font-family="monospace" font-size="10" font-weight="700" fill="#88c0d0" text-anchor="middle">Esc</text>
+          <text x="46" y="15" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10.5" fill="#d8dee9">Clear Selection / Dismiss Search</text>
+
+          <rect x="250" y="0" width="72" height="22" rx="4" fill="#2e3440" stroke="#4c566a" stroke-width="1" />
+          <text x="286" y="15" font-family="monospace" font-size="10" font-weight="700" fill="#88c0d0" text-anchor="middle">Alt + ←</text>
+          <text x="330" y="15" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10.5" fill="#d8dee9">Navigate Back</text>
+        </g>
+      </g>
+    </g>
+  </g>
+</svg>

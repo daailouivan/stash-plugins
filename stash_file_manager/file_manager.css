@@ -55,6 +55,26 @@
   white-space: nowrap;
 }
 
+.sfm-workspace-settings-btn {
+  background: transparent;
+  border: 1px solid #3b4252;
+  color: #d8dee9;
+  font-size: 0.95rem;
+  padding: 0.35rem 0.85rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.sfm-workspace-settings-btn:hover {
+  background-color: #3b4252;
+  border-color: #88c0d0;
+  color: #eceff4;
+}
+
 .sfm-workspace-close {
   background: transparent;
   border: 1px solid #3b4252;
@@ -124,6 +144,10 @@
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .sfm-crumb-btn:hover {
@@ -136,6 +160,7 @@
   color: #eceff4 !important;
   font-weight: 600;
   cursor: default;
+  max-width: 240px;
 }
 
 .sfm-crumb-separator {
@@ -220,14 +245,30 @@
 
 .sfm-search-clear {
   position: absolute;
-  right: 0.65rem;
-  background: none;
+  right: 0.55rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
   border: none;
   color: #81a1c1;
   cursor: pointer;
-  font-size: 1.15rem;
-  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   padding: 0;
+  transition: background-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
+}
+
+.sfm-search-clear:hover {
+  background-color: rgba(136, 192, 208, 0.25);
+  color: #eceff4;
+}
+
+.sfm-search-clear:active {
+  transform: translateY(-50%) scale(0.92);
 }
 
 .sfm-sort-group {
@@ -2141,48 +2182,51 @@
 
 
 /* ==========================================================================
-   Matching Pill Dimensions for Subfolder & Folder-Sort Buttons & Indicators
+   Header Toggle Buttons Matching Badge Size
    ========================================================================== */
 
-.sfm-pill-subfolders {
-  width: 176px;
-  height: 24px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.8rem;
+button.badge.sfm-badge-btn {
+  border: 1px solid transparent;
+  outline: none;
+  cursor: pointer;
+  user-select: none;
+  font-family: inherit;
+  font-size: 75%;
   line-height: 1;
-  padding: 0 0.5rem;
-  box-sizing: border-box;
-  text-align: center;
-  vertical-align: middle;
-  border-radius: 4px;
+  padding: 0.25em 0.4em;
+  vertical-align: baseline;
+  display: inline-block;
+  transition: opacity 0.15s ease, background-color 0.15s ease;
 }
 
-.sfm-pill-foldersort {
-  width: 132px;
-  height: 24px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.8rem;
-  line-height: 1;
-  padding: 0 0.5rem;
-  box-sizing: border-box;
-  text-align: center;
-  vertical-align: middle;
-  border-radius: 4px;
+button.badge.sfm-badge-btn:hover {
+  opacity: 0.85;
 }
 
-.sfm-pill-selectall {
-  height: 24px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+
+/* ==========================================================================
+   Header Centered Search Wrap
+   ========================================================================== */
+
+.sfm-header-search-wrap {
+  flex: 0 1 480px;
+  min-width: 220px;
+  margin: 0 1rem;
+}
+
+.sfm-bulk-count-btn {
+  border-radius: 20px;
   font-size: 0.8rem;
-  line-height: 1;
-  padding: 0 0.55rem;
-  box-sizing: border-box;
-  vertical-align: middle;
-  border-radius: 4px;
+  letter-spacing: 0.02em;
+  padding: 0.2rem 0.65rem !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+  transition: transform 0.1s ease, background-color 0.15s ease;
+}
+
+.sfm-bulk-count-btn:hover {
+  transform: scale(1.03);
+}
+
+.sfm-bulk-count-btn:active {
+  transform: scale(0.97);
 }

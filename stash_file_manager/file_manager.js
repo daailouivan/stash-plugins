@@ -308,11 +308,130 @@
       );
     }
 
+    function IconScan({ size = 13, color = "currentColor" }) {
+      return React.createElement(
+        "svg",
+        {
+          width: size,
+          height: size,
+          viewBox: "0 0 24 24",
+          fill: "none",
+          stroke: color,
+          strokeWidth: "2",
+          strokeLinecap: "round",
+          strokeLinejoin: "round",
+          style: { display: "inline-block", verticalAlign: "-2px", marginRight: "5px" },
+        },
+        React.createElement("circle", { cx: "12", cy: "12", r: "2", fill: "currentColor" }),
+        React.createElement("path", { d: "M16.24 7.76a6 6 0 0 1 0 8.49m-8.48 0a6 6 0 0 1 0-8.49m11.31-2.83a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14" })
+      );
+    }
+
+    function IconGrid({ size = 13, color = "currentColor" }) {
+      return React.createElement(
+        "svg",
+        {
+          width: size,
+          height: size,
+          viewBox: "0 0 24 24",
+          fill: "none",
+          stroke: color,
+          strokeWidth: "2",
+          strokeLinecap: "round",
+          strokeLinejoin: "round",
+          style: { display: "inline-block", verticalAlign: "-2px", marginRight: "5px" },
+        },
+        React.createElement("rect", { x: "3", y: "3", width: "7", height: "7", rx: "1.5" }),
+        React.createElement("rect", { x: "14", y: "3", width: "7", height: "7", rx: "1.5" }),
+        React.createElement("rect", { x: "14", y: "14", width: "7", height: "7", rx: "1.5" }),
+        React.createElement("rect", { x: "3", y: "14", width: "7", height: "7", rx: "1.5" })
+      );
+    }
+
+    function IconGear({ size = 14, color = "currentColor" }) {
+      return React.createElement(
+        "svg",
+        {
+          width: size,
+          height: size,
+          viewBox: "0 0 24 24",
+          fill: "none",
+          stroke: color,
+          strokeWidth: "2",
+          strokeLinecap: "round",
+          strokeLinejoin: "round",
+          style: { display: "inline-block", verticalAlign: "-1px", marginRight: "4px" },
+        },
+        React.createElement("circle", { cx: "12", cy: "12", r: "3" }),
+        React.createElement("path", {
+          d: "M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z",
+        })
+      );
+    }
+
+    function IconSearch({ size = 12, color = "currentColor" }) {
+      return React.createElement(
+        "svg",
+        {
+          width: size,
+          height: size,
+          viewBox: "0 0 24 24",
+          fill: "none",
+          stroke: color,
+          strokeWidth: "2",
+          strokeLinecap: "round",
+          strokeLinejoin: "round",
+          style: { display: "inline-block", verticalAlign: "-1px", marginRight: "4px" },
+        },
+        React.createElement("circle", { cx: "11", cy: "11", r: "8" }),
+        React.createElement("line", { x1: "21", y1: "21", x2: "16.65", y2: "16.65" })
+      );
+    }
+
+    function IconEdit({ size = 12, color = "currentColor" }) {
+      return React.createElement(
+        "svg",
+        {
+          width: size,
+          height: size,
+          viewBox: "0 0 24 24",
+          fill: "none",
+          stroke: color,
+          strokeWidth: "2",
+          strokeLinecap: "round",
+          strokeLinejoin: "round",
+          style: { display: "inline-block", verticalAlign: "-1px", marginRight: "4px" },
+        },
+        React.createElement("path", { d: "M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" }),
+        React.createElement("path", { d: "M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" })
+      );
+    }
+
+    function IconX({ size = 12, color = "currentColor", className = "" }) {
+      return React.createElement(
+        "svg",
+        {
+          width: size,
+          height: size,
+          viewBox: "0 0 24 24",
+          fill: "none",
+          stroke: color,
+          strokeWidth: "2.5",
+          strokeLinecap: "round",
+          strokeLinejoin: "round",
+          className: className || undefined,
+          style: { display: "inline-block", verticalAlign: "-1px" },
+        },
+        React.createElement("line", { x1: "18", y1: "6", x2: "6", y2: "18" }),
+        React.createElement("line", { x1: "6", y1: "6", x2: "18", y2: "18" })
+      );
+    }
+
     // In-memory Path Trie Data Structure (Feature 5)
     class PathTrie {
       constructor() {
         this.root = {
-          name: "Root",
+          name: "Stash",
           fullPath: "",
           folders: {},
           directScenes: [],
@@ -2802,9 +2921,9 @@
                     value: formData.folder_view_mode,
                     onChange: (e) => handleChange("folder_view_mode", e.target.value),
                   },
-                  React.createElement("option", { value: "cards" }, "田 Cards (Thumbnails)"),
-                  React.createElement("option", { value: "list" }, "☰ List (Compact)"),
-                  React.createElement("option", { value: "details" }, "☷ Details (Table with Stats)")
+                  React.createElement("option", { value: "cards" }, "Cards (Thumbnails)"),
+                  React.createElement("option", { value: "list" }, "List (Compact)"),
+                  React.createElement("option", { value: "details" }, "Details (Table with Stats)")
                 )
               ),
               React.createElement(
@@ -2818,8 +2937,8 @@
                     value: formData.scene_view_mode,
                     onChange: (e) => handleChange("scene_view_mode", e.target.value),
                   },
-                  React.createElement("option", { value: "cards" }, "⊞ Cards (16:9 Grid)"),
-                  React.createElement("option", { value: "table" }, "☰ Table (Metadata Columns)")
+                  React.createElement("option", { value: "cards" }, "Cards (16:9 Grid)"),
+                  React.createElement("option", { value: "table" }, "Table (Metadata Columns)")
                 )
               )
             ),
@@ -3032,6 +3151,7 @@
       
       // Feature 2: Search & Sort
       const [searchQuery, setSearchQuery] = useState("");
+      const searchInputRef = useRef(null);
       const [folderSort, setFolderSort] = useState("name_asc");
       const [sceneSort, setSceneSort] = useState("title_asc");
 
@@ -3518,7 +3638,7 @@
       }, [currentNode, includeSubfolders, searchQuery, sceneSort, folderSort, sortByFolderFirst]);
 
       const allDescendantIds = currentNode ? Array.from(currentNode.allSceneIds) : [];
-      const currentFolderName = currentPath.split("/").filter(Boolean).pop() || "Root";
+      const currentFolderName = currentPath.split("/").filter(Boolean).pop() || "Stash";
 
       const handleAutoDetect = async () => {
         if (!currentPath) return;
@@ -3579,6 +3699,10 @@
       };
 
       const openInNativeGrid = () => {
+        if (!currentPath) {
+          window.open("/scenes", "_blank");
+          return;
+        }
         const filterCriterion = {
           type: "path",
           value: currentPath,
@@ -3595,16 +3719,17 @@
 
       // Milestone 3: Folder-Scoped Metadata Scan
       const handleScanFolder = async () => {
-        if (!currentPath) return;
-        setNotification(`Starting Stash filesystem scan for: ${currentPath}...`);
+        const targetPath = currentPath || "";
+        const label = targetPath ? `"${targetPath}"` : "all Stash libraries";
+        setNotification(`Starting Stash filesystem scan for: ${label}...`);
         try {
           const mutation = `
             mutation ScanPath($paths: [String!]) {
               metadataScan(input: { paths: $paths })
             }
           `;
-          await gqlFetch(mutation, { paths: [currentPath] });
-          setNotification(`Stash scan task triggered for "${currentPath}". Check Settings -> Tasks.`);
+          await gqlFetch(mutation, { paths: targetPath ? [targetPath] : [] });
+          setNotification(`Stash scan task triggered for ${label}. Check Settings -> Tasks.`);
         } catch (e) {
           setNotification(`Scan failed: ${e.message}`);
         }
@@ -3630,6 +3755,75 @@
         );
       }
 
+      // Directory Keyboard Shortcuts (Milestone 1)
+      useEffect(() => {
+        const handleDirectoryKeyDown = (e) => {
+          if (playingScene || showSettingsModal || showBatchModal || showParserModal || showHelpModal) {
+            return;
+          }
+
+          const activeEl = document.activeElement;
+          const isInputActive = activeEl && (["INPUT", "TEXTAREA", "SELECT"].includes(activeEl.tagName) || activeEl.isContentEditable);
+
+          if (e.key === "Escape") {
+            if (isInputActive) {
+              if (searchQuery) {
+                setSearchQuery("");
+              }
+              activeEl.blur();
+              return;
+            }
+            if (selectedSceneIds.size > 0) {
+              e.preventDefault();
+              setSelectedSceneIds(new Set());
+              return;
+            }
+            if (onClose) {
+              e.preventDefault();
+              onClose();
+              return;
+            }
+          }
+
+          if (isInputActive) return;
+
+          if (e.key === "/" && !e.ctrlKey && !e.metaKey && !e.altKey) {
+            e.preventDefault();
+            searchInputRef.current?.focus();
+            return;
+          }
+
+          if (e.key === "Backspace" || (e.altKey && e.key === "ArrowLeft")) {
+            if (currentPath) {
+              e.preventDefault();
+              handleGoUpOneLevel();
+              return;
+            }
+          }
+
+          if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "a") {
+            e.preventDefault();
+            handleSelectAllFolderScenes();
+            return;
+          }
+        };
+
+        window.addEventListener("keydown", handleDirectoryKeyDown);
+        return () => window.removeEventListener("keydown", handleDirectoryKeyDown);
+      }, [
+        playingScene,
+        showSettingsModal,
+        showBatchModal,
+        showParserModal,
+        showHelpModal,
+        currentPath,
+        searchQuery,
+        selectedSceneIds,
+        handleGoUpOneLevel,
+        handleSelectAllFolderScenes,
+        onClose,
+      ]);
+
       const handleSelectAllFolderScenes = () => {
         if (selectedSceneIds.size > 0) {
           setSelectedSceneIds(new Set());
@@ -3648,6 +3842,7 @@
         React.createElement(
           "div",
           { className: "sfm-workspace-header" },
+          // Left: Workspace Branding
           React.createElement(
             "div",
             { className: "sfm-workspace-title" },
@@ -3655,108 +3850,63 @@
             React.createElement("span", { className: "ml-2" }, "Stash File Manager"),
             trie && React.createElement("span", { className: "badge badge-dark ml-2 text-muted small" }, `${trie.root.allSceneIds.size} total scenes`)
           ),
-          onClose && React.createElement("button", { className: "sfm-workspace-close", onClick: onClose }, "✕ Close")
+          // Center: Live Search Box
+          React.createElement(
+            "div",
+            { className: "sfm-header-search-wrap" },
+            React.createElement(
+              "div",
+              { className: "sfm-search-wrap" },
+              React.createElement(
+                "span",
+                { className: "sfm-search-icon" },
+                React.createElement(IconSearch, { size: 14, color: "#81a1c1" })
+              ),
+              React.createElement("input", {
+                ref: searchInputRef,
+                type: "text",
+                className: "sfm-search-input",
+                placeholder: "Search folder or scenes by title, studio, performer... (Press / to focus)",
+                value: searchQuery,
+                onChange: (e) => setSearchQuery(e.target.value),
+              }),
+              searchQuery &&
+                React.createElement(
+                  "button",
+                  {
+                    type: "button",
+                    className: "sfm-search-clear",
+                    onClick: () => {
+                      setSearchQuery("");
+                      searchInputRef.current?.focus();
+                    },
+                    title: "Clear search (Esc)",
+                  },
+                  React.createElement(IconX, { size: 10, color: "currentColor" })
+                )
+            )
+          ),
+          // Right: Settings & Close
+          React.createElement(
+            "div",
+            { className: "d-flex align-items-center gap-2" },
+            React.createElement(
+              "button",
+              {
+                className: "sfm-workspace-settings-btn",
+                onClick: () => setShowSettingsModal(true),
+                title: "Stash Settings & Plugin Tasks",
+              },
+              React.createElement(IconGear, { size: 14, color: "currentColor" }),
+              "Settings"
+            ),
+            onClose && React.createElement("button", { className: "sfm-workspace-close", onClick: onClose }, "✕ Close")
+          )
         ),
         // Scrollable Body
         React.createElement(
           "div",
           { className: "sfm-workspace-content" },
-          // Top Command Bar: Search, Filters, Sorting & Global Tools
-          React.createElement(
-            "div",
-            { className: "sfm-unified-bar mb-3" },
-            React.createElement(
-              "div",
-              { className: "sfm-bar-filter-row d-flex align-items-center justify-content-between flex-wrap gap-2" },
-              // Left: Live Search & Sorts
-              React.createElement(
-                "div",
-                { className: "d-flex align-items-center flex-wrap gap-2" },
-                React.createElement(
-                  "div",
-                  { className: "sfm-search-wrap" },
-                  React.createElement("span", { className: "sfm-search-icon" }, "🔍"),
-                  React.createElement("input", {
-                    type: "text",
-                    className: "sfm-search-input",
-                    placeholder: "Search folder or scenes by title, studio, performer...",
-                    value: searchQuery,
-                    onChange: (e) => setSearchQuery(e.target.value),
-                  }),
-                  searchQuery &&
-                    React.createElement(
-                      "button",
-                      { className: "sfm-search-clear", onClick: () => setSearchQuery("") },
-                      "×"
-                    )
-                ),
-              ),
-              // Right: Action Tools & Options
-              React.createElement(
-                "div",
-                { className: "sfm-actions-group d-flex align-items-center flex-wrap gap-2" },
-                React.createElement(
-                  "label",
-                  { className: "sfm-checkbox-label mb-0" },
-                  React.createElement("input", {
-                    type: "checkbox",
-                    checked: hideEmpty,
-                    onChange: (e) => handleToggleHideEmpty(e.target.checked),
-                  }),
-                  "Hide Empty"
-                ),
-                currentPath &&
-                  React.createElement(
-                    "div",
-                    { className: "btn-group btn-group-sm mr-1" },
-                    React.createElement(
-                      "button",
-                      { className: "btn btn-sm btn-outline-warning", onClick: () => setShowParserModal(true), title: "Parse Filenames with Regex" },
-                      "🔍 Parse"
-                    ),
-                    React.createElement(
-                      "button",
-                      { className: "btn btn-sm btn-info", onClick: handleAutoDetect, title: "Auto-detect Studio & Performers from folder name" },
-                      "⚡ Auto-Detect"
-                    ),
-                    React.createElement(
-                      "button",
-                      { className: "btn btn-sm btn-primary", onClick: () => setShowBatchModal(true), title: "Batch Edit Scenes" },
-                      "✏️ Batch Edit"
-                    )
-                  ),
-                currentPath &&
-                  React.createElement(
-                    "button",
-                    { className: "btn btn-sm btn-outline-success", onClick: handleScanFolder, title: "Trigger Stash filesystem scan on this folder path" },
-                    "📡 Scan Folder"
-                  ),
-                React.createElement(
-                  "button",
-                  { className: "btn btn-sm btn-outline-secondary", onClick: handleRescan, title: "Clear cache and rebuild tree" },
-                  "🔄 Rescan"
-                ),
-                currentPath &&
-                  React.createElement(
-                    "button",
-                    { className: "btn btn-sm btn-outline-info", onClick: openInNativeGrid, title: "Open in Stash Native Grid" },
-                    "↗️ Grid"
-                  ),
-                React.createElement(
-                  "button",
-                  { className: "btn btn-sm btn-outline-light", onClick: () => setShowSettingsModal(true), title: "Stash Settings & Plugin Tasks" },
-                  "⚙️ Settings"
-                )
-              )
-            )
-          ),
-          notification &&
-            React.createElement(
-              "div",
-              { className: "alert alert-info alert-dismissible fade show mb-3" },
-              notification,
-              React.createElement("button", { className: "close", onClick: () => setNotification("") }, "×")
-            ),
           // Folder Navigation Control Line (Back, Up, Root, Path Breadcrumbs & Tree Stats placed just above Subfolders)
           React.createElement(
             "div",
@@ -3789,10 +3939,36 @@
                 )
               ),
               React.createElement(
+                "div",
+                { className: "btn-group btn-group-sm mr-2 sfm-nav-actions-group" },
+                React.createElement(
+                  "button",
+                  {
+                    type: "button",
+                    className: "btn btn-sm btn-outline-secondary py-0 px-2",
+                    onClick: handleScanFolder,
+                    title: currentPath ? "Trigger Stash filesystem scan on this folder path" : "Trigger Stash filesystem scan on all libraries",
+                  },
+                  React.createElement(IconScan, { size: 13, color: "currentColor" }),
+                  "Scan Folder"
+                ),
+                React.createElement(
+                  "button",
+                  {
+                    type: "button",
+                    className: "btn btn-sm btn-outline-secondary py-0 px-2",
+                    onClick: openInNativeGrid,
+                    title: currentPath ? "Open this folder in Stash native scenes grid (new tab)" : "Open Stash native scenes grid (new tab)",
+                  },
+                  React.createElement(IconGrid, { size: 13, color: "currentColor" }),
+                  "Stash Grid"
+                )
+              ),
+              React.createElement(
                 "button",
-                { className: `sfm-crumb-btn ${!currentPath ? "sfm-crumb-active" : ""}`, onClick: () => navigateToFolder(""), title: "Return to Root" },
+                { className: `sfm-crumb-btn ${!currentPath ? "sfm-crumb-active" : ""}`, onClick: () => navigateToFolder(""), title: "Return to Stash Root" },
                 React.createElement(IconFolder, { size: 16, color: "#88c0d0" }),
-                React.createElement("span", { className: "ml-1 font-weight-bold" }, "Root")
+                React.createElement("span", { className: "ml-1 font-weight-bold" }, "Stash")
               ),
               segments.map((seg, idx) => {
                 const p = segments.slice(0, idx + 1).join("/");
@@ -3806,6 +3982,7 @@
                     {
                       className: `sfm-crumb-btn ${isLast ? "sfm-crumb-active" : ""}`,
                       onClick: () => navigateToFolder(p),
+                      title: seg,
                     },
                     seg
                   )
@@ -3815,7 +3992,34 @@
                 "span",
                 { className: "sfm-stat-pill ml-2 badge badge-dark font-weight-normal" },
                 `${currentNode ? currentNode.directScenes.length : 0} direct · ${allDescendantIds.length} in tree (${formatBytes(currentNode?.totalSize)})`
-              )
+              ),
+              (currentPath || selectedSceneIds.size > 0 || (currentNode && currentNode.directScenes && currentNode.directScenes.length > 0)) &&
+                React.createElement(
+                  "div",
+                  { className: "btn-group btn-group-sm ml-2" },
+                  React.createElement(
+                    "button",
+                    {
+                      type: "button",
+                      className: "btn btn-sm btn-outline-secondary py-0 px-2",
+                      onClick: () => setShowParserModal(true),
+                      title: "Parse Filenames with Regex",
+                    },
+                    React.createElement(IconSearch, { size: 13, color: "currentColor" }),
+                    "Parse"
+                  ),
+                  React.createElement(
+                    "button",
+                    {
+                      type: "button",
+                      className: "btn btn-sm btn-outline-secondary py-0 px-2",
+                      onClick: () => setShowBatchModal(true),
+                      title: "Batch Edit Scenes",
+                    },
+                    React.createElement(IconEdit, { size: 13, color: "currentColor" }),
+                    "Batch Edit"
+                  )
+                )
             ),
             React.createElement(
               "div",
@@ -3887,7 +4091,7 @@
                     "button",
                     {
                       type: "button",
-                      className: `btn btn-sm ${includeSubfolders ? "btn-info" : "btn-outline-secondary"} py-0 px-2 ml-2 sfm-pill-subfolders`,
+                      className: `badge ${includeSubfolders ? "badge-info" : "badge-secondary"} sfm-badge-btn ml-2 font-weight-normal`,
                       onClick: (e) => {
                         e.stopPropagation();
                         handleToggleIncludeSubfolders(!includeSubfolders);
@@ -3900,7 +4104,7 @@
                     "button",
                     {
                       type: "button",
-                      className: `btn btn-sm ${sortByFolderFirst ? "btn-info" : "btn-outline-secondary"} py-0 px-2 ml-2 sfm-pill-foldersort`,
+                      className: `badge ${sortByFolderFirst ? "badge-info" : "badge-secondary"} sfm-badge-btn ml-2 font-weight-normal`,
                       onClick: (e) => {
                         e.stopPropagation();
                         handleToggleSortByFolderFirst(!sortByFolderFirst);
@@ -3908,6 +4112,19 @@
                       title: "When Include Sub-folders is enabled, group and sort scenes by folder order first, then apply scene sorting within each folder",
                     },
                     "Folder Sort First"
+                  ),
+                  React.createElement(
+                    "button",
+                    {
+                      type: "button",
+                      className: `badge ${hideEmpty ? "badge-info" : "badge-secondary"} sfm-badge-btn ml-2 font-weight-normal`,
+                      onClick: (e) => {
+                        e.stopPropagation();
+                        handleToggleHideEmpty(!hideEmpty);
+                      },
+                      title: "Hide empty subfolders",
+                    },
+                    "Hide Empty"
                   )
                 ),
                 !isSubfoldersCollapsed &&
@@ -3960,7 +4177,7 @@
                           onClick: () => { setIsSubfoldersCollapsed(false); handleSetFolderViewMode("cards"); },
                           title: "Compact Cards View",
                         },
-                        "田 Cards"
+                        "Cards"
                       ),
                       React.createElement(
                         "button",
@@ -3969,7 +4186,7 @@
                           onClick: () => { setIsSubfoldersCollapsed(false); handleSetFolderViewMode("list"); },
                           title: "Compact List View",
                         },
-                        "☰ List"
+                        "List"
                       ),
                       React.createElement(
                         "button",
@@ -3978,7 +4195,7 @@
                           onClick: () => { setIsSubfoldersCollapsed(false); handleSetFolderViewMode("detail"); },
                           title: "Detail Table View",
                         },
-                        "☷ Details"
+                        "Details"
                       )
                     )
                   )
@@ -4160,21 +4377,10 @@
                       React.createElement("span", { className: "text-muted small ml-2 font-italic" }, "(collapsed)")
                   ),
                   !isFilesCollapsed &&
-                    React.createElement(
-                      "button",
-                      {
-                        type: "button",
-                        className: `btn btn-sm ${selectedSceneIds.size > 0 ? "btn-primary font-weight-bold" : "btn-outline-secondary"} py-0 px-2 ml-2 sfm-pill-selectall`,
-                        onClick: handleSelectAllFolderScenes,
-                        title: selectedSceneIds.size > 0 ? `Click to deselect all (${selectedSceneIds.size} selected)` : "Select all visible scenes in folder",
-                      },
-                      selectedSceneIds.size > 0 ? `${selectedSceneIds.size} Selected` : "Select All"
-                    ),
-                  !isFilesCollapsed &&
                     includeSubfolders &&
                     React.createElement(
                       "span",
-                      { className: "badge badge-info ml-2 py-0 px-2 font-weight-normal sfm-pill-subfolders" },
+                      { className: "badge badge-info ml-2 font-weight-normal" },
                       "All Sub-folders Included"
                     ),
                   !isFilesCollapsed &&
@@ -4183,10 +4389,21 @@
                     React.createElement(
                       "span",
                       {
-                        className: "badge badge-info ml-2 py-0 px-2 font-weight-normal sfm-pill-foldersort",
+                        className: "badge badge-secondary ml-1 font-weight-normal",
                         title: "Scenes ordered by folder sort first, then sorted within each folder",
                       },
                       "Folder Sort First"
+                    ),
+                  !isFilesCollapsed &&
+                    React.createElement(
+                      "button",
+                      {
+                        type: "button",
+                        className: `btn btn-sm ${selectedSceneIds.size > 0 ? "btn-primary font-weight-bold" : "btn-outline-secondary"} py-0 px-2 ml-2`,
+                        onClick: handleSelectAllFolderScenes,
+                        title: selectedSceneIds.size > 0 ? `Click to deselect all (${selectedSceneIds.size} selected)` : "Select all visible scenes in folder",
+                      },
+                      selectedSceneIds.size > 0 ? `${selectedSceneIds.size} Selected` : "Select All"
                     )
                 ),
                 !isFilesCollapsed &&
@@ -4221,7 +4438,7 @@
                           onClick: () => handleToggleViewMode("grid"),
                           title: "Grid Card View",
                         },
-                        "⊞ Cards"
+                        "Cards"
                       ),
                       React.createElement(
                         "button",
@@ -4230,7 +4447,7 @@
                           onClick: () => handleToggleViewMode("list"),
                           title: "Detailed Table View",
                         },
-                        "☰ Table"
+                        "Table"
                       )
                     )
                   )
@@ -4274,7 +4491,7 @@
               React.createElement("h5", null, searchQuery ? "No matching folders or scenes found." : "This folder contains no scanned media files."),
               searchQuery
                 ? React.createElement("button", { className: "btn btn-outline-secondary mt-2", onClick: () => setSearchQuery("") }, "Clear Search")
-                : React.createElement("button", { className: "btn btn-outline-secondary mt-2", onClick: () => navigateToFolder("") }, "Return to Root")
+                : React.createElement("button", { className: "btn btn-outline-secondary mt-2", onClick: () => navigateToFolder("") }, "Return to Stash")
             ),
           // Floating Bulk Action Bar (Milestone 1)
           selectedSceneIds.size > 0 &&
@@ -4285,9 +4502,14 @@
                 "div",
                 { className: "sfm-bulk-inner" },
                 React.createElement(
-                  "span",
-                  { className: "badge badge-info py-1 px-2 font-weight-bold" },
-                  `${selectedSceneIds.size} selected`
+                  "button",
+                  {
+                    type: "button",
+                    className: "btn btn-sm btn-primary font-weight-bold py-1 px-2 sfm-bulk-count-btn",
+                    onClick: handleSelectAllFolderScenes,
+                    title: `Click to deselect all (${selectedSceneIds.size} selected)`,
+                  },
+                  `${selectedSceneIds.size} Selected`
                 ),
                 React.createElement(
                   "div",
@@ -4299,7 +4521,8 @@
                       onClick: () => setShowBatchModal(true),
                       title: "Batch edit selected scenes",
                     },
-                    "✏️ Bulk Edit"
+                    React.createElement(IconEdit, { size: 13, className: "mr-1" }),
+                    "Batch Edit"
                   ),
                   React.createElement(
                     "button",
@@ -4308,7 +4531,8 @@
                       onClick: () => setShowParserModal(true),
                       title: "Regex parse selected scenes",
                     },
-                    "🔍 Parse"
+                    React.createElement(IconSearch, { size: 13, className: "mr-1" }),
+                    "Parse"
                   ),
                   React.createElement(
                     "button",
@@ -4325,16 +4549,18 @@
                       },
                       title: "Open selected in Stash native grid",
                     },
-                    "↗️ Grid"
+                    React.createElement(IconGrid, { size: 13, className: "mr-1" }),
+                    "Stash Grid"
                   ),
                   React.createElement(
                     "button",
                     {
                       className: "btn btn-sm btn-outline-light",
                       onClick: handleClearSelection,
-                      title: "Clear selection",
+                      title: "Clear selection (Esc)",
                     },
-                    "✕ Clear"
+                    React.createElement(IconX, { size: 12, className: "mr-1" }),
+                    "Clear"
                   )
                 )
               )
