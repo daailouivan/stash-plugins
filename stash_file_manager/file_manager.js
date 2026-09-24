@@ -3735,26 +3735,6 @@
         }
       };
 
-      if (loading) {
-        return React.createElement(
-          "div",
-          { className: "sfm-workspace-overlay" },
-          React.createElement(
-            "div",
-            { className: "sfm-workspace-header" },
-            React.createElement("div", { className: "sfm-workspace-title" }, React.createElement(IconFolder, { size: 20, color: "#88c0d0" }), React.createElement("span", { className: "ml-2" }, "Stash File Manager")),
-            onClose && React.createElement("button", { className: "sfm-workspace-close", onClick: onClose }, "✕ Close")
-          ),
-          React.createElement(
-            "div",
-            { className: "sfm-workspace-content text-center py-5" },
-            React.createElement("div", { className: "spinner-border text-info mb-3", style: { width: "3rem", height: "3rem" } }),
-            React.createElement("h4", null, "Indexing File System Hierarchy..."),
-            React.createElement("p", { className: "text-muted" }, statusText)
-          )
-        );
-      }
-
       const handleSelectAllFolderScenes = useCallback(() => {
         if (selectedSceneIds.size > 0) {
           setSelectedSceneIds(new Set());
@@ -3767,7 +3747,7 @@
       // Directory Keyboard Shortcuts (Milestone 1)
       useEffect(() => {
         const handleDirectoryKeyDown = (e) => {
-          if (playingScene || showSettingsModal || showBatchModal || showParserModal) {
+          if (loading || playingScene || showSettingsModal || showBatchModal || showParserModal) {
             return;
           }
 
@@ -3820,6 +3800,7 @@
         window.addEventListener("keydown", handleDirectoryKeyDown);
         return () => window.removeEventListener("keydown", handleDirectoryKeyDown);
       }, [
+        loading,
         playingScene,
         showSettingsModal,
         showBatchModal,
@@ -3831,6 +3812,28 @@
         handleSelectAllFolderScenes,
         onClose,
       ]);
+
+      if (loading) {
+        return React.createElement(
+          "div",
+          { className: "sfm-workspace-overlay" },
+          React.createElement(
+            "div",
+            { className: "sfm-workspace-header" },
+            React.createElement("div", { className: "sfm-workspace-title" }, React.createElement(IconFolder, { size: 20, color: "#88c0d0" }), React.createElement("span", { className: "ml-2" }, "Stash File Manager")),
+            onClose && React.createElement("button", { className: "sfm-workspace-close", onClick: onClose }, "✕ Close")
+          ),
+          React.createElement(
+            "div",
+            { className: "sfm-workspace-content text-center py-5" },
+            React.createElement("div", { className: "spinner-border text-info mb-3", style: { width: "3rem", height: "3rem" } }),
+            React.createElement("h4", null, "Indexing File System Hierarchy..."),
+            React.createElement("p", { className: "text-muted" }, statusText)
+          )
+        );
+      }
+
+
 
 
 
