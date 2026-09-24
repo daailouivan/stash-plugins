@@ -2261,3 +2261,125 @@ button.badge.sfm-badge-btn:hover {
 .sfm-bulk-count-btn:active {
   transform: scale(0.97);
 }
+
+/* ==========================================================================
+   Aligned Section Headers, Badges & Indicators
+   ========================================================================== */
+
+.sfm-section-title-box {
+  min-width: 155px;
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.sfm-pill-subfolders {
+  width: 160px;
+  min-width: 160px;
+  text-align: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  white-space: nowrap;
+}
+
+.sfm-pill-foldersort {
+  width: 150px;
+  min-width: 150px;
+  text-align: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  white-space: nowrap;
+}
+
+.sfm-badge-indicator {
+  border: 1px solid transparent;
+  outline: none;
+  user-select: none;
+  font-family: inherit;
+  font-size: 75%;
+  line-height: 1;
+  padding: 0.25em 0.4em;
+  vertical-align: baseline;
+  display: inline-block;
+  opacity: 0.9;
+}
+
+.sfm-view-toggle-group {
+  width: 204px;
+  min-width: 204px;
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.sfm-view-toggle-group .btn {
+  flex: 1 1 0;
+  text-align: center;
+  padding-left: 0.25rem !important;
+  padding-right: 0.25rem !important;
+  white-space: nowrap;
+}
+
+.sfm-size-slider-wrap {
+  width: 140px;
+  min-width: 140px;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+
+.sfm-size-slider-wrap .sfm-size-slider {
+  flex: 1;
+}
+
+/* ==========================================================================
+   Filenames Only Table View Component (for Easy Bulk Selection & Editing)
+   ========================================================================== */
+
+.sfm-names-table-wrap {
+  background: #141822;
+  border: 1px solid #282e3d;
+  border-radius: 8px;
+  overflow-x: auto;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+}
+
+.sfm-names-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.sfm-names-table th {
+  padding: 0.45rem 0.65rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #81a1c1;
+  background-color: #1a1f2c;
+  border-bottom: 1px solid #2c3344;
+  white-space: nowrap;
+}
+
+.sfm-names-row td {
+  padding: 0.35rem 0.65rem;
+  font-size: 0.84rem;
+  vertical-align: middle;
+  border-bottom: 1px solid #1e2433;
+  transition: background-color 0.1s ease;
+}
+
+.sfm-names-row:hover {
+  background-color: rgba(136, 192, 208, 0.08);
+}
+
+.sfm-names-row.sfm-row-selected {
+  background-color: rgba(94, 129, 172, 0.25) !important;
+}
+
+.sfm-filename-text {
+  color: #eceff4;
+  word-break: break-all;
+}

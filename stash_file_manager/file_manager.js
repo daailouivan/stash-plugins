@@ -26,7 +26,7 @@
     const IDB_NAME = "stash_file_manager_db";
     const IDB_VERSION = 1;
     const IDB_STORE = "library";
-    const CACHE_KEY = "scenes_index_v3";
+    const CACHE_KEY = "scenes_index_v4";
     const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
     function openIDB() {
@@ -116,12 +116,28 @@
       try {
         const data = await gqlFetch(`query GetSFMSettings {
           configuration {
+            general {
+              stashes {
+                path
+              }
+            }
             plugins
           }
         }`);
-        return data?.configuration?.plugins?.stash_file_manager || {};
+        const sfm = data?.configuration?.plugins?.stash_file_manager || {};
+        const stashes = (data?.configuration?.general?.stashes || []).map((s) => s.path).filter(Boolean);
+        return { ...sfm, __stashes__: stashes };
       } catch (e) {
-        return {};
+        try {
+          const fallbackData = await gqlFetch(`query GetSFMSettingsFallback {
+            configuration {
+              plugins
+            }
+          }`);
+          return fallbackData?.configuration?.plugins?.stash_file_manager || {};
+        } catch (err) {
+          return {};
+        }
       }
     }
 
@@ -484,12 +500,80 @@
       );
     }
 
-    // In-memory Path Trie Data Structure (Feature 5)
+    // Helper: Resolve common base library prefix across scenes and settings (Smart Common Root)
+    function resolveLibraryRoot(scenes, configuredRoot = "", stashPaths = []) {
+      // 1. Manual root override from plugin settings
+      if (configuredRoot && typeof configuredRoot === "string" && configuredRoot.trim()) {
+        const clean = configuredRoot.trim().replace(/\\/g, "/").replace(/\/+$/, "");
+        const parts = clean.split("/").filter(Boolean);
+        const prefix = clean.startsWith("/") ? `/${parts.join("/")}` : parts.join("/");
+        return {
+          basePrefix: parts,
+          diskRoot: prefix || clean,
+        };
+      }
+
+      // 2. Single Stash library path from Stash configuration
+      if (stashPaths && Array.isArray(stashPaths) && stashPaths.length === 1 && stashPaths[0]) {
+        const clean = stashPaths[0].trim().replace(/\\/g, "/").replace(/\/+$/, "");
+        const parts = clean.split("/").filter(Boolean);
+        const prefix = clean.startsWith("/") ? `/${parts.join("/")}` : parts.join("/");
+        return {
+          basePrefix: parts,
+          diskRoot: prefix || clean,
+        };
+      }
+
+      // 3. Auto-detect common directory prefix from indexed scene file paths
+      if (!scenes || scenes.length === 0) {
+        return { basePrefix: [], diskRoot: "" };
+      }
+
+      let commonParts = null;
+      const sampleLimit = Math.min(scenes.length, 500);
+
+      for (let i = 0; i < sampleLimit; i++) {
+        const filePath = scenes[i]?.files?.[0]?.path;
+        if (!filePath) continue;
+
+        const clean = filePath.replace(/\\/g, "/");
+        const parts = clean.split("/").filter(Boolean);
+        if (parts.length <= 1) continue;
+        parts.pop(); // Remove filename
+
+        if (commonParts === null) {
+          commonParts = [...parts];
+        } else {
+          let j = 0;
+          while (j < commonParts.length && j < parts.length && commonParts[j] === parts[j]) {
+            j++;
+          }
+          commonParts = commonParts.slice(0, j);
+          if (commonParts.length === 0) break;
+        }
+      }
+
+      if (commonParts && commonParts.length > 0) {
+        const samplePath = scenes[0]?.files?.[0]?.path || "";
+        const diskRoot = (samplePath.startsWith("/") ? "/" : "") + commonParts.join("/");
+        return {
+          basePrefix: commonParts,
+          diskRoot: diskRoot,
+        };
+      }
+
+      return { basePrefix: [], diskRoot: "" };
+    }
+
+    // In-memory Path Trie Data Structure with Root Rebase & Single-Child Auto-Collapsing (Feature 5)
     class PathTrie {
-      constructor() {
+      constructor(basePrefix = [], diskRoot = "") {
+        this.basePrefix = basePrefix || [];
+        this.diskRoot = diskRoot || "";
         this.root = {
           name: "Stash",
           fullPath: "",
+          diskPath: this.diskRoot,
           folders: {},
           directScenes: [],
           allSceneIds: new Set(),
@@ -511,13 +595,37 @@
         curr.allSceneIds.add(scene.id);
         curr.totalSize += size;
 
+        // Check if path matches basePrefix
+        let relativeParts = parts;
+        let prefixMatches = false;
+        if (this.basePrefix && this.basePrefix.length > 0) {
+          if (parts.length >= this.basePrefix.length) {
+            prefixMatches = true;
+            for (let i = 0; i < this.basePrefix.length; i++) {
+              if (parts[i] !== this.basePrefix[i]) {
+                prefixMatches = false;
+                break;
+              }
+            }
+            if (prefixMatches) {
+              relativeParts = parts.slice(this.basePrefix.length);
+            }
+          }
+        }
+
         let accumulated = "";
-        for (const segment of parts) {
+        for (let i = 0; i < relativeParts.length; i++) {
+          const segment = relativeParts[i];
           accumulated = accumulated ? `${accumulated}/${segment}` : segment;
           if (!curr.folders[segment]) {
+            const diskSegment = prefixMatches
+              ? (this.diskRoot.replace(/\/+$/, "") + "/" + accumulated)
+              : ("/" + parts.slice(0, (parts.length - relativeParts.length) + i + 1).join("/"));
+
             curr.folders[segment] = {
               name: segment,
               fullPath: accumulated,
+              diskPath: diskSegment,
               folders: {},
               directScenes: [],
               allSceneIds: new Set(),
@@ -530,6 +638,52 @@
         }
         curr.directScenes.push(scene);
         scene._folderPath = curr.fullPath;
+      }
+
+      rebaseSingleChildRoot() {
+        while (
+          this.root.directScenes.length === 0 &&
+          Object.keys(this.root.folders).length === 1
+        ) {
+          const childKey = Object.keys(this.root.folders)[0];
+          const childNode = this.root.folders[childKey];
+          const childPrefix = childNode.fullPath;
+
+          function stripPrefix(node) {
+            if (!node) return;
+            if (node.fullPath === childPrefix) {
+              node.fullPath = "";
+            } else if (node.fullPath.startsWith(childPrefix + "/")) {
+              node.fullPath = node.fullPath.slice(childPrefix.length + 1);
+            }
+            if (node.directScenes) {
+              for (const s of node.directScenes) {
+                if (s._folderPath === childPrefix) {
+                  s._folderPath = "";
+                } else if (s._folderPath && s._folderPath.startsWith(childPrefix + "/")) {
+                  s._folderPath = s._folderPath.slice(childPrefix.length + 1);
+                }
+              }
+            }
+            if (node.folders) {
+              for (const k of Object.keys(node.folders)) {
+                stripPrefix(node.folders[k]);
+              }
+            }
+          }
+
+          stripPrefix(childNode);
+
+          this.root = {
+            name: "Stash",
+            fullPath: "",
+            diskPath: childNode.diskPath || this.root.diskPath,
+            folders: childNode.folders,
+            directScenes: childNode.directScenes,
+            allSceneIds: childNode.allSceneIds,
+            totalSize: childNode.totalSize,
+          };
+        }
       }
 
       getNode(pathString) {
@@ -2796,6 +2950,121 @@
     }
 
     // ==========================================
+    // Filenames Only Table View Component (for Easy Bulk Editing)
+    // ==========================================
+    function SceneNamesTableView({ scenes, onPlay, selectedIds, onToggleSelect, onSelectAll, showFolderBadge, currentPath }) {
+      const allSelected = scenes.length > 0 && scenes.every((s) => selectedIds.has(s.id));
+
+      return React.createElement(
+        "div",
+        { className: "sfm-table-wrap sfm-names-table-wrap" },
+        React.createElement(
+          "table",
+          { className: "sfm-data-table sfm-names-table" },
+          React.createElement(
+            "thead",
+            null,
+            React.createElement(
+              "tr",
+              null,
+              React.createElement(
+                "th",
+                { style: { width: "36px", textAlign: "center" } },
+                React.createElement("input", {
+                  type: "checkbox",
+                  checked: allSelected,
+                  onChange: onSelectAll,
+                  title: "Select All / None",
+                })
+              ),
+              React.createElement("th", null, "File Name (Basename)"),
+              React.createElement("th", { style: { minWidth: "180px" } }, "Title"),
+              showFolderBadge && React.createElement("th", { style: { width: "160px" } }, "Folder"),
+              React.createElement("th", { style: { width: "90px" } }, "Duration"),
+              React.createElement("th", { style: { width: "90px" } }, "Size"),
+              React.createElement("th", { style: { width: "70px", textAlign: "center" } }, "Play")
+            )
+          ),
+          React.createElement(
+            "tbody",
+            null,
+            scenes.map((scene) => {
+              const isSelected = selectedIds.has(scene.id);
+              const filename = scene.files?.[0]?.basename || "Unknown file";
+              const duration = formatDuration(scene.files?.[0]?.duration);
+              const size = formatBytes(scene.files?.[0]?.size);
+
+              return React.createElement(
+                "tr",
+                {
+                  key: scene.id,
+                  className: `sfm-names-row ${isSelected ? "sfm-row-selected" : ""}`,
+                  onClick: (e) => {
+                    if (e.target.tagName !== "INPUT" && e.target.tagName !== "BUTTON" && !e.target.closest("button")) {
+                      onToggleSelect(scene.id);
+                    }
+                  },
+                  style: { cursor: "pointer" },
+                  title: "Click row to toggle selection",
+                },
+                React.createElement(
+                  "td",
+                  { style: { textAlign: "center" } },
+                  React.createElement("input", {
+                    type: "checkbox",
+                    checked: isSelected,
+                    onChange: () => onToggleSelect(scene.id),
+                    onClick: (e) => e.stopPropagation(),
+                  })
+                ),
+                React.createElement(
+                  "td",
+                  null,
+                  React.createElement(
+                    "span",
+                    { className: "sfm-filename-text font-weight-bold text-light", style: { fontFamily: "monospace", fontSize: "0.88rem" } },
+                    filename
+                  )
+                ),
+                React.createElement(
+                  "td",
+                  { className: "text-truncate", style: { maxWidth: "240px" } },
+                  scene.title || React.createElement("span", { className: "text-muted font-italic" }, "No title")
+                ),
+                showFolderBadge && React.createElement(
+                  "td",
+                  null,
+                  scene._folderPath
+                    ? React.createElement("span", { className: "badge badge-dark text-muted", title: scene._folderPath }, scene._folderPath)
+                    : "-"
+                ),
+                React.createElement("td", { className: "text-muted small" }, duration),
+                React.createElement("td", { className: "text-muted small" }, size),
+                React.createElement(
+                  "td",
+                  { style: { textAlign: "center" } },
+                  React.createElement(
+                    "button",
+                    {
+                      type: "button",
+                      className: "btn btn-xs btn-outline-info py-0 px-2",
+                      onClick: (e) => {
+                        e.stopPropagation();
+                        onPlay(scene);
+                      },
+                      title: "Play video",
+                    },
+                    "▶"
+                  )
+                )
+              );
+            })
+          )
+        )
+      );
+    }
+
+    // ==========================================
     // Modal: Plugin Settings & Troubleshooting Tasks
     // ==========================================
     function SettingsAndTasksModal({ isOpen, onClose, settings, onSaveSettings, onTriggerRebuild, onResetDefaults }) {
@@ -2995,7 +3264,8 @@
                     onChange: (e) => handleChange("scene_view_mode", e.target.value),
                   },
                   React.createElement("option", { value: "cards" }, "Cards (16:9 Grid)"),
-                  React.createElement("option", { value: "table" }, "Table (Metadata Columns)")
+                  React.createElement("option", { value: "table" }, "Table (Metadata Columns)"),
+                  React.createElement("option", { value: "names" }, "Names (Filenames Only)")
                 )
               )
             ),
@@ -3392,7 +3662,9 @@
             setFolderViewMode(cfg.folder_view_mode);
           }
           if (cfg.scene_view_mode && !window.localStorage.getItem("sfm_view_mode")) {
-            setViewMode(cfg.scene_view_mode === "cards" ? "grid" : "table");
+            if (cfg.scene_view_mode === "cards") setViewMode("grid");
+            else if (cfg.scene_view_mode === "names") setViewMode("names");
+            else setViewMode("list");
           }
           if (cfg.folder_card_size && !window.localStorage.getItem("sfm_folder_card_size")) {
             setFolderCardSize(Number(cfg.folder_card_size));
@@ -3454,7 +3726,13 @@
             if (Date.now() - cached.timestamp < CACHE_TTL_MS) {
               const total = cached.scenes.length;
               setStatusText(`Restoring ${total.toLocaleString()} scenes from local index...`);
-              const newTrie = new PathTrie();
+              const pluginCfg = pluginSettings || (await fetchStashPluginSettings());
+              const { basePrefix, diskRoot } = resolveLibraryRoot(
+                cached.scenes,
+                pluginCfg.root_library_path,
+                pluginCfg.__stashes__
+              );
+              const newTrie = new PathTrie(basePrefix, diskRoot);
               const chunkSize = 1500;
               for (let i = 0; i < total; i += chunkSize) {
                 const chunk = cached.scenes.slice(i, i + chunkSize);
@@ -3464,6 +3742,7 @@
                   await new Promise((r) => setTimeout(r, 0));
                 }
               }
+              newTrie.rebaseSingleChildRoot();
               window.__SFM_GLOBAL_CACHE__.trie = newTrie;
               window.__SFM_GLOBAL_CACHE__.scenes = cached.scenes;
               window.__SFM_GLOBAL_CACHE__.timestamp = cached.timestamp;
@@ -3500,7 +3779,13 @@
           const total = scenes.length;
 
           // Build trie progressively with non-blocking UI chunks
-          const newTrie = new PathTrie();
+          const pluginCfg = pluginSettings || (await fetchStashPluginSettings());
+          const { basePrefix, diskRoot } = resolveLibraryRoot(
+            scenes,
+            pluginCfg.root_library_path,
+            pluginCfg.__stashes__
+          );
+          const newTrie = new PathTrie(basePrefix, diskRoot);
           const chunkSize = 1000;
 
           for (let i = 0; i < total; i += chunkSize) {
@@ -3511,6 +3796,7 @@
             // Yield to browser event loop to prevent UI freezing
             await new Promise((r) => setTimeout(r, 0));
           }
+          newTrie.rebaseSingleChildRoot();
 
           // Compact scene representations to store efficiently
           const compact = scenes.map((s) => ({
@@ -3567,7 +3853,18 @@
 
       const currentNode = useMemo(() => {
         if (!trie) return null;
-        return trie.getNode(currentPath) || trie.root;
+        let node = trie.getNode(currentPath);
+        if (!node && currentPath) {
+          // If currentPath had an old un-rebased prefix (e.g. "data/folder"), strip first segment and try
+          const sub = currentPath.split("/").slice(1).join("/");
+          if (sub && trie.getNode(sub)) {
+            setCurrentPath(sub);
+            return trie.getNode(sub);
+          }
+          setCurrentPath("");
+          return trie.root;
+        }
+        return node || trie.root;
       }, [trie, currentPath]);
 
       // Feature 2 & 4: Subfolders filtering and sorting
@@ -3760,9 +4057,11 @@
           window.open("/scenes", "_blank");
           return;
         }
+        const node = trie?.getNode(currentPath);
+        const targetPath = node?.diskPath || currentPath;
         const filterCriterion = {
           type: "path",
-          value: currentPath,
+          value: targetPath,
           modifier: "MATCHES_REGEX",
         };
         localStorage.setItem("sfm_last_folder_path", currentPath);
@@ -3776,7 +4075,8 @@
 
       // Milestone 3: Folder-Scoped Metadata Scan
       const handleScanFolder = async () => {
-        const targetPath = currentPath || "";
+        const node = trie?.getNode(currentPath);
+        const targetPath = node?.diskPath || currentPath || trie?.root?.diskPath || "";
         const label = targetPath ? `"${targetPath}"` : "all Stash libraries";
         setNotification(`Starting Stash filesystem scan for: ${label}...`);
         try {
@@ -4161,7 +4461,7 @@
                   React.createElement(
                     "div",
                     {
-                      className: "sfm-section-header mb-0 sfm-collapsible-title",
+                      className: "sfm-section-title-box sfm-section-header mb-0 sfm-collapsible-title",
                       onClick: handleToggleSubfoldersCollapsed,
                       title: isSubfoldersCollapsed ? "Click to expand Subfolders" : "Click to collapse Subfolders",
                       style: { cursor: "pointer", userSelect: "none" },
@@ -4176,33 +4476,39 @@
                     isSubfoldersCollapsed &&
                       React.createElement("span", { className: "text-muted small ml-2 font-italic" }, "(collapsed)")
                   ),
-                  // Button styled identically to [Select All] in scenes view
+                  // Toggle 1: Include Sub-Folder
                   React.createElement(
                     "button",
                     {
                       type: "button",
-                      className: `badge ${includeSubfolders ? "badge-info" : "badge-secondary"} sfm-badge-btn ml-2 font-weight-normal`,
+                      className: `badge ${includeSubfolders ? "badge-info" : "badge-secondary"} sfm-badge-btn ml-2 font-weight-normal sfm-pill-subfolders`,
                       onClick: (e) => {
                         e.stopPropagation();
                         handleToggleIncludeSubfolders(!includeSubfolders);
                       },
-                      title: "Include all scenes inside all sub-folders in the current directory (all levels down)",
+                      title: includeSubfolders
+                        ? "Click to exclude sub-folders (show direct folder files only)"
+                        : "Click to recursively include scenes from all sub-folders",
                     },
-                    "Include Sub-folders"
+                    "Include Sub-Folder"
                   ),
+                  // Toggle 2: Group by Folder
                   React.createElement(
                     "button",
                     {
                       type: "button",
-                      className: `badge ${sortByFolderFirst ? "badge-info" : "badge-secondary"} sfm-badge-btn ml-2 font-weight-normal`,
+                      className: `badge ${sortByFolderFirst ? "badge-info" : "badge-secondary"} sfm-badge-btn ml-2 font-weight-normal sfm-pill-foldersort`,
                       onClick: (e) => {
                         e.stopPropagation();
                         handleToggleSortByFolderFirst(!sortByFolderFirst);
                       },
-                      title: "When Include Sub-folders is enabled, group and sort scenes by folder order first, then apply scene sorting within each folder",
+                      title: sortByFolderFirst
+                        ? "Click to disable folder grouping and sort all scenes altogether"
+                        : "Click to group and sort scenes by folder order first",
                     },
-                    "Folder Sort First"
+                    "Group by Folder"
                   ),
+                  // Toggle 3: Hide Empty
                   React.createElement(
                     "button",
                     {
@@ -4220,7 +4526,7 @@
                 !isSubfoldersCollapsed &&
                   React.createElement(
                     "div",
-                    { className: "d-flex align-items-center flex-wrap gap-2" },
+                    { className: "d-flex align-items-center justify-content-end flex-wrap gap-2 ml-auto" },
                     folderViewMode === "cards" &&
                       React.createElement(
                         "div",
@@ -4263,6 +4569,7 @@
                       React.createElement(
                         "button",
                         {
+                          type: "button",
                           className: `btn btn-sm ${folderViewMode === "cards" ? "btn-info" : "btn-outline-secondary"} py-0 px-2`,
                           onClick: () => { setIsSubfoldersCollapsed(false); handleSetFolderViewMode("cards"); },
                           title: "Compact Cards View",
@@ -4272,6 +4579,7 @@
                       React.createElement(
                         "button",
                         {
+                          type: "button",
                           className: `btn btn-sm ${folderViewMode === "list" ? "btn-info" : "btn-outline-secondary"} py-0 px-2`,
                           onClick: () => { setIsSubfoldersCollapsed(false); handleSetFolderViewMode("list"); },
                           title: "Compact List View",
@@ -4281,6 +4589,7 @@
                       React.createElement(
                         "button",
                         {
+                          type: "button",
                           className: `btn btn-sm ${folderViewMode === "detail" ? "btn-info" : "btn-outline-secondary"} py-0 px-2`,
                           onClick: () => { setIsSubfoldersCollapsed(false); handleSetFolderViewMode("detail"); },
                           title: "Detail Table View",
@@ -4444,14 +4753,15 @@
               { className: "mb-4" },
               React.createElement(
                 "div",
-                { className: "d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2" },
+                { className: "d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2 position-relative" },
+                // Left group: Title + count + indicator 1 + indicator 2
                 React.createElement(
                   "div",
-                  { className: "d-flex align-items-center flex-wrap gap-2" },
+                  { className: "d-flex align-items-center flex-wrap" },
                   React.createElement(
                     "div",
                     {
-                      className: "sfm-section-header mb-0 sfm-collapsible-title",
+                      className: "sfm-section-title-box sfm-section-header mb-0 sfm-collapsible-title",
                       onClick: handleToggleFilesCollapsed,
                       title: isFilesCollapsed ? "Click to expand Files" : "Click to collapse Files",
                       style: { cursor: "pointer", userSelect: "none" },
@@ -4466,40 +4776,46 @@
                     isFilesCollapsed &&
                       React.createElement("span", { className: "text-muted small ml-2 font-italic" }, "(collapsed)")
                   ),
-                  !isFilesCollapsed &&
-                    includeSubfolders &&
-                    React.createElement(
-                      "span",
-                      { className: "badge badge-info ml-2 font-weight-normal" },
-                      "All Sub-folders Included"
-                    ),
-                  !isFilesCollapsed &&
-                    includeSubfolders &&
-                    sortByFolderFirst &&
-                    React.createElement(
-                      "span",
-                      {
-                        className: "badge badge-secondary ml-1 font-weight-normal",
-                        title: "Scenes ordered by folder sort first, then sorted within each folder",
-                      },
-                      "Folder Sort First"
-                    ),
-                  !isFilesCollapsed &&
+                  // Indicator 1 (always on)
+                  React.createElement(
+                    "span",
+                    {
+                      className: `badge ${includeSubfolders ? "badge-info" : "badge-secondary"} sfm-badge-indicator ml-2 font-weight-normal sfm-pill-subfolders`,
+                      title: includeSubfolders ? "Sub-folders are included in scenes view" : "Sub-folders are excluded from scenes view",
+                    },
+                    includeSubfolders ? "Sub-Folder Included" : "Sub-Folder Excluded"
+                  ),
+                  // Indicator 2 (always on)
+                  React.createElement(
+                    "span",
+                    {
+                      className: `badge ${sortByFolderFirst ? "badge-info" : "badge-secondary"} sfm-badge-indicator ml-2 font-weight-normal sfm-pill-foldersort`,
+                      title: sortByFolderFirst ? "Scenes ordered by folder sort first, then sorted within each folder" : "Scenes sorted altogether across all folders flatly",
+                    },
+                    sortByFolderFirst ? "Grouped by Folder" : "Sorted Altogether"
+                  )
+                ),
+                // Center: [select all (centered)]
+                !isFilesCollapsed &&
+                  React.createElement(
+                    "div",
+                    { className: "d-flex align-items-center justify-content-center flex-grow-1 mx-2" },
                     React.createElement(
                       "button",
                       {
                         type: "button",
-                        className: `btn btn-sm ${selectedSceneIds.size > 0 ? "btn-primary font-weight-bold" : "btn-outline-secondary"} py-0 px-2 ml-2`,
+                        className: `btn btn-sm ${selectedSceneIds.size > 0 ? "btn-primary font-weight-bold" : "btn-outline-secondary"} py-0 px-3 sfm-pill-selectall`,
                         onClick: handleSelectAllFolderScenes,
                         title: selectedSceneIds.size > 0 ? `Click to deselect all (${selectedSceneIds.size} selected)` : "Select all visible scenes in folder",
                       },
                       selectedSceneIds.size > 0 ? `${selectedSceneIds.size} Selected` : "Select All"
                     )
-                ),
+                  ),
+                // Right: slider + [Cards, Table, Names]
                 !isFilesCollapsed &&
                   React.createElement(
                     "div",
-                    { className: "d-flex align-items-center flex-wrap gap-2" },
+                    { className: "d-flex align-items-center justify-content-end flex-wrap gap-2 ml-auto" },
                     viewMode === "grid" &&
                       React.createElement(
                         "div",
@@ -4524,20 +4840,32 @@
                       React.createElement(
                         "button",
                         {
+                          type: "button",
                           className: `btn btn-sm ${viewMode === "grid" ? "btn-info" : "btn-outline-secondary"} py-0 px-2`,
                           onClick: () => handleToggleViewMode("grid"),
-                          title: "Grid Card View",
+                          title: "16:9 Thumbnail Cards View",
                         },
                         "Cards"
                       ),
                       React.createElement(
                         "button",
                         {
+                          type: "button",
                           className: `btn btn-sm ${viewMode === "list" ? "btn-info" : "btn-outline-secondary"} py-0 px-2`,
                           onClick: () => handleToggleViewMode("list"),
-                          title: "Detailed Table View",
+                          title: "Detailed Metadata Table View",
                         },
                         "Table"
+                      ),
+                      React.createElement(
+                        "button",
+                        {
+                          type: "button",
+                          className: `btn btn-sm ${viewMode === "names" ? "btn-info" : "btn-outline-secondary"} py-0 px-2`,
+                          onClick: () => handleToggleViewMode("names"),
+                          title: "Filenames Only (for Easy Bulk Selection & Regex)",
+                        },
+                        "Names"
                       )
                     )
                   )
@@ -4545,6 +4873,16 @@
               !isFilesCollapsed &&
                 (viewMode === "list"
                   ? React.createElement(SceneTableView, {
+                    scenes: filteredAndSortedScenes,
+                    onPlay: (s) => setPlayingScene(s),
+                    selectedIds: selectedSceneIds,
+                    onToggleSelect: handleToggleSelect,
+                    onSelectAll: handleSelectAllFolderScenes,
+                    showFolderBadge: includeSubfolders,
+                    currentPath,
+                  })
+                : viewMode === "names"
+                  ? React.createElement(SceneNamesTableView, {
                     scenes: filteredAndSortedScenes,
                     onPlay: (s) => setPlayingScene(s),
                     selectedIds: selectedSceneIds,
@@ -4563,7 +4901,7 @@
                       React.createElement(SceneCard, {
                         key: scene.id,
                         scene,
-                        onPlay: (s) => setPlayingScene(s),
+                        onPlay: () => setPlayingScene(scene),
                         isSelected: selectedSceneIds.has(scene.id),
                         onToggleSelect: handleToggleSelect,
                         showFolderBadge: includeSubfolders,
