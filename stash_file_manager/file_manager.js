@@ -3758,7 +3758,7 @@
       // Directory Keyboard Shortcuts (Milestone 1)
       useEffect(() => {
         const handleDirectoryKeyDown = (e) => {
-          if (playingScene || showSettingsModal || showBatchModal || showParserModal || showHelpModal) {
+          if (playingScene || showSettingsModal || showBatchModal || showParserModal) {
             return;
           }
 
@@ -3815,7 +3815,6 @@
         showSettingsModal,
         showBatchModal,
         showParserModal,
-        showHelpModal,
         currentPath,
         searchQuery,
         selectedSceneIds,
