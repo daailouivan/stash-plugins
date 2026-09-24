@@ -312,6 +312,7 @@
           curr.totalSize += size;
         }
         curr.directScenes.push(scene);
+        scene._folderPath = curr.fullPath;
       }
 
       getNode(pathString) {
@@ -2285,7 +2286,7 @@
     // ==========================================
     // Scene Card Component with Hover Preview (Feature 3)
     // ==========================================
-    function SceneCard({ scene, onPlay, isSelected, onToggleSelect }) {
+    function SceneCard({ scene, onPlay, isSelected, onToggleSelect, showFolderBadge, currentPath }) {
       const [isHovered, setIsHovered] = useState(false);
       const thumbUrl = scene.paths?.screenshot || `/scene/${scene.id}/screenshot`;
       const previewVideoUrl = scene.paths?.preview || `/scene/${scene.id}/preview`;
@@ -2365,6 +2366,12 @@
               studioName
             ),
           performers && React.createElement("div", { className: "text-truncate small text-info mb-1" }, performers),
+          showFolderBadge && scene._folderPath && (() => {
+            const relFolder = currentPath && scene._folderPath.startsWith(currentPath + "/")
+              ? scene._folderPath.slice(currentPath.length + 1)
+              : (currentPath === scene._folderPath ? "" : scene._folderPath);
+            return relFolder ? React.createElement("div", { className: "text-truncate small text-muted mb-1", title: `Folder: ${scene._folderPath}` }, `📁 ${relFolder}`) : null;
+          })(),
           React.createElement(
             "div",
             { className: "sfm-scene-meta" },
@@ -2379,7 +2386,7 @@
     // ==========================================
     // Detailed Table/List View Component (Milestone 2)
     // ==========================================
-    function SceneTableView({ scenes, onPlay, selectedIds, onToggleSelect, onSelectAll }) {
+    function SceneTableView({ scenes, onPlay, selectedIds, onToggleSelect, onSelectAll, showFolderBadge, currentPath }) {
       const allSelected = scenes.length > 0 && scenes.every((s) => selectedIds.has(s.id));
 
       return React.createElement(
@@ -2473,7 +2480,13 @@
                   ),
                   filename &&
                     scene.title &&
-                    React.createElement("div", { className: "sfm-table-subtext" }, filename)
+                    React.createElement("div", { className: "sfm-table-subtext" }, filename),
+                  showFolderBadge && scene._folderPath && (() => {
+                    const relFolder = currentPath && scene._folderPath.startsWith(currentPath + "/")
+                      ? scene._folderPath.slice(currentPath.length + 1)
+                      : (currentPath === scene._folderPath ? "" : scene._folderPath);
+                    return relFolder ? React.createElement("div", { className: "sfm-table-subtext text-muted" }, `📁 ${relFolder}`) : null;
+                  })()
                 ),
                 React.createElement(
                   "td",
@@ -3023,6 +3036,23 @@
         } catch (e) {}
       }, []);
 
+      // Sort by Folder First State (persisted in localStorage, defaults to true)
+      const [sortByFolderFirst, setSortByFolderFirst] = useState(() => {
+        try {
+          const val = window.localStorage.getItem("sfm_sort_by_folder_first");
+          return val === null ? true : val === "true";
+        } catch (e) {
+          return true;
+        }
+      });
+
+      const handleToggleSortByFolderFirst = useCallback((val) => {
+        setSortByFolderFirst(val);
+        try {
+          window.localStorage.setItem("sfm_sort_by_folder_first", String(val));
+        } catch (e) {}
+      }, []);
+
       const handleToggleSubfoldersCollapsed = useCallback(() => {
         setIsSubfoldersCollapsed((prev) => {
           const next = !prev;
@@ -3350,23 +3380,11 @@
         return list;
       }, [currentNode, hideEmpty, searchQuery, folderSort]);
 
-      // Feature 2: Scenes filtering and sorting (with recursive subfolders support)
+      // Feature 2: Scenes filtering and sorting (with recursive subfolders support & folder-first sorting)
       const filteredAndSortedScenes = useMemo(() => {
         if (!currentNode) return [];
-        let list = includeSubfolders ? getAllDescendantScenes(currentNode) : [...currentNode.directScenes];
 
-        if (searchQuery.trim()) {
-          const q = searchQuery.toLowerCase();
-          list = list.filter((s) => {
-            const title = (s.title || "").toLowerCase();
-            const file = (s.files?.[0]?.basename || "").toLowerCase();
-            const studio = (s.studio?.name || "").toLowerCase();
-            const performers = (s.performers || []).map((p) => p.name.toLowerCase()).join(" ");
-            return title.includes(q) || file.includes(q) || studio.includes(q) || performers.includes(q);
-          });
-        }
-
-        list.sort((a, b) => {
+        const sceneComparator = (a, b) => {
           if (sceneSort === "title_desc") {
             return (b.title || b.files?.[0]?.basename || "").localeCompare(a.title || a.files?.[0]?.basename || "");
           }
@@ -3386,10 +3404,77 @@
             return (b.files?.[0]?.size || 0) - (a.files?.[0]?.size || 0);
           }
           return (a.title || a.files?.[0]?.basename || "").localeCompare(b.title || b.files?.[0]?.basename || "");
-        });
+        };
+
+        const sortFolderKeys = (keys, parentNode) => {
+          return [...keys].sort((a, b) => {
+            if (folderSort === "name_desc") return b.localeCompare(a);
+            if (folderSort === "count_desc") {
+              return (parentNode.folders[b]?.allSceneIds?.size || 0) - (parentNode.folders[a]?.allSceneIds?.size || 0);
+            }
+            if (folderSort === "count_asc") {
+              return (parentNode.folders[a]?.allSceneIds?.size || 0) - (parentNode.folders[b]?.allSceneIds?.size || 0);
+            }
+            return a.localeCompare(b);
+          });
+        };
+
+        let list = [];
+        if (includeSubfolders) {
+          if (sortByFolderFirst) {
+            // Hierarchical folder sort: traverse subfolders in folderSort order, then direct scenes of this node
+            const seenIds = new Set();
+            const collectHierarchy = (node) => {
+              const collected = [];
+              if (!node) return collected;
+
+              // 1. Visit subfolders in folderSort order
+              if (node.folders) {
+                const sortedKeys = sortFolderKeys(Object.keys(node.folders), node);
+                for (const k of sortedKeys) {
+                  const child = node.folders[k];
+                  collected.push(...collectHierarchy(child));
+                }
+              }
+
+              // 2. Direct scenes in this node, sorted by sceneSort
+              if (node.directScenes && node.directScenes.length > 0) {
+                const directCopy = [...node.directScenes];
+                directCopy.sort(sceneComparator);
+                for (const s of directCopy) {
+                  if (s && s.id && !seenIds.has(s.id)) {
+                    seenIds.add(s.id);
+                    collected.push(s);
+                  }
+                }
+              }
+
+              return collected;
+            };
+
+            list = collectHierarchy(currentNode);
+          } else {
+            list = getAllDescendantScenes(currentNode);
+            list.sort(sceneComparator);
+          }
+        } else {
+          list = [...currentNode.directScenes];
+          list.sort(sceneComparator);
+        }
+
+        if (searchQuery.trim()) {
+          const q = searchQuery.toLowerCase();
+          list = list.filter((s) => {
+            const title = (s.title || "").toLowerCase();
+            const file = (s.files?.[0]?.basename || "").toLowerCase();
+            const studio = (s.studio?.name || "").toLowerCase();
+            const performers = (s.performers || []).map((p) => p.name.toLowerCase()).join(" ");
+            return title.includes(q) || file.includes(q) || studio.includes(q) || performers.includes(q);
+          });
+        }
 
         return list;
-      }, [currentNode, includeSubfolders, searchQuery, sceneSort]);
+      }, [currentNode, includeSubfolders, searchQuery, sceneSort, folderSort, sortByFolderFirst]);
 
       const allDescendantIds = currentNode ? Array.from(currentNode.allSceneIds) : [];
       const currentFolderName = currentPath.split("/").filter(Boolean).pop() || "Root";
@@ -3602,6 +3687,22 @@
                     React.createElement("option", { value: "name_desc" }, "Name (Z-A)"),
                     React.createElement("option", { value: "count_desc" }, "Count (High-Low)"),
                     React.createElement("option", { value: "count_asc" }, "Count (Low-High)")
+                  ),
+                  React.createElement(
+                    "label",
+                    {
+                      className: `sfm-checkbox-label mb-0 ml-2 ${includeSubfolders ? (sortByFolderFirst ? "text-info font-weight-bold" : "text-light") : "text-muted"}`,
+                      title: "When Include Sub-folders is enabled, group and sort scenes by folder order first, then apply scene sorting within each folder",
+                      style: { cursor: "pointer", fontSize: "0.82rem", display: "inline-flex", alignItems: "center", userSelect: "none" },
+                    },
+                    React.createElement("input", {
+                      type: "checkbox",
+                      className: "mr-1",
+                      checked: sortByFolderFirst,
+                      onChange: (e) => handleToggleSortByFolderFirst(e.target.checked),
+                      style: { accentColor: "#88c0d0", cursor: "pointer" },
+                    }),
+                    "Folder Sort First"
                   )
                 )
               ),
@@ -4024,6 +4125,16 @@
                     React.createElement("span", { className: "badge badge-dark ml-2 font-weight-normal" }, filteredAndSortedScenes.length),
                     includeSubfolders &&
                       React.createElement("span", { className: "badge badge-info ml-2 font-weight-normal" }, "All Sub-folders Included"),
+                    includeSubfolders &&
+                      sortByFolderFirst &&
+                      React.createElement(
+                        "span",
+                        {
+                          className: "badge badge-secondary ml-1 font-weight-normal",
+                          title: "Scenes ordered by folder sort first, then sorted within each folder",
+                        },
+                        "📁 Folder Sort First"
+                      ),
                     isFilesCollapsed &&
                       React.createElement("span", { className: "text-muted small ml-2 font-italic" }, "(collapsed)")
                   ),
@@ -4102,6 +4213,8 @@
                     selectedIds: selectedSceneIds,
                     onToggleSelect: handleToggleSelect,
                     onSelectAll: handleSelectAllFolderScenes,
+                    showFolderBadge: includeSubfolders,
+                    currentPath,
                   })
                 : React.createElement(
                     "div",
@@ -4116,6 +4229,8 @@
                         onPlay: (s) => setPlayingScene(s),
                         isSelected: selectedSceneIds.has(scene.id),
                         onToggleSelect: handleToggleSelect,
+                        showFolderBadge: includeSubfolders,
+                        currentPath,
                       })
                     )
                   )

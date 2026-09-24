@@ -61,6 +61,14 @@ Eliminate wasted vertical space with compact folder layouts tailored to any libr
 
 ## 📋 Changelog & Development History
 
+### [v2.7.1] — 2026-09-24 07:45:00
+* **Folder-First Recursive Scene Sorting:** When **Include Sub-folders** is enabled, scenes can now be sorted under their parent folder's sorting rule first, then sorted by the chosen scene sort criteria within each folder.
+  * For example, with folders , ,  and files in , sorting by name produces , , , .
+  * Changing folder sort (, , , etc.) immediately updates the folder sequence of scenes.
+* **Persistent 'Folder Sort First' Toggle:** Added an interactive checkbox toggle in the sort toolbar (, default: , persisted in ) enabling quick switching between folder-first grouping and global flat sorting.
+* **Header Mode Indicator:** Added a  pill badge to the Files / Scenes section header when recursive folder-first sorting is active.
+* **Contextual Folder Path Chips:** Added subtle relative folder path tags () to Scene cards and Table rows when viewing scenes with subfolders included.
+
 ### [v2.7.0] — 2026-09-24 06:05:00
 * **Binge Reel Parameters & Direct Physics:** Replaced debounced multi-frame translation with Binge's instant-response delta threshold logic. Micro-movements (<28px) are filtered, fast single wipes/flicks (>200px) cleanly advance 2 videos, and normal scroll motions immediately fire smooth slide transitions.
 * **Folder List Mode Box-Length Slider:** Added a length/width slider (140px–420px) to the folder mode list view, allowing dynamic adjustment of fixed box lengths and automatic recalculation of columns per row via CSS Grid.
