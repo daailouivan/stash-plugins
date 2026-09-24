@@ -391,33 +391,6 @@
       const nextScene = hasNext ? scenes[currentIndex + 1] : null;
       const futureScene = (currentIndex !== -1 && currentIndex + 2 < totalScenes) ? scenes[currentIndex + 2] : null;
 
-      // Helper to pre-resolve stream URLs for adjacent and upcoming scenes
-      const resolveSceneStreamUrl = useCallback((sc, mode) => {
-        if (!sc?.id) return "";
-        const fPath = sc.files?.[0]?.path || sc.files?.[0]?.basename || "";
-        const fCodec = (sc.files?.[0]?.video_codec || "").toLowerCase();
-        const fFormat = (sc.files?.[0]?.format || "").toLowerCase();
-        const fLower = (fPath + " " + (sc.title || "")).toLowerCase();
-        const scMpeg4 =
-          fCodec.includes("mpeg4") ||
-          fCodec.includes("mp4v") ||
-          fCodec.includes("divx") ||
-          fCodec.includes("xvid") ||
-          fFormat.includes("mpeg-4") ||
-          fLower.includes("mpeg4") ||
-          fLower.includes("xvid") ||
-          fLower.includes("divx");
-
-        if (mode === "hls" || scMpeg4) return `/scene/${sc.id}/stream.m3u8`;
-        if (mode === "webm") return `/scene/${sc.id}/stream.webm`;
-        if (mode === "mp4") return `/scene/${sc.id}/stream.mp4`;
-        return sc.paths?.stream || `/scene/${sc.id}/stream`;
-      }, []);
-
-      const prevStreamUrl = useMemo(() => resolveSceneStreamUrl(prevScene, streamMode), [prevScene, streamMode, resolveSceneStreamUrl]);
-      const nextStreamUrl = useMemo(() => resolveSceneStreamUrl(nextScene, streamMode), [nextScene, streamMode, resolveSceneStreamUrl]);
-      const futureStreamUrl = useMemo(() => resolveSceneStreamUrl(futureScene, streamMode), [futureScene, streamMode, resolveSceneStreamUrl]);
-
       const goToPrev = useCallback(() => {
         if (hasPrev) onSelectScene(prevScene);
       }, [hasPrev, onSelectScene, prevScene]);
@@ -597,6 +570,33 @@
         if (streamMode === "mp4") return transcodeMp4Url;
         return directUrl;
       }, [scene?.id, customStreamUrl, streamMode, directUrl, transcodeHlsUrl, transcodeWebmUrl, transcodeMp4Url]);
+
+      // Helper to pre-resolve stream URLs for adjacent and upcoming scenes
+      const resolveSceneStreamUrl = useCallback((sc, mode) => {
+        if (!sc?.id) return "";
+        const fPath = sc.files?.[0]?.path || sc.files?.[0]?.basename || "";
+        const fCodec = (sc.files?.[0]?.video_codec || "").toLowerCase();
+        const fFormat = (sc.files?.[0]?.format || "").toLowerCase();
+        const fLower = (fPath + " " + (sc.title || "")).toLowerCase();
+        const scMpeg4 =
+          fCodec.includes("mpeg4") ||
+          fCodec.includes("mp4v") ||
+          fCodec.includes("divx") ||
+          fCodec.includes("xvid") ||
+          fFormat.includes("mpeg-4") ||
+          fLower.includes("mpeg4") ||
+          fLower.includes("xvid") ||
+          fLower.includes("divx");
+
+        if (mode === "hls" || scMpeg4) return `/scene/${sc.id}/stream.m3u8`;
+        if (mode === "webm") return `/scene/${sc.id}/stream.webm`;
+        if (mode === "mp4") return `/scene/${sc.id}/stream.mp4`;
+        return sc.paths?.stream || `/scene/${sc.id}/stream`;
+      }, []);
+
+      const prevStreamUrl = useMemo(() => resolveSceneStreamUrl(prevScene, streamMode), [prevScene, streamMode, resolveSceneStreamUrl]);
+      const nextStreamUrl = useMemo(() => resolveSceneStreamUrl(nextScene, streamMode), [nextScene, streamMode, resolveSceneStreamUrl]);
+      const futureStreamUrl = useMemo(() => resolveSceneStreamUrl(futureScene, streamMode), [futureScene, streamMode, resolveSceneStreamUrl]);
 
       // 4. Playback State & Custom Scrubber Control
       const [isPlaying, setIsPlaying] = useState(false);

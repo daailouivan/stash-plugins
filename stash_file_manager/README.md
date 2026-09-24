@@ -61,6 +61,9 @@ Eliminate wasted vertical space with compact folder layouts tailored to any libr
 
 ## 📋 Changelog & Development History
 
+### [v2.5.5] — 2026-09-24 03:25:00
+* **Fix `Cannot access 'streamMode' before initialization` ReferenceError:** Resolved temporal dead zone (TDZ) order error in `BingeReelPlayerModal` where adjacent stream resolution hooks evaluated before the `streamMode` state hook was initialized.
+
 ### [v2.5.4] — 2026-09-24 01:25:00
 * **Restored Divider Above PiP & Precision Scrubber Alignment:** Restored the action divider above the PiP button. Moved PiP and Fullscreen to the bottom of the right rail so Fullscreen sits directly above the scrubbing line.
 * **Balanced Action Rail Spacing:** Standardized even spacing (8px) between buttons and doubled the vertical clearance (16px) around the two dividers framing the Previous/Next video navigation group.
