@@ -2156,12 +2156,43 @@
   background: #181c25;
   border: 1px solid #282e3d;
   border-radius: 8px;
-  padding: 0.5rem 0.85rem;
+  padding: 0.6rem 0.85rem;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
 }
 
 .sfm-nav-control-line .sfm-breadcrumbs-wrap {
   gap: 0.35rem;
+}
+
+.sfm-nav-line-path {
+  min-height: 28px;
+}
+
+.sfm-nav-line-controls {
+  min-height: 32px;
+}
+
+.sfm-nav-history-group .btn,
+.sfm-nav-actions-group .btn {
+  width: 28px;
+  height: 26px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sfm-search-wrap.sfm-search-stretch {
+  max-width: none;
+  min-width: 160px;
+  flex: 1 1 auto;
+}
+
+.sfm-search-wrap.sfm-search-stretch .sfm-search-input {
+  width: 100%;
 }
 
 /* ==========================================================================

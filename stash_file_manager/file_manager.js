@@ -226,6 +226,63 @@
     }
 
     // Modern SVG Vector Icons for UI consistency (no cartoon emojis)
+    function IconHome({ size = 14, color = "currentColor", style = {} }) {
+      return React.createElement(
+        "svg",
+        {
+          width: size,
+          height: size,
+          viewBox: "0 0 24 24",
+          fill: "none",
+          stroke: color,
+          strokeWidth: "2",
+          strokeLinecap: "round",
+          strokeLinejoin: "round",
+          style: { display: "inline-block", verticalAlign: "-2px", ...style },
+        },
+        React.createElement("path", { d: "M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" }),
+        React.createElement("polyline", { points: "9 22 9 12 15 12 15 22" })
+      );
+    }
+
+    function IconArrowLeft({ size = 13, color = "currentColor", style = {} }) {
+      return React.createElement(
+        "svg",
+        {
+          width: size,
+          height: size,
+          viewBox: "0 0 24 24",
+          fill: "none",
+          stroke: color,
+          strokeWidth: "2.2",
+          strokeLinecap: "round",
+          strokeLinejoin: "round",
+          style: { display: "inline-block", verticalAlign: "-1px", ...style },
+        },
+        React.createElement("line", { x1: "19", y1: "12", x2: "5", y2: "12" }),
+        React.createElement("polyline", { points: "12 19 5 12 12 5" })
+      );
+    }
+
+    function IconArrowUp({ size = 13, color = "currentColor", style = {} }) {
+      return React.createElement(
+        "svg",
+        {
+          width: size,
+          height: size,
+          viewBox: "0 0 24 24",
+          fill: "none",
+          stroke: color,
+          strokeWidth: "2.2",
+          strokeLinecap: "round",
+          strokeLinejoin: "round",
+          style: { display: "inline-block", verticalAlign: "-1px", ...style },
+        },
+        React.createElement("line", { x1: "12", y1: "19", x2: "12", y2: "5" }),
+        React.createElement("polyline", { points: "5 12 12 5 19 12" })
+      );
+    }
+
     function IconFolder({ size = 20, color = "currentColor", className = "" }) {
       return React.createElement(
         "svg",
@@ -308,7 +365,7 @@
       );
     }
 
-    function IconScan({ size = 13, color = "currentColor" }) {
+    function IconScan({ size = 13, color = "currentColor", style = {} }) {
       return React.createElement(
         "svg",
         {
@@ -320,14 +377,14 @@
           strokeWidth: "2",
           strokeLinecap: "round",
           strokeLinejoin: "round",
-          style: { display: "inline-block", verticalAlign: "-2px", marginRight: "5px" },
+          style: { display: "inline-block", verticalAlign: "-2px", ...style },
         },
         React.createElement("circle", { cx: "12", cy: "12", r: "2", fill: "currentColor" }),
         React.createElement("path", { d: "M16.24 7.76a6 6 0 0 1 0 8.49m-8.48 0a6 6 0 0 1 0-8.49m11.31-2.83a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14" })
       );
     }
 
-    function IconGrid({ size = 13, color = "currentColor" }) {
+    function IconGrid({ size = 13, color = "currentColor", style = {} }) {
       return React.createElement(
         "svg",
         {
@@ -339,7 +396,7 @@
           strokeWidth: "2",
           strokeLinecap: "round",
           strokeLinejoin: "round",
-          style: { display: "inline-block", verticalAlign: "-2px", marginRight: "5px" },
+          style: { display: "inline-block", verticalAlign: "-2px", ...style },
         },
         React.createElement("rect", { x: "3", y: "3", width: "7", height: "7", rx: "1.5" }),
         React.createElement("rect", { x: "14", y: "3", width: "7", height: "7", rx: "1.5" }),
@@ -3842,7 +3899,7 @@
       return React.createElement(
         "div",
         { className: "sfm-workspace-overlay" },
-        // Header
+        // Header (Clean branding & window control)
         React.createElement(
           "div",
           { className: "sfm-workspace-header" },
@@ -3854,210 +3911,239 @@
             React.createElement("span", { className: "ml-2" }, "Stash File Manager"),
             trie && React.createElement("span", { className: "badge badge-dark ml-2 text-muted small" }, `${trie.root.allSceneIds.size} total scenes`)
           ),
-          // Center: Live Search Box
-          React.createElement(
-            "div",
-            { className: "sfm-header-search-wrap" },
-            React.createElement(
-              "div",
-              { className: "sfm-search-wrap" },
-              React.createElement(
-                "span",
-                { className: "sfm-search-icon" },
-                React.createElement(IconSearch, { size: 14, color: "#81a1c1" })
-              ),
-              React.createElement("input", {
-                ref: searchInputRef,
-                type: "text",
-                className: "sfm-search-input",
-                placeholder: "Search folder or scenes by title, studio, performer... (Press / to focus)",
-                value: searchQuery,
-                onChange: (e) => setSearchQuery(e.target.value),
-              }),
-              searchQuery &&
-                React.createElement(
-                  "button",
-                  {
-                    type: "button",
-                    className: "sfm-search-clear",
-                    onClick: () => {
-                      setSearchQuery("");
-                      searchInputRef.current?.focus();
-                    },
-                    title: "Clear search (Esc)",
-                  },
-                  React.createElement(IconX, { size: 10, color: "currentColor" })
-                )
-            )
-          ),
-          // Right: Settings & Close
-          React.createElement(
-            "div",
-            { className: "d-flex align-items-center gap-2" },
-            React.createElement(
-              "button",
-              {
-                className: "sfm-workspace-settings-btn",
-                onClick: () => setShowSettingsModal(true),
-                title: "Stash Settings & Plugin Tasks",
-              },
-              React.createElement(IconGear, { size: 14, color: "currentColor" }),
-              "Settings"
-            ),
-            onClose && React.createElement("button", { className: "sfm-workspace-close", onClick: onClose }, "✕ Close")
-          )
+          // Right: Close Button
+          onClose && React.createElement("button", { className: "sfm-workspace-close", onClick: onClose }, "✕ Close")
         ),
         // Scrollable Body
         React.createElement(
           "div",
           { className: "sfm-workspace-content" },
-          // Folder Navigation Control Line (Back, Up, Root, Path Breadcrumbs & Tree Stats placed just above Subfolders)
+          // Folder Navigation Control Line (Multi-Line: Path Navigation & Quick Controls)
           React.createElement(
             "div",
-            { className: "sfm-nav-control-line d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2" },
+            { className: "sfm-nav-control-line mb-3" },
+            // Line 1: [◀] [▲] | 🏠 Stash › ... › Folder | [counts and size with colored digits] | [Scan] [Grid] | ... [Settings]
             React.createElement(
               "div",
-              { className: "sfm-breadcrumbs-wrap d-flex align-items-center flex-wrap" },
+              { className: "sfm-nav-line sfm-nav-line-path d-flex align-items-center justify-content-between flex-wrap gap-2" },
               React.createElement(
                 "div",
-                { className: "btn-group btn-group-sm mr-2 sfm-nav-history-group" },
-                React.createElement(
-                  "button",
-                  {
-                    className: "btn btn-sm btn-outline-secondary py-0 px-2",
-                    onClick: handleGoBackInHistory,
-                    disabled: historyStack.current.length === 0 && !currentPath,
-                    title: "Go back to previous folder",
-                  },
-                  "◀ Back"
-                ),
-                React.createElement(
-                  "button",
-                  {
-                    className: "btn btn-sm btn-outline-secondary py-0 px-2",
-                    onClick: handleGoUpOneLevel,
-                    disabled: !currentPath,
-                    title: "Go up to parent directory",
-                  },
-                  "▲ Up"
-                )
-              ),
-              React.createElement(
-                "div",
-                { className: "btn-group btn-group-sm mr-2 sfm-nav-actions-group" },
-                React.createElement(
-                  "button",
-                  {
-                    type: "button",
-                    className: "btn btn-sm btn-outline-secondary py-0 px-2",
-                    onClick: handleScanFolder,
-                    title: currentPath ? "Trigger Stash filesystem scan on this folder path" : "Trigger Stash filesystem scan on all libraries",
-                  },
-                  React.createElement(IconScan, { size: 13, color: "currentColor" }),
-                  "Scan Folder"
-                ),
-                React.createElement(
-                  "button",
-                  {
-                    type: "button",
-                    className: "btn btn-sm btn-outline-secondary py-0 px-2",
-                    onClick: openInNativeGrid,
-                    title: currentPath ? "Open this folder in Stash native scenes grid (new tab)" : "Open Stash native scenes grid (new tab)",
-                  },
-                  React.createElement(IconGrid, { size: 13, color: "currentColor" }),
-                  "Stash Grid"
-                )
-              ),
-              React.createElement(
-                "button",
-                { className: `sfm-crumb-btn ${!currentPath ? "sfm-crumb-active" : ""}`, onClick: () => navigateToFolder(""), title: "Return to Stash Root" },
-                React.createElement(IconFolder, { size: 16, color: "#88c0d0" }),
-                React.createElement("span", { className: "ml-1 font-weight-bold" }, "Stash")
-              ),
-              segments.map((seg, idx) => {
-                const p = segments.slice(0, idx + 1).join("/");
-                const isLast = idx === segments.length - 1;
-                return React.createElement(
-                  React.Fragment,
-                  { key: p },
-                  React.createElement("span", { className: "sfm-crumb-separator" }, "›"),
-                  React.createElement(
-                    "button",
-                    {
-                      className: `sfm-crumb-btn ${isLast ? "sfm-crumb-active" : ""}`,
-                      onClick: () => navigateToFolder(p),
-                      title: seg,
-                    },
-                    seg
-                  )
-                );
-              }),
-              React.createElement(
-                "span",
-                { className: "sfm-stat-pill ml-2 badge badge-dark font-weight-normal" },
-                `${currentNode ? currentNode.directScenes.length : 0} direct · ${allDescendantIds.length} in tree (${formatBytes(currentNode?.totalSize)})`
-              ),
-              (currentPath || selectedSceneIds.size > 0 || (currentNode && currentNode.directScenes && currentNode.directScenes.length > 0)) &&
+                { className: "sfm-breadcrumbs-wrap d-flex align-items-center flex-wrap" },
+                // Back & Up (Icons only, hover tooltip, grouped 2 as 1)
                 React.createElement(
                   "div",
-                  { className: "btn-group btn-group-sm ml-2" },
+                  { className: "btn-group btn-group-sm mr-2 sfm-nav-history-group" },
                   React.createElement(
                     "button",
                     {
                       type: "button",
                       className: "btn btn-sm btn-outline-secondary py-0 px-2",
-                      onClick: () => setShowParserModal(true),
-                      title: "Parse Filenames with Regex",
+                      onClick: handleGoBackInHistory,
+                      disabled: historyStack.current.length === 0 && !currentPath,
+                      title: "Go back to previous folder (Alt+Left)",
                     },
-                    React.createElement(IconSearch, { size: 13, color: "currentColor" }),
-                    "Parse"
+                    React.createElement(IconArrowLeft, { size: 14 })
                   ),
                   React.createElement(
                     "button",
                     {
                       type: "button",
                       className: "btn btn-sm btn-outline-secondary py-0 px-2",
-                      onClick: () => setShowBatchModal(true),
-                      title: "Batch Edit Scenes",
+                      onClick: handleGoUpOneLevel,
+                      disabled: !currentPath,
+                      title: "Go up to parent directory (Backspace)",
                     },
-                    React.createElement(IconEdit, { size: 13, color: "currentColor" }),
-                    "Batch Edit"
+                    React.createElement(IconArrowUp, { size: 14 })
+                  )
+                ),
+                // Path Root: Stash (with Home Icon)
+                React.createElement(
+                  "button",
+                  {
+                    type: "button",
+                    className: `sfm-crumb-btn ${!currentPath ? "sfm-crumb-active" : ""}`,
+                    onClick: () => navigateToFolder(""),
+                    title: "Return to Stash Root",
+                  },
+                  React.createElement(IconHome, { size: 14, color: "#88c0d0" }),
+                  React.createElement("span", { className: "ml-1 font-weight-bold" }, "Stash")
+                ),
+                // Segments
+                segments.map((seg, idx) => {
+                  const p = segments.slice(0, idx + 1).join("/");
+                  const isLast = idx === segments.length - 1;
+                  return React.createElement(
+                    React.Fragment,
+                    { key: p },
+                    React.createElement("span", { className: "sfm-crumb-separator" }, "›"),
+                    React.createElement(
+                      "button",
+                      {
+                        type: "button",
+                        className: `sfm-crumb-btn ${isLast ? "sfm-crumb-active" : ""}`,
+                        onClick: () => navigateToFolder(p),
+                        title: seg,
+                      },
+                      seg
+                    )
+                  );
+                }),
+                // Counts and size with colored digits
+                React.createElement(
+                  "span",
+                  { className: "sfm-stat-pill ml-2 badge badge-dark font-weight-normal" },
+                  React.createElement("strong", { style: { color: "#88c0d0" } }, currentNode ? currentNode.directScenes.length : 0),
+                  " direct · ",
+                  React.createElement("strong", { style: { color: "#81a1c1" } }, allDescendantIds.length),
+                  " in tree (",
+                  React.createElement("strong", { style: { color: "#a3be8c" } }, formatBytes(currentNode?.totalSize)),
+                  ")"
+                ),
+                // Scan and Grid (Icons only, hover tooltip, grouped 2 as 1)
+                React.createElement(
+                  "div",
+                  { className: "btn-group btn-group-sm ml-2 sfm-nav-actions-group" },
+                  React.createElement(
+                    "button",
+                    {
+                      type: "button",
+                      className: "btn btn-sm btn-outline-secondary py-0 px-2",
+                      onClick: handleScanFolder,
+                      title: currentPath ? `Trigger Stash filesystem scan on "${currentPath}"` : "Trigger Stash filesystem scan on all libraries",
+                    },
+                    React.createElement(IconScan, { size: 14 })
+                  ),
+                  React.createElement(
+                    "button",
+                    {
+                      type: "button",
+                      className: "btn btn-sm btn-outline-secondary py-0 px-2",
+                      onClick: openInNativeGrid,
+                      title: currentPath ? "Open folder in Stash native scenes grid (new tab)" : "Open Stash native scenes grid (new tab)",
+                    },
+                    React.createElement(IconGrid, { size: 14 })
                   )
                 )
+              ),
+              // Settings (aligned and anchored to the right of Line 1)
+              React.createElement(
+                "button",
+                {
+                  type: "button",
+                  className: "sfm-workspace-settings-btn ml-auto",
+                  onClick: () => setShowSettingsModal(true),
+                  title: "Stash Settings & Plugin Tasks",
+                },
+                React.createElement(IconGear, { size: 14, color: "currentColor" }),
+                "Settings"
+              )
             ),
+            // Line 2: [folder sort / scene sort] [the search box (stretch till fit)] [batch edit / parse (anchor right)]
             React.createElement(
               "div",
-              { className: "sfm-sort-group d-flex align-items-center" },
-              React.createElement("span", { className: "sfm-sort-label mr-1" }, "Scenes:"),
+              { className: "sfm-nav-line sfm-nav-line-controls d-flex align-items-center gap-2 mt-2" },
+              // Left: [folder sort / scene sort]
               React.createElement(
-                "select",
-                {
-                  className: "sfm-sort-select",
-                  value: sceneSort,
-                  onChange: (e) => setSceneSort(e.target.value),
-                  title: "Sort Scenes",
-                },
-                React.createElement("option", { value: "title_asc" }, "Title (A-Z)"),
-                React.createElement("option", { value: "title_desc" }, "Title (Z-A)"),
-                React.createElement("option", { value: "date_desc" }, "Date (Newest)"),
-                React.createElement("option", { value: "date_asc" }, "Date (Oldest)"),
-                React.createElement("option", { value: "rating_desc" }, "Rating (Highest)"),
-                React.createElement("option", { value: "duration_desc" }, "Duration (Longest)"),
-                React.createElement("option", { value: "size_desc" }, "Size (Largest)")
+                "div",
+                { className: "sfm-sort-group d-flex align-items-center gap-2 flex-shrink-0" },
+                React.createElement(
+                  "div",
+                  { className: "d-flex align-items-center sfm-sort-item" },
+                  React.createElement("span", { className: "sfm-sort-label mr-1 text-muted small" }, "Folders:"),
+                  React.createElement(
+                    "select",
+                    {
+                      className: "sfm-sort-select",
+                      value: folderSort,
+                      onChange: (e) => setFolderSort(e.target.value),
+                      title: "Sort Subfolders",
+                    },
+                    React.createElement("option", { value: "name_asc" }, "Name (A-Z)"),
+                    React.createElement("option", { value: "name_desc" }, "Name (Z-A)"),
+                    React.createElement("option", { value: "count_desc" }, "Count (High-Low)"),
+                    React.createElement("option", { value: "count_asc" }, "Count (Low-High)")
+                  )
+                ),
+                React.createElement(
+                  "div",
+                  { className: "d-flex align-items-center sfm-sort-item" },
+                  React.createElement("span", { className: "sfm-sort-label mr-1 text-muted small" }, "Scenes:"),
+                  React.createElement(
+                    "select",
+                    {
+                      className: "sfm-sort-select",
+                      value: sceneSort,
+                      onChange: (e) => setSceneSort(e.target.value),
+                      title: "Sort Scenes",
+                    },
+                    React.createElement("option", { value: "title_asc" }, "Title (A-Z)"),
+                    React.createElement("option", { value: "title_desc" }, "Title (Z-A)"),
+                    React.createElement("option", { value: "date_desc" }, "Date (Newest)"),
+                    React.createElement("option", { value: "date_asc" }, "Date (Oldest)"),
+                    React.createElement("option", { value: "rating_desc" }, "Rating (Highest)"),
+                    React.createElement("option", { value: "duration_desc" }, "Duration (Longest)"),
+                    React.createElement("option", { value: "size_desc" }, "Size (Largest)")
+                  )
+                )
               ),
-              React.createElement("span", { className: "sfm-sort-label ml-2 mr-1" }, "Folders:"),
+              // Center: [the search box (stretch till fit)]
               React.createElement(
-                "select",
-                {
-                  className: "sfm-sort-select",
-                  value: folderSort,
-                  onChange: (e) => setFolderSort(e.target.value),
-                  title: "Sort Folders",
-                },
-                React.createElement("option", { value: "name_asc" }, "Name (A-Z)"),
-                React.createElement("option", { value: "name_desc" }, "Name (Z-A)"),
-                React.createElement("option", { value: "count_desc" }, "Count (High-Low)"),
-                React.createElement("option", { value: "count_asc" }, "Count (Low-High)")
+                "div",
+                { className: "sfm-search-wrap sfm-search-stretch flex-grow-1" },
+                React.createElement(
+                  "span",
+                  { className: "sfm-search-icon" },
+                  React.createElement(IconSearch, { size: 14, color: "#81a1c1" })
+                ),
+                React.createElement("input", {
+                  ref: searchInputRef,
+                  type: "text",
+                  className: "sfm-search-input w-100",
+                  placeholder: "Search folder or scenes by title, studio, performer... (Press / to focus)",
+                  value: searchQuery,
+                  onChange: (e) => setSearchQuery(e.target.value),
+                }),
+                searchQuery &&
+                  React.createElement(
+                    "button",
+                    {
+                      type: "button",
+                      className: "sfm-search-clear",
+                      onClick: () => {
+                        setSearchQuery("");
+                        searchInputRef.current?.focus();
+                      },
+                      title: "Clear search (Esc)",
+                    },
+                    React.createElement(IconX, { size: 10, color: "currentColor" })
+                  )
+              ),
+              // Right: [batch edit / parse (align and anchor to right)]
+              React.createElement(
+                "div",
+                { className: "btn-group btn-group-sm sfm-tools-group flex-shrink-0 ml-auto" },
+                React.createElement(
+                  "button",
+                  {
+                    type: "button",
+                    className: "btn btn-sm btn-outline-secondary py-1 px-2",
+                    onClick: () => setShowBatchModal(true),
+                    title: "Batch Edit Scenes",
+                  },
+                  React.createElement(IconEdit, { size: 13, className: "mr-1" }),
+                  "Batch Edit"
+                ),
+                React.createElement(
+                  "button",
+                  {
+                    type: "button",
+                    className: "btn btn-sm btn-outline-secondary py-1 px-2",
+                    onClick: () => setShowParserModal(true),
+                    title: "Parse Filenames with Regex",
+                  },
+                  React.createElement(IconSearch, { size: 13, className: "mr-1" }),
+                  "Parse"
+                )
               )
             )
           ),
