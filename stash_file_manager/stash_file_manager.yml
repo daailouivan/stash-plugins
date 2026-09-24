@@ -1,6 +1,6 @@
 name: Path File Manager
 description: Hierarchical directory file-manager navigation for Stash with customizable folder views, Binge-style reel player, draggable PIP player, regex metadata parser, and native tasks.
-version: 2.5.2
+version: 2.5.3
 ui:
   javascript:
     - file_manager.js
@@ -28,41 +28,17 @@ tasks:
 
 settings:
   default_transcode_method:
-    displayName: Default Transcode Mode
+    displayName: Default Stream Mode
     type: STRING
-    description: "Default playback stream mode for native videos: 'direct' (raw stream), 'hls' (HLS stream), or 'webm' (WebM transcode). Default: direct"
+    description: "Default playback stream mode for native videos: 'direct' (raw stream), 'hls', or 'webm'. Default: direct"
   fallback_transcode_method:
     displayName: Fallback Transcode Mode
     type: STRING
-    description: "Automatic fallback transcode mode when non-native video formats (.avi, .flv, .wmv, .mpg) or non-native codecs (MPEG-4, DivX) are detected: 'hls' (recommended) or 'webm'. Default: hls"
+    description: "Fallback mode for non-native video formats or MPEG-4 codecs: 'hls' (recommended) or 'webm'. Default: hls"
   root_library_path:
     displayName: Root Library Path Override
     type: STRING
-    description: "Override initial root folder path (leave blank to auto-detect from Stash library paths)."
-  folder_view_mode:
-    displayName: Default Folder View Mode
-    type: STRING
-    description: "Initial subfolders display layout: 'cards', 'list', or 'details'. Default: cards"
-  scene_view_mode:
-    displayName: Default Scene View Mode
-    type: STRING
-    description: "Initial files/scenes display layout: 'cards' or 'table'. Default: cards"
-  default_sort_field:
-    displayName: Default Sort Field
-    type: STRING
-    description: "Default scene sort criterion: 'name', 'date', 'rating', 'size', or 'duration'. Default: name"
-  default_sort_direction:
-    displayName: Default Sort Direction
-    type: STRING
-    description: "Default sort direction: 'asc' or 'desc'. Default: asc"
-  folder_card_size:
-    displayName: Folder Card Size (px)
-    type: NUMBER
-    description: "Default folder card zoom width in pixels (120 to 300). Default: 160"
-  scene_card_size:
-    displayName: Scene Card Size (px)
-    type: NUMBER
-    description: "Default scene card zoom width in pixels (160 to 420). Default: 240"
+    description: "Initial root folder override path (leave empty to auto-detect from Stash library paths)."
   remember_last_path:
     displayName: Remember Last Visited Directory
     type: BOOLEAN

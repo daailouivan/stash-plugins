@@ -41,6 +41,14 @@ A high-performance directory navigation file manager for Stash:
 
 ## 📋 Changelog & Development History
 
+### [v2.5.3] — 2026-09-24 00:35:00
+* **Consolidated Stash Plugin Settings:** Streamlined `stash_file_manager.yml` to the 5 core settings with concise single-line descriptions, resolving visual clutter in Stash's native settings panel.
+* **Proactive MPEG-4 (.mp4) Fallback:** Enhanced detection checking `video_codec`, `format`, path/filename keywords, GraphQL metadata, and an active video track frame watchdog. MPEG-4 Part 2 / ASP (`mpeg4`, `divx`, `xvid`) in `.mp4` containers automatically streams via HLS.
+* **Elevated Metadata Description Overlay:** Moved the file type badge from behind the scene title down to the second line alongside codec, video duration, file size, and date.
+* **Monochrome Vector SVG Icons:** Replaced colorful emojis with clean, dark-themed monochrome vector SVG icons for all action buttons (Stash, VLC, Copy, Transcode, Navigation, PiP, Fullscreen).
+* **Refined Right Action Bar Spacing:** Removed the divider line directly under the Close button, and spaced the Fullscreen and PiP buttons downward.
+* **Binge Discover-Grade Smooth Reel Scrolling:** Removed debounce delay for instant scroll transition, and introduced eager poster screenshot rendering with cross-fading to eliminate black screen loading stalls between videos.
+
 ### [v2.5.2] — 2026-09-23 13:28:00
 * **Fixed Right Action Buttons Clipping:** Resolved an issue where buttons above the Previous Video button (Close, Stash, VLC, Copy Link, Transcode) were cut off and invisible. Removed a legacy conflicting CSS rule that inadvertently applied `transform: translateY(-50%)` to `top: 18px`, pushing the top half of the button column out of the container. Consolidated to a clean `transform: none; top: 18px; right: 18px;` rule ensuring the complete button stack is fully visible.
 

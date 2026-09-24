@@ -361,11 +361,23 @@
     // - Elevated metadata description overlay (sits comfortably above the scrubbing bar)
     // - Synchronized in-app settings with native Stash config.yml plugin settings
     // ==========================================
+// ==========================================
+    // Modal: Full-Bleed Binge Reel Player (v2.5.3)
+    // Features:
+    // - Binge Discover-grade ultra-smooth scrolling (instant momentum, poster fallback, zero black frames)
+    // - Proactive MPEG-4 Part 2 / ASP detection (.mp4 extension with mpeg4/divx/xvid automatically uses HLS)
+    // - Video track decode watchdog (auto-promotes to HLS if video frames fail to render)
+    // - Modern monochrome vector SVG icons (clean theme consistency, no colorful emojis)
+    // - Elevated metadata overlay: Title on top, File Type / Codec / Duration / Size / Date on Line 2
+    // - Refined right button stack: No divider under Close, PiP and Fullscreen spaced down
+    // - Consolidated native Stash plugin configuration
+    // ==========================================
     function BingeReelPlayerModal({ scene, scenes = [], onSelectScene, onClose, folderName, currentPath }) {
       const videoRef = useRef(null);
       const videoContainerRef = useRef(null);
       const hlsInstanceRef = useRef(null);
       const hideTimeoutRef = useRef(null);
+      const [isVideoReady, setIsVideoReady] = useState(false);
 
       // 1. Scene Navigation & Previews
       const currentIndex = useMemo(() => {
@@ -386,31 +398,50 @@
         if (hasNext) onSelectScene(nextScene);
       }, [hasNext, onSelectScene, nextScene]);
 
-      // 2. Format & Codec Resolution (MPEG-4 vs H.264 Detection)
+      // 2. Format & Codec Resolution (Proactive MPEG-4 vs H.264 Detection)
       const filePath = scene?.files?.[0]?.path || scene?.files?.[0]?.basename || "";
       const fileExt = (filePath.split(".").pop() || "").toLowerCase();
       const rawCodec = (scene?.files?.[0]?.video_codec || "").toLowerCase();
+      const rawFormat = (scene?.files?.[0]?.format || "").toLowerCase();
+      const lowerPath = filePath.toLowerCase();
+      const lowerTitle = (scene?.title || "").toLowerCase();
 
-      // Browsers do not support MPEG-4 Part 2 / ASP (mpeg4, mp4v, divx, xvid) natively even in .mp4 containers
-      const isUnsupportedCodec =
+      // Robust check for MPEG-4 Part 2 / ASP codecs in .mp4 (which browsers cannot decode natively)
+      const isMpeg4 =
         rawCodec.includes("mpeg4") ||
         rawCodec.includes("mp4v") ||
         rawCodec.includes("divx") ||
         rawCodec.includes("xvid") ||
+        rawCodec.includes("dx50") ||
+        rawCodec.includes("fmp4") ||
+        rawFormat.includes("mpeg-4") ||
+        rawFormat.includes("mpeg4") ||
+        lowerPath.includes("mpeg4") ||
+        lowerPath.includes("mpeg-4") ||
+        lowerPath.includes("xvid") ||
+        lowerPath.includes("divx") ||
+        lowerTitle.includes("mpeg4") ||
+        lowerTitle.includes("mpeg-4");
+
+      const isUnsupportedCodec =
+        isMpeg4 ||
         rawCodec.includes("mpeg2") ||
         rawCodec.includes("wmv") ||
         rawCodec.includes("flv") ||
         rawCodec.includes("vc1") ||
         rawCodec.includes("msmpeg");
 
+      // Only native H.264, AV1, VP9 or WebM are direct-streamable in browsers
       const isNativeDirect = ["mp4", "m4v", "webm"].includes(fileExt) && !isUnsupportedCodec;
+
       const extLabel = fileExt ? `.${fileExt.toUpperCase()}` : "VIDEO";
-      const codecBadge = rawCodec ? rawCodec.toUpperCase() : "";
+      const codecBadge = rawCodec ? rawCodec.toUpperCase() : isMpeg4 ? "MPEG-4" : "";
       const title = scene?.title || scene?.files?.[0]?.basename || `Scene #${scene?.id}`;
       const fileSize = formatBytes(scene?.files?.[0]?.size);
       const durationFormatted = formatDuration(scene?.files?.[0]?.duration);
       const dateStr = scene?.date || "";
       const studioName = scene?.studio?.name || "";
+      const posterUrl = scene?.paths?.screenshot || `/scene/${scene?.id}/screenshot`;
 
       // 3. Transcode Mode & Fallback Strategy
       const defaultMethod = window.__SFM_DEFAULT_TRANSCODE_METHOD__ || "direct";
@@ -432,6 +463,7 @@
 
       // Dynamically reset stream mode per-scene during scrolling
       useEffect(() => {
+        setIsVideoReady(false);
         setCustomStreamUrl("");
         setPlayerError("");
         setPlayerNotice("");
@@ -496,6 +528,27 @@
             if (webm) setTranscodeWebmUrl(webm.url);
             if (hls) setTranscodeHlsUrl(hls.url);
             if (mp4) setTranscodeMp4Url(mp4.url);
+
+            // Fresh Codec Validation: If probe confirms MPEG-4, enforce HLS immediately
+            const freshFile = data.files?.[0];
+            if (freshFile) {
+              const freshCodec = (freshFile.video_codec || "").toLowerCase();
+              const freshFormat = (freshFile.format || "").toLowerCase();
+              const freshPath = (freshFile.path || freshFile.basename || "").toLowerCase();
+              if (
+                freshCodec.includes("mpeg4") ||
+                freshCodec.includes("mp4v") ||
+                freshCodec.includes("divx") ||
+                freshCodec.includes("xvid") ||
+                freshFormat.includes("mpeg-4") ||
+                freshFormat.includes("mpeg4") ||
+                freshPath.includes("mpeg4") ||
+                freshPath.includes("mpeg-4")
+              ) {
+                console.log("[SFM Player] Detected MPEG-4 file from GraphQL details. Switched to HLS transcode.");
+                setStreamMode(fallbackMethod);
+              }
+            }
           })
           .catch((err) => {
             console.warn("[SFM Player] GraphQL stream query error:", err);
@@ -504,7 +557,7 @@
         return () => {
           active = false;
         };
-      }, [scene?.id]);
+      }, [scene?.id, fallbackMethod]);
 
       // Effective stream URL
       const streamUrl = useMemo(() => {
@@ -602,13 +655,30 @@
         };
       }, [streamUrl, streamMode]);
 
+      // Proactive Video Track Watchdog:
+      // If direct stream starts playing but has 0 decoded video dimensions (audio only decode of MPEG-4), auto-switch to HLS!
+      useEffect(() => {
+        const v = videoRef.current;
+        if (!v || streamMode !== "direct") return;
+
+        const watchdog = setTimeout(() => {
+          if (v && !v.paused && v.currentTime > 0.4 && (v.videoWidth === 0 || v.videoHeight === 0)) {
+            console.warn("[SFM Player] Video stream playing without visual track (MPEG-4 decode unsupported). Switching to HLS.");
+            setStreamMode(fallbackMethod);
+            setPlayerNotice("MPEG-4 video track not supported natively by browser. Switched to HLS transcode.");
+          }
+        }, 1100);
+
+        return () => clearTimeout(watchdog);
+      }, [streamMode, streamUrl, fallbackMethod]);
+
       // Playback error handler
       const handleVideoError = (e) => {
         console.warn("[SFM Player] Playback error on stream:", streamUrl, e);
         if (streamMode === "direct" && !customStreamUrl) {
           const next = fallbackMethod === "direct" ? "hls" : fallbackMethod;
           setStreamMode(next);
-          setPlayerNotice(`Direct stream format or codec unsupported by browser. Switched to ${next.toUpperCase()} Transcode.`);
+          setPlayerNotice(`Direct stream unsupported for this file. Switched to ${next.toUpperCase()} Transcode.`);
         } else if (streamMode === "hls" && !customStreamUrl) {
           setStreamMode("webm");
           setPlayerNotice("HLS stream failed. Switched to WebM Progressive Container.");
@@ -728,7 +798,6 @@
           setIsPipMode(true);
         };
         const handleLeavePip = () => {
-          // Triggered when user clicks native "Back to Tab" / "Enlarge" button in PiP window
           setIsPipMode(false);
         };
         v.addEventListener("enterpictureinpicture", handleEnterPip);
@@ -781,55 +850,56 @@
 
       const vlcUrl = `vlc://${window.location.origin}${directUrl}`;
 
-      // 6. Seamless Vertical Reel Scrolling (TikTok-Style > 50% Threshold)
+      // 6. Ultra-Smooth Binge Discover-Style Vertical Reel Scrolling
       const [pullOffset, setPullOffset] = useState(0);
       const [isTransitioning, setIsTransitioning] = useState(false);
-      const wheelAccumulator = useRef(0);
-      const wheelDebounceTimer = useRef(null);
+      const scrollAnimFrame = useRef(null);
 
       const handleWheel = (e) => {
         e.preventDefault();
         if (isTransitioning) return;
 
         const containerHeight = videoContainerRef.current?.clientHeight || window.innerHeight || 800;
-        const scrollThreshold = containerHeight * 0.5; // Over half the screen, like TikTok
+        const scrollThreshold = containerHeight * 0.45; // Smooth Discover threshold
 
-        wheelAccumulator.current += e.deltaY;
-        const newOffset = -wheelAccumulator.current * 0.7;
+        // Instant direct translation without laggy debounce timer
+        const delta = e.deltaY;
+        const targetOffset = pullOffset - delta * 0.85;
 
-        if ((!hasPrev && newOffset > 0) || (!hasNext && newOffset < 0)) {
-          setPullOffset(newOffset * 0.15);
-        } else {
-          setPullOffset(newOffset);
+        // Apply boundary resistance
+        if ((!hasPrev && targetOffset > 0) || (!hasNext && targetOffset < 0)) {
+          setPullOffset(targetOffset * 0.15);
+          return;
         }
 
-        if (wheelDebounceTimer.current) clearTimeout(wheelDebounceTimer.current);
-        wheelDebounceTimer.current = setTimeout(() => {
-          const currentPull = -wheelAccumulator.current * 0.7;
-          if (currentPull > scrollThreshold && hasPrev) {
-            setIsTransitioning(true);
-            setPullOffset(containerHeight);
-            setTimeout(() => {
-              goToPrev();
-              setPullOffset(0);
-              wheelAccumulator.current = 0;
-              setIsTransitioning(false);
-            }, 260);
-          } else if (currentPull < -scrollThreshold && hasNext) {
-            setIsTransitioning(true);
-            setPullOffset(-containerHeight);
-            setTimeout(() => {
-              goToNext();
-              setPullOffset(0);
-              wheelAccumulator.current = 0;
-              setIsTransitioning(false);
-            }, 260);
-          } else {
-            // Anything less than half snaps smoothly back to center
+        // Fast flick/momentum threshold reached: commit transition immediately
+        if (targetOffset > scrollThreshold && hasPrev) {
+          setIsTransitioning(true);
+          setPullOffset(containerHeight);
+          setTimeout(() => {
+            goToPrev();
             setPullOffset(0);
-            wheelAccumulator.current = 0;
-          }
-        }, 180);
+            setIsTransitioning(false);
+          }, 240);
+          return;
+        } else if (targetOffset < -scrollThreshold && hasNext) {
+          setIsTransitioning(true);
+          setPullOffset(-containerHeight);
+          setTimeout(() => {
+            goToNext();
+            setPullOffset(0);
+            setIsTransitioning(false);
+          }, 240);
+          return;
+        }
+
+        setPullOffset(targetOffset);
+
+        // Auto spring-back when wheel stops
+        if (scrollAnimFrame.current) clearTimeout(scrollAnimFrame.current);
+        scrollAnimFrame.current = setTimeout(() => {
+          setPullOffset(0);
+        }, 120);
       };
 
       // Keyboard Controls
@@ -958,9 +1028,9 @@
                   style: {
                     transform: `translateY(${pullOffset}px)`,
                     transition: isTransitioning
-                      ? "transform 0.26s cubic-bezier(0.2, 0.9, 0.3, 1)"
+                      ? "transform 0.24s cubic-bezier(0.22, 1, 0.36, 1)"
                       : pullOffset === 0
-                      ? "transform 0.24s cubic-bezier(0.2, 0.9, 0.3, 1)"
+                      ? "transform 0.22s cubic-bezier(0.22, 1, 0.36, 1)"
                       : "none",
                   },
                 },
@@ -973,6 +1043,7 @@
                       src: prevScene?.paths?.screenshot || `/scene/${prevScene?.id}/screenshot`,
                       className: "sfm-reel-slide-poster",
                       alt: "",
+                      loading: "eager",
                     }),
                     React.createElement(
                       "div",
@@ -988,6 +1059,12 @@
                 React.createElement(
                   "div",
                   { className: "sfm-reel-slide sfm-reel-slide-active" },
+                  // Seamless poster image behind video to eliminate black loading flash
+                  React.createElement("img", {
+                    src: posterUrl,
+                    className: `sfm-reel-live-poster ${isVideoReady ? "sfm-poster-faded" : ""}`,
+                    alt: "",
+                  }),
                   React.createElement("div", {
                     className: "sfm-video-gesture-overlay",
                     onClick: handleGestureClick,
@@ -998,11 +1075,17 @@
                     ref: videoRef,
                     controls: false, // Prevents browser control bar morphing
                     playsInline: true,
+                    preload: "auto",
+                    poster: posterUrl,
                     className: "sfm-reel-video-element",
                     onError: handleVideoError,
                     onTimeUpdate: handleTimeUpdate,
                     onLoadedMetadata: handleLoadedMetadata,
-                    onPlay: () => setIsPlaying(true),
+                    onLoadedData: () => setIsVideoReady(true),
+                    onPlaying: () => {
+                      setIsPlaying(true);
+                      setIsVideoReady(true);
+                    },
                     onPause: () => setIsPlaying(false),
                   })
                 ),
@@ -1016,6 +1099,7 @@
                       src: nextScene?.paths?.screenshot || `/scene/${nextScene?.id}/screenshot`,
                       className: "sfm-reel-slide-poster",
                       alt: "",
+                      loading: "eager",
                     }),
                     React.createElement(
                       "div",
@@ -1047,9 +1131,9 @@
                 ),
 
               // ==========================================
-              // Right-Side Circular Action Bar
-              // Uniform 36px circular buttons, aligned right starting with Close button at top
-              // Order: [Close ✕] > [space] > [Stash ↗] > [VLC 🚀] > [Copy Link 📋] > [Transcode Dropdown] > [wide space] > [Prev ▲] > [Counter] > [Next ▼] > [wide space] > [PiP ⧉] > [Fullscreen ⛶]
+              // Right-Side Clean Vector Action Bar
+              // Monochrome sleek SVG vector icons (Theme consistent, no colorful emojis)
+              // No divider under Close button; Fullscreen & PiP moved down
               // ==========================================
               React.createElement(
                 "div",
@@ -1065,11 +1149,15 @@
                     onClick: onClose,
                     title: "Close Player (Esc)",
                   },
-                  "✕"
+                  React.createElement(
+                    "svg",
+                    { viewBox: "0 0 24 24", width: 16, height: 16, stroke: "currentColor", strokeWidth: "2.5", fill: "none" },
+                    React.createElement("line", { x1: "18", y1: "6", x2: "6", y2: "18" }),
+                    React.createElement("line", { x1: "6", y1: "6", x2: "18", y2: "18" })
+                  )
                 ),
-                // Small Spacer
-                React.createElement("div", { className: "sfm-reel-spacer-small" }),
-                // 2. Stash Scene Details
+
+                // 2. Stash Scene Details (Directly under close button without divider)
                 React.createElement(
                   "a",
                   {
@@ -1079,7 +1167,13 @@
                     className: "sfm-reel-circle-btn",
                     title: "Open Scene Details in Stash",
                   },
-                  "↗"
+                  React.createElement(
+                    "svg",
+                    { viewBox: "0 0 24 24", width: 16, height: 16, stroke: "currentColor", strokeWidth: "2.2", fill: "none" },
+                    React.createElement("path", { d: "M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" }),
+                    React.createElement("polyline", { points: "15 3 21 3 21 9" }),
+                    React.createElement("line", { x1: "10", y1: "14", x2: "21", y2: "3" })
+                  )
                 ),
                 // 3. Open Stream in VLC
                 React.createElement(
@@ -1089,7 +1183,11 @@
                     className: "sfm-reel-circle-btn sfm-btn-vlc",
                     title: "Open Stream in VLC Media Player",
                   },
-                  "🚀"
+                  React.createElement(
+                    "svg",
+                    { viewBox: "0 0 24 24", width: 16, height: 16, fill: "currentColor" },
+                    React.createElement("path", { d: "M11 2.5a1.2 1.2 0 0 1 2 0l1.5 4.5h-5zM8.8 8.5h6.4l1.1 3.5H7.7zM6.8 13.5h10.4l1.3 4H5.5zM3.5 19.5a1 1 0 0 1 1-1h15a1 1 0 0 1 1 1v1a1 1 0 0 1-1 1h-15a1 1 0 0 1-1-1z" })
+                  )
                 ),
                 // 4. Copy Link
                 React.createElement(
@@ -1099,7 +1197,12 @@
                     onClick: handleCopyStreamLink,
                     title: "Copy Stream URL to Clipboard",
                   },
-                  "📋"
+                  React.createElement(
+                    "svg",
+                    { viewBox: "0 0 24 24", width: 16, height: 16, stroke: "currentColor", strokeWidth: "2", fill: "none" },
+                    React.createElement("path", { d: "M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" }),
+                    React.createElement("path", { d: "M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" })
+                  )
                 ),
                 // 5. Transcode Dropdown Selector
                 React.createElement(
@@ -1112,7 +1215,11 @@
                       onClick: () => setShowTranscodeMenu((prev) => !prev),
                       title: `Stream Engine (${streamMode.toUpperCase()}) — Click to change profile`,
                     },
-                    streamMode === "direct" ? "⚡" : streamMode === "hls" ? "📺" : streamMode === "webm" ? "🔄" : "🎬"
+                    React.createElement(
+                      "svg",
+                      { viewBox: "0 0 24 24", width: 16, height: 16, stroke: "currentColor", strokeWidth: "2", fill: "none" },
+                      React.createElement("polygon", { points: "13 2 3 14 12 14 11 22 21 10 12 10 13 2" })
+                    )
                   ),
                   showTranscodeMenu &&
                     React.createElement(
@@ -1128,7 +1235,7 @@
                             setShowTranscodeMenu(false);
                           },
                         },
-                        "⚡ Direct Stream (Raw File)"
+                        "Direct Stream (Raw File)"
                       ),
                       React.createElement(
                         "button",
@@ -1140,7 +1247,7 @@
                             setShowTranscodeMenu(false);
                           },
                         },
-                        "📺 HLS Stream (Adaptive)"
+                        "HLS Stream (Adaptive)"
                       ),
                       React.createElement(
                         "button",
@@ -1152,7 +1259,7 @@
                             setShowTranscodeMenu(false);
                           },
                         },
-                        "🔄 WebM Transcode"
+                        "WebM Transcode"
                       ),
                       React.createElement(
                         "button",
@@ -1164,7 +1271,7 @@
                             setShowTranscodeMenu(false);
                           },
                         },
-                        "🎬 MP4 Transcode"
+                        "MP4 Transcode"
                       ),
                       availableStreams.filter((s) => !s.url.includes("stream.webm") && !s.url.includes("stream.m3u8") && !s.url.includes("stream.mp4")).map((s, idx) =>
                         React.createElement(
@@ -1195,7 +1302,11 @@
                     disabled: !hasPrev,
                     title: hasPrev ? `Previous: ${prevScene?.title || `Scene #${prevScene?.id}`}` : "First scene in folder",
                   },
-                  "▲"
+                  React.createElement(
+                    "svg",
+                    { viewBox: "0 0 24 24", width: 16, height: 16, stroke: "currentColor", strokeWidth: "2.5", fill: "none" },
+                    React.createElement("polyline", { points: "18 15 12 9 6 15" })
+                  )
                 ),
                 // 7. Reel Counter Pill
                 React.createElement(
@@ -1212,52 +1323,70 @@
                     disabled: !hasNext,
                     title: hasNext ? `Next: ${nextScene?.title || `Scene #${nextScene?.id}`}` : "Last scene in folder",
                   },
-                  "▼"
+                  React.createElement(
+                    "svg",
+                    { viewBox: "0 0 24 24", width: 16, height: 16, stroke: "currentColor", strokeWidth: "2.5", fill: "none" },
+                    React.createElement("polyline", { points: "6 9 12 15 18 9" })
+                  )
                 ),
 
-                // Wide Divider Spacer after Prev/Next Buttons
-                React.createElement("div", { className: "sfm-reel-spacer-wide" }),
-
-                // 9. Picture-in-Picture Button
+                // Bottom actions group (PiP and Fullscreen moved down)
                 React.createElement(
-                  "button",
-                  {
-                    className: "sfm-reel-circle-btn",
-                    onClick: handleTogglePip,
-                    title: "Switch to Picture-in-Picture (P)",
-                  },
-                  "⧉"
-                ),
-                // 10. Fullscreen Button
-                React.createElement(
-                  "button",
-                  {
-                    className: "sfm-reel-circle-btn",
-                    onClick: handleToggleFullscreen,
-                    title: "Toggle Fullscreen (F)",
-                  },
-                  "⛶"
+                  "div",
+                  { className: "sfm-reel-bottom-actions" },
+                  // 9. Picture-in-Picture Button
+                  React.createElement(
+                    "button",
+                    {
+                      className: `sfm-reel-circle-btn ${isPipMode ? "sfm-btn-pip-active" : ""}`,
+                      onClick: handleTogglePip,
+                      title: "Switch to Picture-in-Picture (P)",
+                    },
+                    React.createElement(
+                      "svg",
+                      { viewBox: "0 0 24 24", width: 16, height: 16, stroke: "currentColor", strokeWidth: "2", fill: "none" },
+                      React.createElement("rect", { x: "2", y: "4", width: "20", height: "16", rx: "2" }),
+                      React.createElement("rect", { x: "13", y: "11", width: "7", height: "6", rx: "1", fill: "currentColor" })
+                    )
+                  ),
+                  // 10. Fullscreen Button
+                  React.createElement(
+                    "button",
+                    {
+                      className: "sfm-reel-circle-btn",
+                      onClick: handleToggleFullscreen,
+                      title: "Toggle Fullscreen (F)",
+                    },
+                    React.createElement(
+                      "svg",
+                      { viewBox: "0 0 24 24", width: 16, height: 16, stroke: "currentColor", strokeWidth: "2.2", fill: "none" },
+                      React.createElement("path", { d: "M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" })
+                    )
+                  )
                 )
               ),
 
               // ==========================================
-              // Metadata Overlay (Elevated above Scrubbing Bar)
-              // Shows Title, Format Badge, Studio Pill, Duration, Size, Date, Codec
+              // Elevated Metadata Overlay:
+              // Line 1: Scene Title + Studio Name
+              // Line 2: File Type Badge + Codec + Duration + File Size + Date
               // ==========================================
               React.createElement(
                 "div",
                 { className: `sfm-reel-description-overlay ${isControlsVisible ? "sfm-visible" : "sfm-hidden"}` },
+                // Line 1: Pure Title & Studio
                 React.createElement(
                   "div",
                   { className: "d-flex align-items-center flex-wrap gap-2 mb-1" },
                   React.createElement("span", { className: "sfm-reel-title-text" }, `▶ ${title}`),
-                  React.createElement("span", { className: "sfm-badge sfm-badge-primary" }, extLabel),
-                  codecBadge && React.createElement("span", { className: "sfm-badge sfm-badge-codec" }, codecBadge),
                   studioName && React.createElement("span", { className: "sfm-badge sfm-badge-studio" }, studioName)
                 ),
+                // Line 2: Format Badge, Codec, Duration, File Size, Date
                 React.createElement(
                   "div",
                   { className: "sfm-reel-meta-line" },
+                  React.createElement("span", { className: "sfm-badge sfm-badge-primary mr-1" }, extLabel),
+                  codecBadge && React.createElement("span", { className: "sfm-badge sfm-badge-codec mr-1" }, codecBadge),
                   durationFormatted && React.createElement("span", { className: "mr-2" }, `⏱ ${durationFormatted}`),
                   fileSize && fileSize !== "0 B" && React.createElement("span", { className: "mr-2" }, `💾 ${fileSize}`),
                   dateStr && React.createElement("span", { className: "mr-2" }, `📅 ${dateStr}`)
