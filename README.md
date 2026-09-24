@@ -41,6 +41,14 @@ A high-performance directory navigation file manager for Stash:
 
 ## 📋 Changelog & Development History
 
+### [v2.7.2] — 2026-09-24 08:53:00
+* **Compact SVG Sliders:** Replaced text emojis with sleek 12px SVG icons (IconZoom, IconWidth), removed bulky pill background/border, and aligned height to 24px flush with adjacent buttons.
+* **Unified Select All & Count Button:** Merged Select All button and selected count badge into a single dynamic control that transforms into '[N] Selected' when scenes are selected and clears selection on click.
+* **Persistent Include Sub-folders Button:** Removed checkmark prefix from Include Sub-folders button so text and button width remain completely persistent when toggled.
+* **Decoupled Collapsible Titles:** Moved status badges and subfolder toggles outside the collapsible header wrappers to prevent accidental section collapsing.
+* **Aligned Subfolder Controls & Indicators:** Positioned 'Folder Sort First' immediately after 'Include Sub-folders' with matching button styling, and matched exact widths (176px / 132px) and height (24px) to their corresponding indicators below.
+* **Relocated Sorting Dropdowns:** Moved both Scenes and Folders sorting dropdowns into the right-hand padding of the current path navigation line.
+
 ### [v2.7.1] — 2026-09-24 07:45:00
 * **Folder-First Recursive Scene Sorting:** When **Include Sub-folders** is enabled, scenes can now be sorted under their parent folder's sorting rule first, then sorted by the chosen scene sort criteria within each folder.
   * For example, with folders , ,  and files in , sorting by name produces , , , .

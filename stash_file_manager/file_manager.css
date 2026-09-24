@@ -1380,26 +1380,38 @@
   display: inline-flex;
   align-items: center;
   user-select: none;
-  background: rgba(30, 35, 46, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 20px;
-  padding: 0.15rem 0.5rem;
+  background: transparent;
+  border: none;
+  padding: 0 0.15rem;
+  height: 24px;
+  line-height: 1;
+  gap: 0.35rem;
 }
 
 .sfm-size-slider {
-  width: 76px;
-  height: 4px;
+  width: 72px;
+  height: 3px;
   background: #3b4252;
   border-radius: 2px;
   outline: none;
   cursor: pointer;
   accent-color: #88c0d0;
   vertical-align: middle;
+  margin: 0;
+  padding: 0;
   transition: opacity 0.15s ease;
 }
 
 .sfm-size-slider:hover {
   background: #4c566a;
+}
+
+.sfm-size-slider::-webkit-slider-thumb {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #88c0d0;
+  cursor: pointer;
 }
 
 .sfm-folder-cards-grid {
@@ -2125,4 +2137,52 @@
   border-radius: 12px;
   padding: 0.22rem 0.6rem;
   vertical-align: middle;
+}
+
+
+/* ==========================================================================
+   Matching Pill Dimensions for Subfolder & Folder-Sort Buttons & Indicators
+   ========================================================================== */
+
+.sfm-pill-subfolders {
+  width: 176px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  line-height: 1;
+  padding: 0 0.5rem;
+  box-sizing: border-box;
+  text-align: center;
+  vertical-align: middle;
+  border-radius: 4px;
+}
+
+.sfm-pill-foldersort {
+  width: 132px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  line-height: 1;
+  padding: 0 0.5rem;
+  box-sizing: border-box;
+  text-align: center;
+  vertical-align: middle;
+  border-radius: 4px;
+}
+
+.sfm-pill-selectall {
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  line-height: 1;
+  padding: 0 0.55rem;
+  box-sizing: border-box;
+  vertical-align: middle;
+  border-radius: 4px;
 }
