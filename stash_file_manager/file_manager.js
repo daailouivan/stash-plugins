@@ -389,6 +389,34 @@
       const hasNext = currentIndex !== -1 && currentIndex < totalScenes - 1;
       const prevScene = hasPrev ? scenes[currentIndex - 1] : null;
       const nextScene = hasNext ? scenes[currentIndex + 1] : null;
+      const futureScene = (currentIndex !== -1 && currentIndex + 2 < totalScenes) ? scenes[currentIndex + 2] : null;
+
+      // Helper to pre-resolve stream URLs for adjacent and upcoming scenes
+      const resolveSceneStreamUrl = useCallback((sc, mode) => {
+        if (!sc?.id) return "";
+        const fPath = sc.files?.[0]?.path || sc.files?.[0]?.basename || "";
+        const fCodec = (sc.files?.[0]?.video_codec || "").toLowerCase();
+        const fFormat = (sc.files?.[0]?.format || "").toLowerCase();
+        const fLower = (fPath + " " + (sc.title || "")).toLowerCase();
+        const scMpeg4 =
+          fCodec.includes("mpeg4") ||
+          fCodec.includes("mp4v") ||
+          fCodec.includes("divx") ||
+          fCodec.includes("xvid") ||
+          fFormat.includes("mpeg-4") ||
+          fLower.includes("mpeg4") ||
+          fLower.includes("xvid") ||
+          fLower.includes("divx");
+
+        if (mode === "hls" || scMpeg4) return `/scene/${sc.id}/stream.m3u8`;
+        if (mode === "webm") return `/scene/${sc.id}/stream.webm`;
+        if (mode === "mp4") return `/scene/${sc.id}/stream.mp4`;
+        return sc.paths?.stream || `/scene/${sc.id}/stream`;
+      }, []);
+
+      const prevStreamUrl = useMemo(() => resolveSceneStreamUrl(prevScene, streamMode), [prevScene, streamMode, resolveSceneStreamUrl]);
+      const nextStreamUrl = useMemo(() => resolveSceneStreamUrl(nextScene, streamMode), [nextScene, streamMode, resolveSceneStreamUrl]);
+      const futureStreamUrl = useMemo(() => resolveSceneStreamUrl(futureScene, streamMode), [futureScene, streamMode, resolveSceneStreamUrl]);
 
       const goToPrev = useCallback(() => {
         if (hasPrev) onSelectScene(prevScene);
@@ -777,10 +805,10 @@
         const width = rect.width;
         if (clickX < width * 0.45) {
           v.currentTime = Math.max(0, v.currentTime - 10);
-          setHudNotice("⏪ 10s");
+          setHudNotice("-10s");
         } else if (clickX > width * 0.55) {
           v.currentTime = Math.min(duration || 999999, v.currentTime + 10);
-          setHudNotice("⏩ 10s");
+          setHudNotice("+10s");
         } else {
           handleTogglePlay();
           return;
@@ -921,14 +949,14 @@
             e.preventDefault();
             if (videoRef.current) {
               videoRef.current.currentTime = Math.max(0, videoRef.current.currentTime - 10);
-              setHudNotice("⏪ 10s");
+              setHudNotice("-10s");
               setTimeout(() => setHudNotice(""), 800);
             }
           } else if (e.key === "ArrowRight") {
             e.preventDefault();
             if (videoRef.current) {
               videoRef.current.currentTime = Math.min(duration || 999999, videoRef.current.currentTime + 10);
-              setHudNotice("⏩ 10s");
+              setHudNotice("+10s");
               setTimeout(() => setHudNotice(""), 800);
             }
           } else if (e.key === " " || e.key === "k") {
@@ -976,7 +1004,12 @@
               },
               title: "Click to return video to player",
             },
-            React.createElement("span", { className: "sfm-pip-pill-icon mr-2" }, "⧉"),
+            React.createElement(
+              "svg",
+              { viewBox: "0 0 24 24", width: 14, height: 14, stroke: "currentColor", strokeWidth: "2", fill: "none", className: "mr-2" },
+              React.createElement("rect", { x: "2", y: "4", width: "20", height: "16", rx: "2" }),
+              React.createElement("rect", { x: "13", y: "11", width: "7", height: "6", rx: "1", fill: "currentColor" })
+            ),
             React.createElement("span", { className: "sfm-pip-pill-title" }, `Playing: ${title}`),
             React.createElement("span", { className: "sfm-pip-pill-action ml-2" }, "(Click to Enlarge)"),
             React.createElement(
@@ -1034,7 +1067,7 @@
                       : "none",
                   },
                 },
-                // Slide -1: Previous Video Preview (Above)
+                // Slide -1: Previous Video Slide (Above, Full-Bleed Clean Poster & Preload)
                 hasPrev &&
                   React.createElement(
                     "div",
@@ -1045,17 +1078,19 @@
                       alt: "",
                       loading: "eager",
                     }),
-                    React.createElement(
-                      "div",
-                      { className: "sfm-reel-slide-info" },
-                      React.createElement("span", { className: "sfm-badge mb-1" }, "▲ Previous Scene"),
-                      React.createElement("h4", { className: "text-light font-weight-bold" }, prevScene?.title || `Scene #${prevScene?.id}`),
-                      prevScene?.files?.[0]?.duration &&
-                        React.createElement("span", { className: "small text-muted" }, formatDuration(prevScene.files[0].duration))
-                    )
+                    prevStreamUrl &&
+                      React.createElement("video", {
+                        key: `prev-vid-${prevScene.id}`,
+                        src: prevStreamUrl,
+                        className: "sfm-reel-adjacent-video",
+                        preload: "auto",
+                        muted: true,
+                        playsInline: true,
+                        controls: false,
+                      })
                   ),
 
-                // Slide 0: Current Active Video (NEVER unmounted)
+                // Slide 0: Current Active Video (playing)
                 React.createElement(
                   "div",
                   { className: "sfm-reel-slide sfm-reel-slide-active" },
@@ -1073,7 +1108,7 @@
                   }),
                   React.createElement("video", {
                     ref: videoRef,
-                    controls: false, // Prevents browser control bar morphing
+                    controls: false,
                     playsInline: true,
                     preload: "auto",
                     poster: posterUrl,
@@ -1090,7 +1125,7 @@
                   })
                 ),
 
-                // Slide +1: Next Video Preview (Below)
+                // Slide +1: Next Video Slide (Below, Full-Bleed Clean Poster & Instant Preload)
                 hasNext &&
                   React.createElement(
                     "div",
@@ -1101,33 +1136,96 @@
                       alt: "",
                       loading: "eager",
                     }),
-                    React.createElement(
-                      "div",
-                      { className: "sfm-reel-slide-info" },
-                      React.createElement("span", { className: "sfm-badge mb-1" }, "▼ Next Scene"),
-                      React.createElement("h4", { className: "text-light font-weight-bold" }, nextScene?.title || `Scene #${nextScene?.id}`),
-                      nextScene?.files?.[0]?.duration &&
-                        React.createElement("span", { className: "small text-muted" }, formatDuration(nextScene.files[0].duration))
-                    )
-                  )
+                    nextStreamUrl &&
+                      React.createElement("video", {
+                        key: `next-vid-${nextScene.id}`,
+                        src: nextStreamUrl,
+                        className: "sfm-reel-adjacent-video",
+                        preload: "auto",
+                        muted: true,
+                        playsInline: true,
+                        controls: false,
+                      })
+                  ),
+
+                // Background Preloader for Upcoming Scene (+2 ahead) to sustain continuous playback
+                futureStreamUrl &&
+                  React.createElement("video", {
+                    key: `future-vid-${futureScene.id}`,
+                    src: futureStreamUrl,
+                    preload: "metadata",
+                    muted: true,
+                    style: { display: "none" },
+                  })
               ),
 
-              // On-screen animated HUD feedback badge (e.g. ±10s seek)
+              // On-screen animated HUD feedback badge (e.g. ±10s seek) with sleek vector chevrons
               hudNotice &&
                 React.createElement(
                   "div",
                   { className: "sfm-player-hud" },
-                  React.createElement("div", { className: "sfm-hud-pill" }, hudNotice)
+                  React.createElement(
+                    "div",
+                    { className: "sfm-hud-pill d-flex align-items-center gap-1" },
+                    hudNotice.startsWith("-")
+                      ? React.createElement(
+                          "svg",
+                          { viewBox: "0 0 24 24", width: 14, height: 14, stroke: "currentColor", strokeWidth: "2.5", fill: "none" },
+                          React.createElement("polyline", { points: "11 19 2 12 11 5" }),
+                          React.createElement("polyline", { points: "22 19 13 12 22 5" })
+                        )
+                      : React.createElement(
+                          "svg",
+                          { viewBox: "0 0 24 24", width: 14, height: 14, stroke: "currentColor", strokeWidth: "2.5", fill: "none" },
+                          React.createElement("polyline", { points: "13 19 22 12 13 5" }),
+                          React.createElement("polyline", { points: "2 19 11 12 2 5" })
+                        ),
+                    React.createElement("span", null, hudNotice)
+                  )
                 ),
 
-              // Status Notices
+              // Status Notices with Clean Inline Vector SVGs
               (copiedNotice || playerNotice || playerError) &&
                 React.createElement(
                   "div",
                   { className: "sfm-reel-top-notices" },
-                  copiedNotice && React.createElement("div", { className: "alert alert-success py-1 px-3 mb-1 small" }, `✓ ${copiedNotice}`),
-                  playerNotice && React.createElement("div", { className: "alert alert-warning py-1 px-3 mb-1 small" }, `ℹ ${playerNotice}`),
-                  playerError && React.createElement("div", { className: "alert alert-danger py-1 px-3 mb-1 small" }, `⚠ ${playerError}`)
+                  copiedNotice &&
+                    React.createElement(
+                      "div",
+                      { className: "alert alert-success py-1 px-3 mb-1 small d-flex align-items-center gap-2" },
+                      React.createElement(
+                        "svg",
+                        { viewBox: "0 0 24 24", width: 14, height: 14, stroke: "currentColor", strokeWidth: "2.5", fill: "none" },
+                        React.createElement("polyline", { points: "20 6 9 17 4 12" })
+                      ),
+                      copiedNotice
+                    ),
+                  playerNotice &&
+                    React.createElement(
+                      "div",
+                      { className: "alert alert-warning py-1 px-3 mb-1 small d-flex align-items-center gap-2" },
+                      React.createElement(
+                        "svg",
+                        { viewBox: "0 0 24 24", width: 14, height: 14, stroke: "currentColor", strokeWidth: "2", fill: "none" },
+                        React.createElement("circle", { cx: "12", cy: "12", r: "10" }),
+                        React.createElement("line", { x1: "12", y1: "16", x2: "12", y2: "12" }),
+                        React.createElement("line", { x1: "12", y1: "8", x2: "12.01", y2: "8" })
+                      ),
+                      playerNotice
+                    ),
+                  playerError &&
+                    React.createElement(
+                      "div",
+                      { className: "alert alert-danger py-1 px-3 mb-1 small d-flex align-items-center gap-2" },
+                      React.createElement(
+                        "svg",
+                        { viewBox: "0 0 24 24", width: 14, height: 14, stroke: "currentColor", strokeWidth: "2", fill: "none" },
+                        React.createElement("path", { d: "M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" }),
+                        React.createElement("line", { x1: "12", y1: "9", x2: "12", y2: "13" }),
+                        React.createElement("line", { x1: "12", y1: "17", x2: "12.01", y2: "17" })
+                      ),
+                      playerError
+                    )
                 ),
 
               // ==========================================
@@ -1204,7 +1302,7 @@
                     React.createElement("path", { d: "M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" })
                   )
                 ),
-                // 5. Transcode Dropdown Selector
+                // 5. Transcode Dropdown Selector (Codec Processor Chip Vector Icon)
                 React.createElement(
                   "div",
                   { className: "sfm-reel-transcode-wrap" },
@@ -1213,12 +1311,25 @@
                     {
                       className: `sfm-reel-circle-btn ${streamMode !== "direct" ? "sfm-transcode-active" : ""}`,
                       onClick: () => setShowTranscodeMenu((prev) => !prev),
-                      title: `Stream Engine (${streamMode.toUpperCase()}) — Click to change profile`,
+                      title: `Stream Codec Engine (${streamMode.toUpperCase()}) — Click to change profile`,
                     },
                     React.createElement(
                       "svg",
                       { viewBox: "0 0 24 24", width: 16, height: 16, stroke: "currentColor", strokeWidth: "2", fill: "none" },
-                      React.createElement("polygon", { points: "13 2 3 14 12 14 11 22 21 10 12 10 13 2" })
+                      React.createElement("rect", { x: "4", y: "4", width: "16", height: "16", rx: "2" }),
+                      React.createElement("polygon", { points: "10 8 16 12 10 16 10 8", fill: "currentColor", stroke: "none" }),
+                      React.createElement("line", { x1: "8", y1: "1", x2: "8", y2: "4" }),
+                      React.createElement("line", { x1: "12", y1: "1", x2: "12", y2: "4" }),
+                      React.createElement("line", { x1: "16", y1: "1", x2: "16", y2: "4" }),
+                      React.createElement("line", { x1: "8", y1: "20", x2: "8", y2: "23" }),
+                      React.createElement("line", { x1: "12", y1: "20", x2: "12", y2: "23" }),
+                      React.createElement("line", { x1: "16", y1: "20", x2: "16", y2: "23" }),
+                      React.createElement("line", { x1: "1", y1: "8", x2: "4", y2: "8" }),
+                      React.createElement("line", { x1: "1", y1: "12", x2: "4", y2: "12" }),
+                      React.createElement("line", { x1: "1", y1: "16", x2: "4", y2: "16" }),
+                      React.createElement("line", { x1: "20", y1: "8", x2: "23", y2: "8" }),
+                      React.createElement("line", { x1: "20", y1: "12", x2: "23", y2: "12" }),
+                      React.createElement("line", { x1: "20", y1: "16", x2: "23", y2: "16" })
                     )
                   ),
                   showTranscodeMenu &&
@@ -1290,8 +1401,8 @@
                     )
                 ),
 
-                // Wide Divider Spacer before Prev/Next Buttons
-                React.createElement("div", { className: "sfm-reel-spacer-wide" }),
+                // Divider 1: Above Prev/Next Video Button (Doubled Spacing)
+                React.createElement("div", { className: "sfm-reel-action-divider" }),
 
                 // 6. Previous Video Button
                 React.createElement(
@@ -1330,10 +1441,12 @@
                   )
                 ),
 
-                // Bottom actions group (PiP and Fullscreen moved down)
+                // Bottom actions group: Pushed down so Fullscreen is directly above the scrubbing line
                 React.createElement(
                   "div",
                   { className: "sfm-reel-bottom-actions" },
+                  // Divider 2: Restored Above PiP Button (Doubled Spacing)
+                  React.createElement("div", { className: "sfm-reel-action-divider" }),
                   // 9. Picture-in-Picture Button
                   React.createElement(
                     "button",
@@ -1368,8 +1481,8 @@
 
               // ==========================================
               // Elevated Metadata Overlay:
-              // Line 1: Scene Title + Studio Name
-              // Line 2: File Type Badge + Codec + Duration + File Size + Date
+              // Line 1: Scene Title + Studio Name (with Video Play Vector Icon)
+              // Line 2: File Type Badge + Codec + Duration + File Size + Date (Clean Vector SVGs)
               // ==========================================
               React.createElement(
                 "div",
@@ -1378,18 +1491,64 @@
                 React.createElement(
                   "div",
                   { className: "d-flex align-items-center flex-wrap gap-2 mb-1" },
-                  React.createElement("span", { className: "sfm-reel-title-text" }, `▶ ${title}`),
+                  React.createElement(
+                    "span",
+                    { className: "sfm-reel-title-text d-inline-flex align-items-center" },
+                    React.createElement(
+                      "svg",
+                      { viewBox: "0 0 24 24", width: 14, height: 14, fill: "currentColor", style: { verticalAlign: "-2px", marginRight: "6px" } },
+                      React.createElement("polygon", { points: "6 4 19 12 6 20 6 4" })
+                    ),
+                    title
+                  ),
                   studioName && React.createElement("span", { className: "sfm-badge sfm-badge-studio" }, studioName)
                 ),
                 // Line 2: Format Badge, Codec, Duration, File Size, Date
                 React.createElement(
                   "div",
-                  { className: "sfm-reel-meta-line" },
+                  { className: "sfm-reel-meta-line d-flex align-items-center flex-wrap" },
                   React.createElement("span", { className: "sfm-badge sfm-badge-primary mr-1" }, extLabel),
                   codecBadge && React.createElement("span", { className: "sfm-badge sfm-badge-codec mr-1" }, codecBadge),
-                  durationFormatted && React.createElement("span", { className: "mr-2" }, `⏱ ${durationFormatted}`),
-                  fileSize && fileSize !== "0 B" && React.createElement("span", { className: "mr-2" }, `💾 ${fileSize}`),
-                  dateStr && React.createElement("span", { className: "mr-2" }, `📅 ${dateStr}`)
+                  durationFormatted &&
+                    React.createElement(
+                      "span",
+                      { className: "mr-2 d-inline-flex align-items-center" },
+                      React.createElement(
+                        "svg",
+                        { viewBox: "0 0 24 24", width: 13, height: 13, stroke: "currentColor", strokeWidth: "2", fill: "none", style: { verticalAlign: "-2px", marginRight: "4px" } },
+                        React.createElement("circle", { cx: "12", cy: "12", r: "10" }),
+                        React.createElement("polyline", { points: "12 6 12 12 16 14" })
+                      ),
+                      durationFormatted
+                    ),
+                  fileSize && fileSize !== "0 B" &&
+                    React.createElement(
+                      "span",
+                      { className: "mr-2 d-inline-flex align-items-center" },
+                      React.createElement(
+                        "svg",
+                        { viewBox: "0 0 24 24", width: 13, height: 13, stroke: "currentColor", strokeWidth: "2", fill: "none", style: { verticalAlign: "-2px", marginRight: "4px" } },
+                        React.createElement("line", { x1: "22", y1: "12", x2: "2", y2: "12" }),
+                        React.createElement("path", { d: "M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" }),
+                        React.createElement("line", { x1: "6", y1: "16", x2: "6.01", y2: "16" }),
+                        React.createElement("line", { x1: "10", y1: "16", x2: "10.01", y2: "16" })
+                      ),
+                      fileSize
+                    ),
+                  dateStr &&
+                    React.createElement(
+                      "span",
+                      { className: "mr-2 d-inline-flex align-items-center" },
+                      React.createElement(
+                        "svg",
+                        { viewBox: "0 0 24 24", width: 13, height: 13, stroke: "currentColor", strokeWidth: "2", fill: "none", style: { verticalAlign: "-2px", marginRight: "4px" } },
+                        React.createElement("rect", { x: "3", y: "4", width: "18", height: "18", rx: "2", ry: "2" }),
+                        React.createElement("line", { x1: "16", y1: "2", x2: "16", y2: "6" }),
+                        React.createElement("line", { x1: "8", y1: "2", x2: "8", y2: "6" }),
+                        React.createElement("line", { x1: "3", y1: "10", x2: "21", y2: "10" })
+                      ),
+                      dateStr
+                    )
                 )
               ),
 
@@ -1437,7 +1596,18 @@
                         onClick: handleTogglePlay,
                         title: isPlaying ? "Pause (Space)" : "Play (Space)",
                       },
-                      isPlaying ? "⏸" : "▶"
+                      isPlaying
+                        ? React.createElement(
+                            "svg",
+                            { viewBox: "0 0 24 24", width: 14, height: 14, fill: "currentColor" },
+                            React.createElement("rect", { x: "5", y: "4", width: "4", height: "16", rx: "1" }),
+                            React.createElement("rect", { x: "15", y: "4", width: "4", height: "16", rx: "1" })
+                          )
+                        : React.createElement(
+                            "svg",
+                            { viewBox: "0 0 24 24", width: 14, height: 14, fill: "currentColor" },
+                            React.createElement("polygon", { points: "6 4 19 12 6 20 6 4" })
+                          )
                     ),
                     React.createElement(
                       "span",
@@ -1451,11 +1621,25 @@
                     React.createElement(
                       "button",
                       {
-                        className: "sfm-reel-vol-btn",
+                        className: "sfm-reel-vol-btn d-flex align-items-center",
                         onClick: handleToggleMute,
                         title: isMuted ? "Unmute" : "Mute",
                       },
-                      isMuted || volume === 0 ? "🔇" : "🔊"
+                      isMuted || volume === 0
+                        ? React.createElement(
+                            "svg",
+                            { viewBox: "0 0 24 24", width: 16, height: 16, fill: "none", stroke: "currentColor", strokeWidth: "2" },
+                            React.createElement("polygon", { points: "11 5 6 9 2 9 2 15 6 15 11 19 11 5", fill: "currentColor" }),
+                            React.createElement("line", { x1: "23", y1: "9", x2: "17", y2: "15" }),
+                            React.createElement("line", { x1: "17", y1: "9", x2: "23", y2: "15" })
+                          )
+                        : React.createElement(
+                            "svg",
+                            { viewBox: "0 0 24 24", width: 16, height: 16, fill: "none", stroke: "currentColor", strokeWidth: "2" },
+                            React.createElement("polygon", { points: "11 5 6 9 2 9 2 15 6 15 11 19 11 5", fill: "currentColor" }),
+                            React.createElement("path", { d: "M15.54 8.46a5 5 0 0 1 0 7.07" }),
+                            React.createElement("path", { d: "M19.07 4.93a10 10 0 0 1 0 14.14" })
+                          )
                     ),
                     React.createElement("input", {
                       type: "range",

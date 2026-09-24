@@ -1525,7 +1525,17 @@
   width: 100%;
   height: 100%;
   object-fit: contain;
-  filter: brightness(0.6) blur(3px);
+  background: #000000;
+}
+
+.sfm-reel-adjacent-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #000000;
+  pointer-events: none;
 }
 
 .sfm-reel-slide-info {
@@ -1802,12 +1812,12 @@
 .sfm-reel-actions-column {
   position: absolute;
   top: 18px;
+  bottom: 64px;
   right: 18px;
   transform: none !important;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 7px;
   z-index: 55;
   transition: opacity 0.3s cubic-bezier(0.2, 0.9, 0.3, 1);
   pointer-events: auto;
@@ -1829,6 +1839,8 @@
   backdrop-filter: blur(6px);
   text-decoration: none;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
+  margin-bottom: 8px;
+  flex-shrink: 0;
 }
 
 .sfm-reel-circle-btn:hover:not(:disabled) {
@@ -1857,18 +1869,25 @@
   transform: scale(1.1);
 }
 
-.sfm-reel-spacer-small {
-  width: 20px;
-  height: 1px;
-  background: rgba(255, 255, 255, 0.15);
-  margin: 3px 0;
-}
-
-.sfm-reel-spacer-wide {
+.sfm-reel-action-divider {
   width: 22px;
   height: 1px;
   background: rgba(255, 255, 255, 0.22);
-  margin: 10px 0;
+  margin-top: 16px;
+  margin-bottom: 16px;
+  flex-shrink: 0;
+}
+
+.sfm-reel-bottom-actions {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+.sfm-reel-bottom-actions .sfm-reel-circle-btn:last-child {
+  margin-bottom: 0;
 }
 
 .sfm-reel-counter-badge {
@@ -1882,6 +1901,8 @@
   letter-spacing: 0.02em;
   backdrop-filter: blur(4px);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  margin-bottom: 8px;
+  flex-shrink: 0;
 }
 
 /* Metadata Description Overlay (Elevated above Scrubbing Bar) */

@@ -41,6 +41,13 @@ A high-performance directory navigation file manager for Stash:
 
 ## 📋 Changelog & Development History
 
+### [v2.5.4] — 2026-09-24 01:25:00
+* **Restored Divider Above PiP & Precision Scrubber Alignment:** Restored the action divider above the PiP button. Moved PiP and Fullscreen to the bottom of the right rail so Fullscreen sits directly above the scrubbing line.
+* **Balanced Action Rail Spacing:** Standardized even spacing (8px) between buttons and doubled the vertical clearance (16px) around the two dividers framing the Previous/Next video navigation group.
+* **Hardware Codec Chip Icon:** Replaced the lightning icon with a clean vector microchip/codec processor icon for the stream transcode selector.
+* **Complete Monochrome SVG Overlays:** Converted all remaining player emojis and text glyphs (Play/Pause, Volume/Mute, Duration clock, Storage disk, Release calendar, HUD seek chevrons, PiP return icon) to sleek dark-themed vector SVGs.
+* **Binge Discover-Style Video Preloading:** Adopted Binge's multi-slide buffer architecture. Adjacent slides render unblurred full-bleed posters with pre-buffered `<video preload="auto" muted />` pipelines, plus background metadata prefetching (+2 ahead), delivering instant 60fps scrolling playback with zero buffering delay.
+
 ### [v2.5.3] — 2026-09-24 00:35:00
 * **Consolidated Stash Plugin Settings:** Streamlined `stash_file_manager.yml` to the 5 core settings with concise single-line descriptions, resolving visual clutter in Stash's native settings panel.
 * **Proactive MPEG-4 (.mp4) Fallback:** Enhanced detection checking `video_codec`, `format`, path/filename keywords, GraphQL metadata, and an active video track frame watchdog. MPEG-4 Part 2 / ASP (`mpeg4`, `divx`, `xvid`) in `.mp4` containers automatically streams via HLS.
