@@ -41,6 +41,17 @@ A high-performance directory navigation file manager for Stash:
 
 ## 📋 Changelog & Development History
 
+### [v2.7.0] — 2026-09-24 06:05:00
+* **Binge Reel Parameters & Direct Physics:** Replaced debounced multi-frame translation with Binge's instant-response delta threshold logic. Micro-movements (<28px) are filtered, fast single wipes/flicks (>200px) cleanly advance 2 videos, and normal scroll motions immediately fire smooth slide transitions.
+* **Folder List Mode Box-Length Slider:** Added a length/width slider (140px–420px) to the folder mode list view, allowing dynamic adjustment of fixed box lengths and automatic recalculation of columns per row via CSS Grid.
+* **10 Scenes Per Row in Scenes View:** Widened the scene card size slider range down to 110px and up to 460px (previously 160px–420px), accommodating up to 10 scene cards per row on standard desktop viewports.
+* **Unified Interface Styling & Layout Reorganization:**
+  * Redesigned **[Include Sub-folders]** as an action button styled identically to **[Select All]** in the scenes view.
+  * Relocated the entire folder navigation control line (**[◀ Back]**, **[▲ Up]**, **Root**, and path breadcrumbs) to sit directly above the **Subfolders** title.
+  * Moved the **[Selected Count]** badge to appear directly behind the **[Select All]** button in the scenes view.
+  * Harmonized count badges across the page into consistent dark rounded pill badges.
+  * Standardized title casing across all UI labels and buttons.
+
 ### [v2.6.0] — 2026-09-24 04:35:00
 * **Binge-Style Fluid Multi-Video Scrolling & Swiping:** Upgraded the vertical reel track to a 5-slide continuous sliding window (`Slide -2` to `Slide +2`) with unified touch and wheel inertia physics. Users can now swipe past 1 video directly to the second in a single continuous wipe or rapid wheel flick without abrupt snap-backs.
 * **Zero Split-Second Thumbnail Flash:** Removed the forced `poster` attribute from the active `<video>` element and deferred background poster rendering to a 350ms graceful fallback. Fast-loading and pre-buffered video streams begin playback directly with uninterrupted video frame rendering.

@@ -2082,3 +2082,47 @@
   font-size: 0.82rem;
   letter-spacing: 0.2px;
 }
+
+
+/* ==========================================================================
+   Folder List View Grid & Dynamic Box Width
+   ========================================================================== */
+
+.sfm-folder-list-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--sfm-folder-list-width, 220px), 1fr));
+  gap: 0.65rem;
+  margin-bottom: 1.25rem;
+}
+
+/* ==========================================================================
+   Dedicated Folder Navigation Control Line
+   ========================================================================== */
+
+.sfm-nav-control-line {
+  background: #181c25;
+  border: 1px solid #282e3d;
+  border-radius: 8px;
+  padding: 0.5rem 0.85rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.sfm-nav-control-line .sfm-breadcrumbs-wrap {
+  gap: 0.35rem;
+}
+
+/* ==========================================================================
+   Harmonized Field Count Badges
+   ========================================================================== */
+
+.sfm-section-header .badge-dark,
+.sfm-stat-pill.badge-dark {
+  background-color: #242933;
+  border: 1px solid #3b4252;
+  color: #d8dee9;
+  font-size: 0.78rem;
+  font-weight: 500;
+  border-radius: 12px;
+  padding: 0.22rem 0.6rem;
+  vertical-align: middle;
+}

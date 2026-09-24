@@ -913,12 +913,11 @@
 
       const vlcUrl = `vlc://${window.location.origin}${directUrl}`;
 
-      // 6. Ultra-Smooth Binge Discover-Style Vertical Reel Scrolling & Multi-Swipe Mechanics
+      // 6. Binge-Style Vertical Reel Scrolling & Physics
       const [pullOffset, setPullOffset] = useState(0);
       const [isTransitioning, setIsTransitioning] = useState(false);
       const isTransitioningRef = useRef(false);
-      const wheelAccumulator = useRef(0);
-      const wheelTimer = useRef(null);
+      const lastWheelTime = useRef(0);
       const touchStartRef = useRef(null);
       const touchSamplesRef = useRef([]);
       const isSwipingGesture = useRef(false);
@@ -930,13 +929,12 @@
         setIsTransitioning(true);
         setPullOffset(-steps * containerHeight);
 
-        const duration = steps === 0 ? 220 : 300;
+        const duration = steps === 0 ? 180 : 260;
         setTimeout(() => {
           if (steps !== 0 && targetScene) {
             onSelectScene(targetScene);
           }
           setPullOffset(0);
-          wheelAccumulator.current = 0;
           isTransitioningRef.current = false;
           setIsTransitioning(false);
         }, duration);
@@ -958,50 +956,33 @@
         if (hasNext2 && !isTransitioningRef.current) executeTransition(2, next2Scene);
       }, [hasNext2, next2Scene, executeTransition]);
 
-      // Wheel / Trackpad Gesture Handler
+      // Wheel / Trackpad Gesture Handler matching Binge logic and parameters
       const handleWheel = (e) => {
         e.preventDefault();
-        if (isTransitioningRef.current) return;
+        const delta = e.deltaY;
+        if (Math.abs(delta) < 28) return; // filter micro jitter
 
-        const containerHeight = videoContainerRef.current?.clientHeight || window.innerHeight || 800;
-        wheelAccumulator.current += e.deltaY;
+        const now = Date.now();
+        if (now - lastWheelTime.current < 320) return; // cooldown during slide transition
 
-        const maxForward = (hasNext2 ? 2 : hasNext ? 1 : 0) * containerHeight;
-        const maxBackward = (hasPrev2 ? 2 : hasPrev ? 1 : 0) * containerHeight;
-
-        let rawOffset = -wheelAccumulator.current * 0.75;
-        if (rawOffset < -maxForward) {
-          rawOffset = -maxForward - (Math.abs(rawOffset) - maxForward) * 0.15;
-        } else if (rawOffset > maxBackward) {
-          rawOffset = maxBackward + (rawOffset - maxBackward) * 0.15;
-        }
-        setPullOffset(rawOffset);
-
-        if (wheelTimer.current) clearTimeout(wheelTimer.current);
-        wheelTimer.current = setTimeout(() => {
-          const acc = wheelAccumulator.current;
-          const absAcc = Math.abs(acc);
-
-          if (acc > 0) {
-            // Scrolling forward / downward
-            if ((absAcc > containerHeight * 0.75 || absAcc > 500) && hasNext2) {
-              executeTransition(2, next2Scene);
-            } else if ((absAcc > containerHeight * 0.16 || absAcc > 50) && hasNext) {
-              executeTransition(1, nextScene);
-            } else {
-              executeTransition(0, null);
-            }
-          } else if (acc < 0) {
-            // Scrolling backward / upward
-            if ((absAcc > containerHeight * 0.75 || absAcc > 500) && hasPrev2) {
-              executeTransition(-2, prev2Scene);
-            } else if ((absAcc > containerHeight * 0.16 || absAcc > 50) && hasPrev) {
-              executeTransition(-1, prevScene);
-            } else {
-              executeTransition(0, null);
-            }
+        // Instant Binge response: fast/strong wipe jumps 2 scenes, standard advances 1
+        if (delta > 0) {
+          if ((delta > 200 || e.deltaMode === 1) && hasNext2) {
+            lastWheelTime.current = now;
+            goToNext2();
+          } else if (hasNext) {
+            lastWheelTime.current = now;
+            goToNext();
           }
-        }, 85);
+        } else if (delta < 0) {
+          if ((delta < -200 || e.deltaMode === 1) && hasPrev2) {
+            lastWheelTime.current = now;
+            goToPrev2();
+          } else if (hasPrev) {
+            lastWheelTime.current = now;
+            goToPrev();
+          }
+        }
       };
 
       // Touch Swipe Gesture Handlers (supporting multi-video flick momentum)
@@ -1057,9 +1038,8 @@
           vy = (last.y - first.y) / dt; // px/ms
         }
 
-        const projected = pullOffset + vy * 220;
-
-        if (projected < -containerHeight * 1.15 || (pullOffset < -containerHeight * 0.4 && vy < -0.7)) {
+        const deltaY = pullOffset;
+        if (deltaY < -containerHeight * 1.05 || (deltaY < -containerHeight * 0.35 && vy < -0.65)) {
           if (hasNext2) {
             executeTransition(2, next2Scene);
           } else if (hasNext) {
@@ -1067,13 +1047,13 @@
           } else {
             executeTransition(0, null);
           }
-        } else if (projected < -containerHeight * 0.25 || vy < -0.3) {
+        } else if (deltaY < -containerHeight * 0.2 || vy < -0.25) {
           if (hasNext) {
             executeTransition(1, nextScene);
           } else {
             executeTransition(0, null);
           }
-        } else if (projected > containerHeight * 1.15 || (pullOffset > containerHeight * 0.4 && vy > 0.7)) {
+        } else if (deltaY > containerHeight * 1.05 || (deltaY > containerHeight * 0.35 && vy > 0.65)) {
           if (hasPrev2) {
             executeTransition(-2, prev2Scene);
           } else if (hasPrev) {
@@ -1081,7 +1061,7 @@
           } else {
             executeTransition(0, null);
           }
-        } else if (projected > containerHeight * 0.25 || vy > 0.3) {
+        } else if (deltaY > containerHeight * 0.2 || vy > 0.25) {
           if (hasPrev) {
             executeTransition(-1, prevScene);
           } else {
@@ -3087,6 +3067,20 @@
         } catch (e) {}
       };
 
+      const [folderListWidth, setFolderListWidth] = useState(() => {
+        try {
+          return Number(window.localStorage.getItem("sfm_folder_list_width")) || 220;
+        } catch (e) {
+          return 220;
+        }
+      });
+      const handleSetFolderListWidth = (width) => {
+        setFolderListWidth(width);
+        try {
+          window.localStorage.setItem("sfm_folder_list_width", String(width));
+        } catch (e) {}
+      };
+
       const [sceneCardSize, setSceneCardSize] = useState(() => {
         try {
           return Number(window.localStorage.getItem("sfm_scene_card_size")) || 240;
@@ -3546,87 +3540,89 @@
         React.createElement(
           "div",
           { className: "sfm-workspace-content" },
-          // Unified Modern Command Bar (replaces redundant stacked toolbars)
+          // Top Command Bar: Search, Filters, Sorting & Global Tools
           React.createElement(
             "div",
-            { className: "sfm-unified-bar" },
-            // Upper row: Path navigation, folder stats & primary actions
+            { className: "sfm-unified-bar mb-3" },
             React.createElement(
               "div",
-              { className: "sfm-bar-top-row" },
+              { className: "sfm-bar-filter-row d-flex align-items-center justify-content-between flex-wrap gap-2" },
+              // Left: Live Search & Sorts
               React.createElement(
                 "div",
-                { className: "sfm-breadcrumbs-wrap" },
+                { className: "d-flex align-items-center flex-wrap gap-2" },
                 React.createElement(
                   "div",
-                  { className: "btn-group btn-group-sm mr-2 sfm-nav-history-group" },
-                  React.createElement(
-                    "button",
-                    {
-                      className: "btn btn-sm btn-outline-secondary py-0 px-2",
-                      onClick: handleGoBackInHistory,
-                      disabled: historyStack.current.length === 0 && !currentPath,
-                      title: "Go back to previous folder (or parent)",
-                    },
-                    "◀ Back"
-                  ),
-                  React.createElement(
-                    "button",
-                    {
-                      className: "btn btn-sm btn-outline-secondary py-0 px-2",
-                      onClick: handleGoUpOneLevel,
-                      disabled: !currentPath,
-                      title: "Go up to parent directory",
-                    },
-                    "▲ Up"
-                  )
-                ),
-                React.createElement(
-                  "button",
-                  { className: `sfm-crumb-btn ${!currentPath ? "sfm-crumb-active" : ""}`, onClick: () => navigateToFolder(""), title: "Return to Root" },
-                  React.createElement(IconFolder, { size: 16, color: "#88c0d0" }),
-                  React.createElement("span", { className: "ml-1" }, "Root")
-                ),
-                segments.map((seg, idx) => {
-                  const p = segments.slice(0, idx + 1).join("/");
-                  const isLast = idx === segments.length - 1;
-                  return React.createElement(
-                    React.Fragment,
-                    { key: p },
-                    React.createElement("span", { className: "sfm-crumb-separator" }, "›"),
+                  { className: "sfm-search-wrap" },
+                  React.createElement("span", { className: "sfm-search-icon" }, "🔍"),
+                  React.createElement("input", {
+                    type: "text",
+                    className: "sfm-search-input",
+                    placeholder: "Search folder or scenes by title, studio, performer...",
+                    value: searchQuery,
+                    onChange: (e) => setSearchQuery(e.target.value),
+                  }),
+                  searchQuery &&
                     React.createElement(
                       "button",
-                      {
-                        className: `sfm-crumb-btn ${isLast ? "sfm-crumb-active" : ""}`,
-                        onClick: () => navigateToFolder(p),
-                      },
-                      seg
+                      { className: "sfm-search-clear", onClick: () => setSearchQuery("") },
+                      "×"
                     )
-                  );
-                }),
+                ),
                 React.createElement(
-                  "span",
-                  { className: "sfm-stat-pill ml-2" },
-                  `${currentNode ? currentNode.directScenes.length : 0} direct · ${allDescendantIds.length} in tree (${formatBytes(currentNode?.totalSize)})`
+                  "div",
+                  { className: "sfm-sort-group d-flex align-items-center ml-2" },
+                  React.createElement("span", { className: "sfm-sort-label mr-1" }, "Scenes:"),
+                  React.createElement(
+                    "select",
+                    {
+                      className: "sfm-sort-select",
+                      value: sceneSort,
+                      onChange: (e) => setSceneSort(e.target.value),
+                      title: "Sort Scenes",
+                    },
+                    React.createElement("option", { value: "title_asc" }, "Title (A-Z)"),
+                    React.createElement("option", { value: "title_desc" }, "Title (Z-A)"),
+                    React.createElement("option", { value: "date_desc" }, "Date (Newest)"),
+                    React.createElement("option", { value: "date_asc" }, "Date (Oldest)"),
+                    React.createElement("option", { value: "rating_desc" }, "Rating (Highest)"),
+                    React.createElement("option", { value: "duration_desc" }, "Duration (Longest)"),
+                    React.createElement("option", { value: "size_desc" }, "Size (Largest)")
+                  ),
+                  React.createElement("span", { className: "sfm-sort-label ml-2 mr-1" }, "Folders:"),
+                  React.createElement(
+                    "select",
+                    {
+                      className: "sfm-sort-select",
+                      value: folderSort,
+                      onChange: (e) => setFolderSort(e.target.value),
+                      title: "Sort Folders",
+                    },
+                    React.createElement("option", { value: "name_asc" }, "Name (A-Z)"),
+                    React.createElement("option", { value: "name_desc" }, "Name (Z-A)"),
+                    React.createElement("option", { value: "count_desc" }, "Count (High-Low)"),
+                    React.createElement("option", { value: "count_asc" }, "Count (Low-High)")
+                  )
                 )
               ),
+              // Right: Action Tools & Options
               React.createElement(
                 "div",
-                { className: "sfm-actions-group" },
+                { className: "sfm-actions-group d-flex align-items-center flex-wrap gap-2" },
                 React.createElement(
                   "label",
-                  { className: "sfm-checkbox-label" },
+                  { className: "sfm-checkbox-label mb-0" },
                   React.createElement("input", {
                     type: "checkbox",
                     checked: hideEmpty,
                     onChange: (e) => handleToggleHideEmpty(e.target.checked),
                   }),
-                  "Hide empty"
+                  "Hide Empty"
                 ),
                 currentPath &&
                   React.createElement(
                     "div",
-                    { className: "btn-group mr-2" },
+                    { className: "btn-group btn-group-sm mr-1" },
                     React.createElement(
                       "button",
                       { className: "btn btn-sm btn-outline-warning", onClick: () => setShowParserModal(true), title: "Parse Filenames with Regex" },
@@ -3662,78 +3658,80 @@
                   ),
                 React.createElement(
                   "button",
-                  { className: "btn btn-sm btn-outline-light ml-1", onClick: () => setShowSettingsModal(true), title: "Stash Settings & Plugin Tasks" },
+                  { className: "btn btn-sm btn-outline-light", onClick: () => setShowSettingsModal(true), title: "Stash Settings & Plugin Tasks" },
                   "⚙️ Settings"
                 )
-              )
-            ),
-            // Lower row: Live search and sorting
-            React.createElement(
-              "div",
-              { className: "sfm-bar-filter-row" },
-              React.createElement(
-                "div",
-                { className: "sfm-search-wrap" },
-                React.createElement("span", { className: "sfm-search-icon" }, "🔍"),
-                React.createElement("input", {
-                  type: "text",
-                  className: "sfm-search-input",
-                  placeholder: "Search folder or scenes by title, studio, performer...",
-                  value: searchQuery,
-                  onChange: (e) => setSearchQuery(e.target.value),
-                }),
-                searchQuery &&
-                  React.createElement(
-                    "button",
-                    { className: "sfm-search-clear", onClick: () => setSearchQuery("") },
-                    "×"
-                  )
-              ),
-              React.createElement(
-                "div",
-                { className: "sfm-sort-group" },
-                React.createElement("span", { className: "sfm-sort-label" }, "Scenes:"),
-                React.createElement(
-                  "select",
-                  {
-                    className: "sfm-sort-select",
-                    value: sceneSort,
-                    onChange: (e) => setSceneSort(e.target.value),
-                    title: "Sort Scenes",
-                  },
-                  React.createElement("option", { value: "title_asc" }, "Title (A-Z)"),
-                  React.createElement("option", { value: "title_desc" }, "Title (Z-A)"),
-                  React.createElement("option", { value: "date_desc" }, "Date (Newest)"),
-                  React.createElement("option", { value: "date_asc" }, "Date (Oldest)"),
-                  React.createElement("option", { value: "rating_desc" }, "Rating (Highest)"),
-                  React.createElement("option", { value: "duration_desc" }, "Duration (Longest)"),
-                  React.createElement("option", { value: "size_desc" }, "Size (Largest)")
-                ),
-                React.createElement("span", { className: "sfm-sort-label ml-2" }, "Folders:"),
-                React.createElement(
-                  "select",
-                  {
-                    className: "sfm-sort-select",
-                    value: folderSort,
-                    onChange: (e) => setFolderSort(e.target.value),
-                    title: "Sort Folders",
-                  },
-                  React.createElement("option", { value: "name_asc" }, "Name (A-Z)"),
-                  React.createElement("option", { value: "name_desc" }, "Name (Z-A)"),
-                  React.createElement("option", { value: "count_desc" }, "Count (High-Low)"),
-                  React.createElement("option", { value: "count_asc" }, "Count (Low-High)")
-                ),
-
               )
             )
           ),
           notification &&
             React.createElement(
               "div",
-              { className: "alert alert-info alert-dismissible fade show" },
+              { className: "alert alert-info alert-dismissible fade show mb-3" },
               notification,
               React.createElement("button", { className: "close", onClick: () => setNotification("") }, "×")
             ),
+          // Folder Navigation Control Line (Back, Up, Root, Path Breadcrumbs & Tree Stats placed just above Subfolders)
+          React.createElement(
+            "div",
+            { className: "sfm-nav-control-line d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2" },
+            React.createElement(
+              "div",
+              { className: "sfm-breadcrumbs-wrap d-flex align-items-center flex-wrap" },
+              React.createElement(
+                "div",
+                { className: "btn-group btn-group-sm mr-2 sfm-nav-history-group" },
+                React.createElement(
+                  "button",
+                  {
+                    className: "btn btn-sm btn-outline-secondary py-0 px-2",
+                    onClick: handleGoBackInHistory,
+                    disabled: historyStack.current.length === 0 && !currentPath,
+                    title: "Go back to previous folder",
+                  },
+                  "◀ Back"
+                ),
+                React.createElement(
+                  "button",
+                  {
+                    className: "btn btn-sm btn-outline-secondary py-0 px-2",
+                    onClick: handleGoUpOneLevel,
+                    disabled: !currentPath,
+                    title: "Go up to parent directory",
+                  },
+                  "▲ Up"
+                )
+              ),
+              React.createElement(
+                "button",
+                { className: `sfm-crumb-btn ${!currentPath ? "sfm-crumb-active" : ""}`, onClick: () => navigateToFolder(""), title: "Return to Root" },
+                React.createElement(IconFolder, { size: 16, color: "#88c0d0" }),
+                React.createElement("span", { className: "ml-1 font-weight-bold" }, "Root")
+              ),
+              segments.map((seg, idx) => {
+                const p = segments.slice(0, idx + 1).join("/");
+                const isLast = idx === segments.length - 1;
+                return React.createElement(
+                  React.Fragment,
+                  { key: p },
+                  React.createElement("span", { className: "sfm-crumb-separator" }, "›"),
+                  React.createElement(
+                    "button",
+                    {
+                      className: `sfm-crumb-btn ${isLast ? "sfm-crumb-active" : ""}`,
+                      onClick: () => navigateToFolder(p),
+                    },
+                    seg
+                  )
+                );
+              }),
+              React.createElement(
+                "span",
+                { className: "sfm-stat-pill ml-2 badge badge-dark font-weight-normal" },
+                `${currentNode ? currentNode.directScenes.length : 0} direct · ${allDescendantIds.length} in tree (${formatBytes(currentNode?.totalSize)})`
+              )
+            )
+          ),
           // Subfolders Section (Customizable Views: Cards, List, Detail Table)
           (filteredAndSortedSubfolders.length > 0 || (includeSubfolders && Object.keys(currentNode?.folders || {}).length > 0)) &&
             React.createElement(
@@ -3763,29 +3761,19 @@
                     isSubfoldersCollapsed &&
                       React.createElement("span", { className: "text-muted small ml-2 font-italic" }, "(collapsed)")
                   ),
-                  // Toggle after the sub-folder title: called 'include sub-folders'
+                  // Button styled identically to [Select All] in scenes view
                   React.createElement(
-                    "label",
+                    "button",
                     {
-                      className: "sfm-include-subfolders-toggle ml-3 mb-0 text-light small",
-                      onClick: (e) => e.stopPropagation(),
-                      title: "Include all scenes inside all sub-folder in the current directory (all levels down)",
-                    },
-                    React.createElement("input", {
-                      type: "checkbox",
-                      className: "mr-1 sfm-checkbox-toggle",
-                      checked: includeSubfolders,
-                      onChange: (e) => {
+                      type: "button",
+                      className: `btn btn-sm ${includeSubfolders ? "btn-info" : "btn-outline-secondary"} py-0 px-2 ml-2`,
+                      onClick: (e) => {
                         e.stopPropagation();
-                        handleToggleIncludeSubfolders(e.target.checked);
+                        handleToggleIncludeSubfolders(!includeSubfolders);
                       },
-                      style: { accentColor: "#88c0d0", cursor: "pointer", width: "14px", height: "14px" },
-                    }),
-                    React.createElement(
-                      "span",
-                      { className: `sfm-toggle-label ${includeSubfolders ? "text-info font-weight-bold" : "text-muted"}` },
-                      "include sub-folders"
-                    )
+                      title: "Include all scenes inside all sub-folders in the current directory (all levels down)",
+                    },
+                    includeSubfolders ? "✓ Include Sub-folders" : "Include Sub-folders"
                   )
                 ),
                 !isSubfoldersCollapsed &&
@@ -3808,6 +3796,24 @@
                           step: 10,
                           value: folderCardSize,
                           onChange: (e) => handleSetFolderCardSize(Number(e.target.value)),
+                        })
+                      ),
+                    folderViewMode === "list" &&
+                      React.createElement(
+                        "div",
+                        {
+                          className: "d-flex align-items-center sfm-size-slider-wrap mr-2",
+                          title: `Adjust folder list box length: ${folderListWidth}px`,
+                        },
+                        React.createElement("span", { className: "sfm-slider-icon mr-1 text-muted small" }, "📏"),
+                        React.createElement("input", {
+                          type: "range",
+                          className: "sfm-size-slider",
+                          min: 140,
+                          max: 420,
+                          step: 10,
+                          value: folderListWidth,
+                          onChange: (e) => handleSetFolderListWidth(Number(e.target.value)),
                         })
                       ),
                     React.createElement(
@@ -3879,7 +3885,10 @@
               : folderViewMode === "list"
                 ? React.createElement(
                   "div",
-                  { className: "row" },
+                  {
+                    className: "sfm-folder-list-grid",
+                    style: { "--sfm-folder-list-width": `${folderListWidth}px` },
+                  },
                   filteredAndSortedSubfolders.map((folderName) => {
                     const childNode = currentNode.folders[folderName];
                     const count = childNode ? childNode.allSceneIds.size : 0;
@@ -3887,18 +3896,15 @@
                     const nextPath = currentPath ? `${currentPath}/${folderName}` : folderName;
                     return React.createElement(
                       "div",
-                      { key: folderName, className: "col-12 col-sm-6 col-md-4 col-lg-3 col-xl-2 mb-2" },
-                      React.createElement(
-                        "div",
-                        {
-                          className: "sfm-folder-list-item",
-                          onClick: () => navigateToFolder(nextPath),
-                          title: `${folderName} (${count} scenes, ${size})`,
-                        },
-                        React.createElement("div", { className: "sfm-folder-list-icon" }, React.createElement(IconFolderCard, { size: 18, color: "#81a1c1" })),
-                        React.createElement("div", { className: "sfm-folder-list-name text-truncate font-weight-bold" }, folderName),
-                        React.createElement("span", { className: "sfm-folder-list-badge" }, count)
-                      )
+                      {
+                        key: folderName,
+                        className: "sfm-folder-list-item",
+                        onClick: () => navigateToFolder(nextPath),
+                        title: `${folderName} (${count} scenes, ${size})`,
+                      },
+                      React.createElement("div", { className: "sfm-folder-list-icon" }, React.createElement(IconFolderCard, { size: 18, color: "#81a1c1" })),
+                      React.createElement("div", { className: "sfm-folder-list-name text-truncate font-weight-bold" }, folderName),
+                      React.createElement("span", { className: "sfm-folder-list-badge" }, count)
                     );
                   })
                 )
@@ -4014,23 +4020,32 @@
                       { className: "sfm-collapse-chevron mr-2 text-info font-weight-bold" },
                       isFilesCollapsed ? "▶" : "▼"
                     ),
-                    React.createElement("span", null, `Files / Scenes (${filteredAndSortedScenes.length})`),
+                    React.createElement("span", null, "Files / Scenes"),
+                    React.createElement("span", { className: "badge badge-dark ml-2 font-weight-normal" }, filteredAndSortedScenes.length),
                     includeSubfolders &&
-                      React.createElement("span", { className: "badge badge-info ml-2 font-weight-normal" }, "all sub-folders included"),
-                    selectedSceneIds.size > 0 &&
-                      React.createElement("span", { className: "badge badge-primary ml-2" }, `${selectedSceneIds.size} selected`),
+                      React.createElement("span", { className: "badge badge-info ml-2 font-weight-normal" }, "All Sub-folders Included"),
                     isFilesCollapsed &&
                       React.createElement("span", { className: "text-muted small ml-2 font-italic" }, "(collapsed)")
                   ),
                   !isFilesCollapsed &&
                     React.createElement(
-                      "button",
-                      {
-                        className: "btn btn-sm btn-outline-secondary py-0 px-2 ml-2",
-                        onClick: handleSelectAllFolderScenes,
-                        title: "Select or deselect all visible scenes in folder",
-                      },
-                      filteredAndSortedScenes.every((s) => selectedSceneIds.has(s.id)) ? "Deselect All" : "Select All"
+                      "div",
+                      { className: "d-flex align-items-center flex-wrap" },
+                      React.createElement(
+                        "button",
+                        {
+                          className: "btn btn-sm btn-outline-secondary py-0 px-2 ml-2",
+                          onClick: handleSelectAllFolderScenes,
+                          title: "Select or deselect all visible scenes in folder",
+                        },
+                        filteredAndSortedScenes.length > 0 && filteredAndSortedScenes.every((s) => selectedSceneIds.has(s.id)) ? "Deselect All" : "Select All"
+                      ),
+                      selectedSceneIds.size > 0 &&
+                        React.createElement(
+                          "span",
+                          { className: "badge badge-primary py-1 px-2 font-weight-bold ml-2" },
+                          `${selectedSceneIds.size} Selected`
+                        )
                     )
                 ),
                 !isFilesCollapsed &&
@@ -4042,14 +4057,14 @@
                         "div",
                         {
                           className: "d-flex align-items-center sfm-size-slider-wrap mr-2",
-                          title: `Adjust scene thumbnail card size: ${sceneCardSize}px`,
+                          title: `Adjust scene thumbnail card size: ${sceneCardSize}px (up to 10 per row)`,
                         },
                         React.createElement("span", { className: "sfm-slider-icon mr-1 text-muted small" }, "🔍"),
                         React.createElement("input", {
                           type: "range",
                           className: "sfm-size-slider",
-                          min: 160,
-                          max: 420,
+                          min: 110,
+                          max: 460,
                           step: 10,
                           value: sceneCardSize,
                           onChange: (e) => handleSetSceneCardSize(Number(e.target.value)),
