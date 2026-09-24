@@ -326,6 +326,29 @@
       }
     }
 
+    // Helper: Collect all descendant scenes across all subfolder levels (all levels down)
+    function getAllDescendantScenes(node) {
+      if (!node) return [];
+      const sceneMap = new Map();
+      function traverse(n) {
+        if (!n) return;
+        if (n.directScenes && Array.isArray(n.directScenes)) {
+          for (const s of n.directScenes) {
+            if (s && s.id && !sceneMap.has(s.id)) {
+              sceneMap.set(s.id, s);
+            }
+          }
+        }
+        if (n.folders) {
+          for (const key of Object.keys(n.folders)) {
+            traverse(n.folders[key]);
+          }
+        }
+      }
+      traverse(node);
+      return Array.from(sceneMap.values());
+    }
+
     // ==========================================
     // Modal & Floating PIP: Binge Reel Video Player
     // (Features: Binge Fast-Forward/Rewind Controls, 1-Click PiP, Smooth Direct/Transcode Streaming, VLC Integration)
@@ -379,25 +402,21 @@
       const hideTimeoutRef = useRef(null);
       const [isVideoReady, setIsVideoReady] = useState(false);
 
-      // 1. Scene Navigation & Previews
+      // 1. Scene Navigation & Previews (Sliding Window ±2 for Multi-Video Swiping)
       const currentIndex = useMemo(() => {
         return scenes.findIndex((s) => s.id === scene?.id);
       }, [scenes, scene?.id]);
 
       const totalScenes = scenes.length;
       const hasPrev = currentIndex > 0;
+      const hasPrev2 = currentIndex > 1;
       const hasNext = currentIndex !== -1 && currentIndex < totalScenes - 1;
+      const hasNext2 = currentIndex !== -1 && currentIndex < totalScenes - 2;
+
+      const prev2Scene = hasPrev2 ? scenes[currentIndex - 2] : null;
       const prevScene = hasPrev ? scenes[currentIndex - 1] : null;
       const nextScene = hasNext ? scenes[currentIndex + 1] : null;
-      const futureScene = (currentIndex !== -1 && currentIndex + 2 < totalScenes) ? scenes[currentIndex + 2] : null;
-
-      const goToPrev = useCallback(() => {
-        if (hasPrev) onSelectScene(prevScene);
-      }, [hasPrev, onSelectScene, prevScene]);
-
-      const goToNext = useCallback(() => {
-        if (hasNext) onSelectScene(nextScene);
-      }, [hasNext, onSelectScene, nextScene]);
+      const next2Scene = hasNext2 ? scenes[currentIndex + 2] : null;
 
       // 2. Format & Codec Resolution (Proactive MPEG-4 vs H.264 Detection)
       const filePath = scene?.files?.[0]?.path || scene?.files?.[0]?.basename || "";
@@ -462,14 +481,25 @@
       const [transcodeHlsUrl, setTranscodeHlsUrl] = useState(() => `/scene/${scene?.id}/stream.m3u8`);
       const [transcodeMp4Url, setTranscodeMp4Url] = useState(() => `/scene/${scene?.id}/stream.mp4`);
 
+      const [showSlowLoadPoster, setShowSlowLoadPoster] = useState(false);
+
       // Dynamically reset stream mode per-scene during scrolling
       useEffect(() => {
         setIsVideoReady(false);
+        setShowSlowLoadPoster(false);
         setCustomStreamUrl("");
         setPlayerError("");
         setPlayerNotice("");
         setShowTranscodeMenu(false);
         setStreamMode(targetMode);
+
+        // Prevent thumbnail flash on fast-loading/prebuffered scenes.
+        // Only display poster if media decode takes longer than 350ms (e.g. transcode startup).
+        const slowTimer = setTimeout(() => {
+          setShowSlowLoadPoster(true);
+        }, 350);
+
+        return () => clearTimeout(slowTimer);
       }, [scene?.id, targetMode]);
 
       // Query available streams & fresh file codec via GraphQL
@@ -594,9 +624,10 @@
         return sc.paths?.stream || `/scene/${sc.id}/stream`;
       }, []);
 
+      const prev2StreamUrl = useMemo(() => resolveSceneStreamUrl(prev2Scene, streamMode), [prev2Scene, streamMode, resolveSceneStreamUrl]);
       const prevStreamUrl = useMemo(() => resolveSceneStreamUrl(prevScene, streamMode), [prevScene, streamMode, resolveSceneStreamUrl]);
       const nextStreamUrl = useMemo(() => resolveSceneStreamUrl(nextScene, streamMode), [nextScene, streamMode, resolveSceneStreamUrl]);
-      const futureStreamUrl = useMemo(() => resolveSceneStreamUrl(futureScene, streamMode), [futureScene, streamMode, resolveSceneStreamUrl]);
+      const next2StreamUrl = useMemo(() => resolveSceneStreamUrl(next2Scene, streamMode), [next2Scene, streamMode, resolveSceneStreamUrl]);
 
       // 4. Playback State & Custom Scrubber Control
       const [isPlaying, setIsPlaying] = useState(false);
@@ -780,6 +811,10 @@
       // Gestures: Double-click left/right side seek ±10s, single click toggle play
       const clickTimer = useRef(null);
       const handleGestureClick = (e) => {
+        if (isSwipingGesture.current) {
+          isSwipingGesture.current = false;
+          return;
+        }
         if (clickTimer.current) {
           clearTimeout(clickTimer.current);
           clickTimer.current = null;
@@ -878,56 +913,186 @@
 
       const vlcUrl = `vlc://${window.location.origin}${directUrl}`;
 
-      // 6. Ultra-Smooth Binge Discover-Style Vertical Reel Scrolling
+      // 6. Ultra-Smooth Binge Discover-Style Vertical Reel Scrolling & Multi-Swipe Mechanics
       const [pullOffset, setPullOffset] = useState(0);
       const [isTransitioning, setIsTransitioning] = useState(false);
-      const scrollAnimFrame = useRef(null);
+      const isTransitioningRef = useRef(false);
+      const wheelAccumulator = useRef(0);
+      const wheelTimer = useRef(null);
+      const touchStartRef = useRef(null);
+      const touchSamplesRef = useRef([]);
+      const isSwipingGesture = useRef(false);
 
+      // Smooth programmatic / physics transition to relative offset step (-2, -1, 0, 1, 2)
+      const executeTransition = useCallback((steps, targetScene) => {
+        const containerHeight = videoContainerRef.current?.clientHeight || window.innerHeight || 800;
+        isTransitioningRef.current = true;
+        setIsTransitioning(true);
+        setPullOffset(-steps * containerHeight);
+
+        const duration = steps === 0 ? 220 : 300;
+        setTimeout(() => {
+          if (steps !== 0 && targetScene) {
+            onSelectScene(targetScene);
+          }
+          setPullOffset(0);
+          wheelAccumulator.current = 0;
+          isTransitioningRef.current = false;
+          setIsTransitioning(false);
+        }, duration);
+      }, [onSelectScene]);
+
+      const goToPrev = useCallback(() => {
+        if (hasPrev && !isTransitioningRef.current) executeTransition(-1, prevScene);
+      }, [hasPrev, prevScene, executeTransition]);
+
+      const goToNext = useCallback(() => {
+        if (hasNext && !isTransitioningRef.current) executeTransition(1, nextScene);
+      }, [hasNext, nextScene, executeTransition]);
+
+      const goToPrev2 = useCallback(() => {
+        if (hasPrev2 && !isTransitioningRef.current) executeTransition(-2, prev2Scene);
+      }, [hasPrev2, prev2Scene, executeTransition]);
+
+      const goToNext2 = useCallback(() => {
+        if (hasNext2 && !isTransitioningRef.current) executeTransition(2, next2Scene);
+      }, [hasNext2, next2Scene, executeTransition]);
+
+      // Wheel / Trackpad Gesture Handler
       const handleWheel = (e) => {
         e.preventDefault();
-        if (isTransitioning) return;
+        if (isTransitioningRef.current) return;
 
         const containerHeight = videoContainerRef.current?.clientHeight || window.innerHeight || 800;
-        const scrollThreshold = containerHeight * 0.45; // Smooth Discover threshold
+        wheelAccumulator.current += e.deltaY;
 
-        // Instant direct translation without laggy debounce timer
-        const delta = e.deltaY;
-        const targetOffset = pullOffset - delta * 0.85;
+        const maxForward = (hasNext2 ? 2 : hasNext ? 1 : 0) * containerHeight;
+        const maxBackward = (hasPrev2 ? 2 : hasPrev ? 1 : 0) * containerHeight;
 
-        // Apply boundary resistance
-        if ((!hasPrev && targetOffset > 0) || (!hasNext && targetOffset < 0)) {
-          setPullOffset(targetOffset * 0.15);
+        let rawOffset = -wheelAccumulator.current * 0.75;
+        if (rawOffset < -maxForward) {
+          rawOffset = -maxForward - (Math.abs(rawOffset) - maxForward) * 0.15;
+        } else if (rawOffset > maxBackward) {
+          rawOffset = maxBackward + (rawOffset - maxBackward) * 0.15;
+        }
+        setPullOffset(rawOffset);
+
+        if (wheelTimer.current) clearTimeout(wheelTimer.current);
+        wheelTimer.current = setTimeout(() => {
+          const acc = wheelAccumulator.current;
+          const absAcc = Math.abs(acc);
+
+          if (acc > 0) {
+            // Scrolling forward / downward
+            if ((absAcc > containerHeight * 0.75 || absAcc > 500) && hasNext2) {
+              executeTransition(2, next2Scene);
+            } else if ((absAcc > containerHeight * 0.16 || absAcc > 50) && hasNext) {
+              executeTransition(1, nextScene);
+            } else {
+              executeTransition(0, null);
+            }
+          } else if (acc < 0) {
+            // Scrolling backward / upward
+            if ((absAcc > containerHeight * 0.75 || absAcc > 500) && hasPrev2) {
+              executeTransition(-2, prev2Scene);
+            } else if ((absAcc > containerHeight * 0.16 || absAcc > 50) && hasPrev) {
+              executeTransition(-1, prevScene);
+            } else {
+              executeTransition(0, null);
+            }
+          }
+        }, 85);
+      };
+
+      // Touch Swipe Gesture Handlers (supporting multi-video flick momentum)
+      const handleTouchStart = (e) => {
+        resetControlsTimer();
+        if (isTransitioningRef.current || !e.touches || e.touches.length === 0) return;
+        const touch = e.touches[0];
+        isSwipingGesture.current = false;
+        touchStartRef.current = {
+          y: touch.clientY,
+          time: Date.now(),
+          initialOffset: pullOffset,
+        };
+        touchSamplesRef.current = [{ y: touch.clientY, t: Date.now() }];
+      };
+
+      const handleTouchMove = (e) => {
+        if (!touchStartRef.current || isTransitioningRef.current || !e.touches || e.touches.length === 0) return;
+        const touch = e.touches[0];
+        const deltaY = touch.clientY - touchStartRef.current.y;
+        if (Math.abs(deltaY) > 8) isSwipingGesture.current = true;
+
+        const containerHeight = videoContainerRef.current?.clientHeight || window.innerHeight || 800;
+        const maxForward = (hasNext2 ? 2 : hasNext ? 1 : 0) * containerHeight;
+        const maxBackward = (hasPrev2 ? 2 : hasPrev ? 1 : 0) * containerHeight;
+
+        let newOffset = touchStartRef.current.initialOffset + deltaY;
+        if (newOffset < -maxForward) {
+          newOffset = -maxForward - (Math.abs(newOffset) - maxForward) * 0.15;
+        } else if (newOffset > maxBackward) {
+          newOffset = maxBackward + (newOffset - maxBackward) * 0.15;
+        }
+        setPullOffset(newOffset);
+
+        const now = Date.now();
+        touchSamplesRef.current.push({ y: touch.clientY, t: now });
+        if (touchSamplesRef.current.length > 6) touchSamplesRef.current.shift();
+      };
+
+      const handleTouchEnd = () => {
+        if (!touchStartRef.current || isTransitioningRef.current) {
+          touchStartRef.current = null;
           return;
         }
 
-        // Fast flick/momentum threshold reached: commit transition immediately
-        if (targetOffset > scrollThreshold && hasPrev) {
-          setIsTransitioning(true);
-          setPullOffset(containerHeight);
-          setTimeout(() => {
-            goToPrev();
-            setPullOffset(0);
-            setIsTransitioning(false);
-          }, 240);
-          return;
-        } else if (targetOffset < -scrollThreshold && hasNext) {
-          setIsTransitioning(true);
-          setPullOffset(-containerHeight);
-          setTimeout(() => {
-            goToNext();
-            setPullOffset(0);
-            setIsTransitioning(false);
-          }, 240);
-          return;
+        const containerHeight = videoContainerRef.current?.clientHeight || window.innerHeight || 800;
+        const samples = touchSamplesRef.current;
+        let vy = 0;
+        if (samples.length >= 2) {
+          const first = samples[0];
+          const last = samples[samples.length - 1];
+          const dt = Math.max(1, last.t - first.t);
+          vy = (last.y - first.y) / dt; // px/ms
         }
 
-        setPullOffset(targetOffset);
+        const projected = pullOffset + vy * 220;
 
-        // Auto spring-back when wheel stops
-        if (scrollAnimFrame.current) clearTimeout(scrollAnimFrame.current);
-        scrollAnimFrame.current = setTimeout(() => {
-          setPullOffset(0);
-        }, 120);
+        if (projected < -containerHeight * 1.15 || (pullOffset < -containerHeight * 0.4 && vy < -0.7)) {
+          if (hasNext2) {
+            executeTransition(2, next2Scene);
+          } else if (hasNext) {
+            executeTransition(1, nextScene);
+          } else {
+            executeTransition(0, null);
+          }
+        } else if (projected < -containerHeight * 0.25 || vy < -0.3) {
+          if (hasNext) {
+            executeTransition(1, nextScene);
+          } else {
+            executeTransition(0, null);
+          }
+        } else if (projected > containerHeight * 1.15 || (pullOffset > containerHeight * 0.4 && vy > 0.7)) {
+          if (hasPrev2) {
+            executeTransition(-2, prev2Scene);
+          } else if (hasPrev) {
+            executeTransition(-1, prevScene);
+          } else {
+            executeTransition(0, null);
+          }
+        } else if (projected > containerHeight * 0.25 || vy > 0.3) {
+          if (hasPrev) {
+            executeTransition(-1, prevScene);
+          } else {
+            executeTransition(0, null);
+          }
+        } else {
+          executeTransition(0, null);
+        }
+
+        touchStartRef.current = null;
+        touchSamplesRef.current = [];
       };
 
       // Keyboard Controls
@@ -1044,6 +1209,9 @@
               className: `sfm-reel-modal-dialog ${isPipMode ? "sfm-pip-dialog-detached" : ""}`,
               onClick: (e) => e.stopPropagation(),
               onWheel: handleWheel,
+              onTouchStart: handleTouchStart,
+              onTouchMove: handleTouchMove,
+              onTouchEnd: handleTouchEnd,
             },
             // Main Video Container with Seamless Reel Track
             React.createElement(
@@ -1053,7 +1221,7 @@
                 className: "sfm-reel-video-container",
                 onMouseMove: resetControlsTimer,
               },
-              // Seamless Vertical Track holding Adjacent Slides
+              // Seamless Vertical Track holding Adjacent Slides (Sliding Window ±2)
               React.createElement(
                 "div",
                 {
@@ -1061,13 +1229,34 @@
                   style: {
                     transform: `translateY(${pullOffset}px)`,
                     transition: isTransitioning
-                      ? "transform 0.24s cubic-bezier(0.22, 1, 0.36, 1)"
-                      : pullOffset === 0
-                      ? "transform 0.22s cubic-bezier(0.22, 1, 0.36, 1)"
+                      ? "transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)"
                       : "none",
                   },
                 },
-                // Slide -1: Previous Video Slide (Above, Full-Bleed Clean Poster & Preload)
+                // Slide -2: Scene currentIndex - 2 (Above -200%)
+                hasPrev2 &&
+                  React.createElement(
+                    "div",
+                    { className: "sfm-reel-slide sfm-reel-slide-prev2" },
+                    React.createElement("img", {
+                      src: prev2Scene?.paths?.screenshot || `/scene/${prev2Scene?.id}/screenshot`,
+                      className: "sfm-reel-slide-poster",
+                      alt: "",
+                      loading: "eager",
+                    }),
+                    prev2StreamUrl &&
+                      React.createElement("video", {
+                        key: `prev2-vid-${prev2Scene.id}`,
+                        src: prev2StreamUrl,
+                        className: "sfm-reel-adjacent-video",
+                        preload: "auto",
+                        muted: true,
+                        playsInline: true,
+                        controls: false,
+                      })
+                  ),
+
+                // Slide -1: Scene currentIndex - 1 (Above -100%)
                 hasPrev &&
                   React.createElement(
                     "div",
@@ -1094,12 +1283,12 @@
                 React.createElement(
                   "div",
                   { className: "sfm-reel-slide sfm-reel-slide-active" },
-                  // Seamless poster image behind video to eliminate black loading flash
-                  React.createElement("img", {
-                    src: posterUrl,
-                    className: `sfm-reel-live-poster ${isVideoReady ? "sfm-poster-faded" : ""}`,
-                    alt: "",
-                  }),
+                  showSlowLoadPoster &&
+                    React.createElement("img", {
+                      src: posterUrl,
+                      className: `sfm-reel-live-poster ${isVideoReady ? "sfm-poster-faded" : ""}`,
+                      alt: "",
+                    }),
                   React.createElement("div", {
                     className: "sfm-video-gesture-overlay",
                     onClick: handleGestureClick,
@@ -1111,7 +1300,6 @@
                     controls: false,
                     playsInline: true,
                     preload: "auto",
-                    poster: posterUrl,
                     className: "sfm-reel-video-element",
                     onError: handleVideoError,
                     onTimeUpdate: handleTimeUpdate,
@@ -1125,7 +1313,7 @@
                   })
                 ),
 
-                // Slide +1: Next Video Slide (Below, Full-Bleed Clean Poster & Instant Preload)
+                // Slide +1: Scene currentIndex + 1 (Below +100%)
                 hasNext &&
                   React.createElement(
                     "div",
@@ -1148,15 +1336,28 @@
                       })
                   ),
 
-                // Background Preloader for Upcoming Scene (+2 ahead) to sustain continuous playback
-                futureStreamUrl &&
-                  React.createElement("video", {
-                    key: `future-vid-${futureScene.id}`,
-                    src: futureStreamUrl,
-                    preload: "metadata",
-                    muted: true,
-                    style: { display: "none" },
-                  })
+                // Slide +2: Scene currentIndex + 2 (Below +200%)
+                hasNext2 &&
+                  React.createElement(
+                    "div",
+                    { className: "sfm-reel-slide sfm-reel-slide-next2" },
+                    React.createElement("img", {
+                      src: next2Scene?.paths?.screenshot || `/scene/${next2Scene?.id}/screenshot`,
+                      className: "sfm-reel-slide-poster",
+                      alt: "",
+                      loading: "eager",
+                    }),
+                    next2StreamUrl &&
+                      React.createElement("video", {
+                        key: `next2-vid-${next2Scene.id}`,
+                        src: next2StreamUrl,
+                        className: "sfm-reel-adjacent-video",
+                        preload: "auto",
+                        muted: true,
+                        playsInline: true,
+                        controls: false,
+                      })
+                  )
               ),
 
               // On-screen animated HUD feedback badge (e.g. ±10s seek) with sleek vector chevrons
@@ -2826,6 +3027,22 @@
         }
       });
 
+      // Include Sub-folders Toggle State (persisted in localStorage)
+      const [includeSubfolders, setIncludeSubfolders] = useState(() => {
+        try {
+          return window.localStorage.getItem("sfm_include_subfolders") === "true";
+        } catch (e) {
+          return false;
+        }
+      });
+
+      const handleToggleIncludeSubfolders = useCallback((val) => {
+        setIncludeSubfolders(val);
+        try {
+          window.localStorage.setItem("sfm_include_subfolders", String(val));
+        } catch (e) {}
+      }, []);
+
       const handleToggleSubfoldersCollapsed = useCallback(() => {
         setIsSubfoldersCollapsed((prev) => {
           const next = !prev;
@@ -3139,10 +3356,10 @@
         return list;
       }, [currentNode, hideEmpty, searchQuery, folderSort]);
 
-      // Feature 2: Direct scenes filtering and sorting
+      // Feature 2: Scenes filtering and sorting (with recursive subfolders support)
       const filteredAndSortedScenes = useMemo(() => {
         if (!currentNode) return [];
-        let list = [...currentNode.directScenes];
+        let list = includeSubfolders ? getAllDescendantScenes(currentNode) : [...currentNode.directScenes];
 
         if (searchQuery.trim()) {
           const q = searchQuery.toLowerCase();
@@ -3178,7 +3395,7 @@
         });
 
         return list;
-      }, [currentNode, searchQuery, sceneSort]);
+      }, [currentNode, includeSubfolders, searchQuery, sceneSort]);
 
       const allDescendantIds = currentNode ? Array.from(currentNode.allSceneIds) : [];
       const currentFolderName = currentPath.split("/").filter(Boolean).pop() || "Root";
@@ -3518,30 +3735,58 @@
               React.createElement("button", { className: "close", onClick: () => setNotification("") }, "×")
             ),
           // Subfolders Section (Customizable Views: Cards, List, Detail Table)
-          filteredAndSortedSubfolders.length > 0 &&
+          (filteredAndSortedSubfolders.length > 0 || (includeSubfolders && Object.keys(currentNode?.folders || {}).length > 0)) &&
             React.createElement(
               "div",
               { className: "mb-4" },
               React.createElement(
                 "div",
-                { className: "d-flex justify-content-between align-items-center mb-2" },
+                { className: "d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2" },
                 React.createElement(
                   "div",
-                  {
-                    className: "sfm-section-header mb-0 sfm-collapsible-title",
-                    onClick: handleToggleSubfoldersCollapsed,
-                    title: isSubfoldersCollapsed ? "Click to expand Subfolders" : "Click to collapse Subfolders",
-                    style: { cursor: "pointer", userSelect: "none" },
-                  },
+                  { className: "d-flex align-items-center flex-wrap" },
                   React.createElement(
-                    "span",
-                    { className: "sfm-collapse-chevron mr-2 text-info font-weight-bold" },
-                    isSubfoldersCollapsed ? "▶" : "▼"
+                    "div",
+                    {
+                      className: "sfm-section-header mb-0 sfm-collapsible-title",
+                      onClick: handleToggleSubfoldersCollapsed,
+                      title: isSubfoldersCollapsed ? "Click to expand Subfolders" : "Click to collapse Subfolders",
+                      style: { cursor: "pointer", userSelect: "none" },
+                    },
+                    React.createElement(
+                      "span",
+                      { className: "sfm-collapse-chevron mr-2 text-info font-weight-bold" },
+                      isSubfoldersCollapsed ? "▶" : "▼"
+                    ),
+                    React.createElement("span", null, "Subfolders"),
+                    React.createElement("span", { className: "badge badge-dark ml-2 font-weight-normal" }, filteredAndSortedSubfolders.length),
+                    isSubfoldersCollapsed &&
+                      React.createElement("span", { className: "text-muted small ml-2 font-italic" }, "(collapsed)")
                   ),
-                  React.createElement("span", null, "Subfolders"),
-                  React.createElement("span", { className: "badge badge-dark ml-2 font-weight-normal" }, filteredAndSortedSubfolders.length),
-                  isSubfoldersCollapsed &&
-                    React.createElement("span", { className: "text-muted small ml-2 font-italic" }, "(collapsed)")
+                  // Toggle after the sub-folder title: called 'include sub-folders'
+                  React.createElement(
+                    "label",
+                    {
+                      className: "sfm-include-subfolders-toggle ml-3 mb-0 text-light small",
+                      onClick: (e) => e.stopPropagation(),
+                      title: "Include all scenes inside all sub-folder in the current directory (all levels down)",
+                    },
+                    React.createElement("input", {
+                      type: "checkbox",
+                      className: "mr-1 sfm-checkbox-toggle",
+                      checked: includeSubfolders,
+                      onChange: (e) => {
+                        e.stopPropagation();
+                        handleToggleIncludeSubfolders(e.target.checked);
+                      },
+                      style: { accentColor: "#88c0d0", cursor: "pointer", width: "14px", height: "14px" },
+                    }),
+                    React.createElement(
+                      "span",
+                      { className: `sfm-toggle-label ${includeSubfolders ? "text-info font-weight-bold" : "text-muted"}` },
+                      "include sub-folders"
+                    )
+                  )
                 ),
                 !isSubfoldersCollapsed &&
                   React.createElement(
@@ -3770,8 +4015,10 @@
                       isFilesCollapsed ? "▶" : "▼"
                     ),
                     React.createElement("span", null, `Files / Scenes (${filteredAndSortedScenes.length})`),
+                    includeSubfolders &&
+                      React.createElement("span", { className: "badge badge-info ml-2 font-weight-normal" }, "all sub-folders included"),
                     selectedSceneIds.size > 0 &&
-                      React.createElement("span", { className: "badge badge-info ml-2" }, `${selectedSceneIds.size} selected`),
+                      React.createElement("span", { className: "badge badge-primary ml-2" }, `${selectedSceneIds.size} selected`),
                     isFilesCollapsed &&
                       React.createElement("span", { className: "text-muted small ml-2 font-italic" }, "(collapsed)")
                   ),
@@ -3948,8 +4195,12 @@
             React.createElement(FilenameParserModal, {
               currentFolder: selectedSceneIds.size > 0 ? `${selectedSceneIds.size} selected scenes` : currentFolderName,
               directScenes: selectedSceneIds.size > 0
-                ? (currentNode ? currentNode.directScenes.filter((s) => selectedSceneIds.has(s.id)) : [])
-                : (currentNode ? currentNode.directScenes : []),
+                ? (includeSubfolders
+                    ? getAllDescendantScenes(currentNode).filter((s) => selectedSceneIds.has(s.id))
+                    : (currentNode ? currentNode.directScenes.filter((s) => selectedSceneIds.has(s.id)) : []))
+                : (includeSubfolders
+                    ? getAllDescendantScenes(currentNode)
+                    : (currentNode ? currentNode.directScenes : [])),
               onClose: () => setShowParserModal(false),
               onApplied: () => {
                 handleClearSelection();

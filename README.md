@@ -41,6 +41,11 @@ A high-performance directory navigation file manager for Stash:
 
 ## 📋 Changelog & Development History
 
+### [v2.6.0] — 2026-09-24 04:35:00
+* **Binge-Style Fluid Multi-Video Scrolling & Swiping:** Upgraded the vertical reel track to a 5-slide continuous sliding window (`Slide -2` to `Slide +2`) with unified touch and wheel inertia physics. Users can now swipe past 1 video directly to the second in a single continuous wipe or rapid wheel flick without abrupt snap-backs.
+* **Zero Split-Second Thumbnail Flash:** Removed the forced `poster` attribute from the active `<video>` element and deferred background poster rendering to a 350ms graceful fallback. Fast-loading and pre-buffered video streams begin playback directly with uninterrupted video frame rendering.
+* **Sub-folder Scene Recursion ('include sub-folders' Toggle):** Added an interactive toggle next to the Subfolders section header titled `include sub-folders`. When enabled, scenes across all descendant sub-folders in the current directory (all levels down) are recursively aggregated into the current view, updating the scene grid/table, selection counters, batch operations, and the Binge reel playback feed.
+
 ### [v2.5.5] — 2026-09-24 03:25:00
 * **Fix `Cannot access 'streamMode' before initialization` ReferenceError:** Resolved temporal dead zone (TDZ) order error in `BingeReelPlayerModal` where adjacent stream resolution hooks evaluated before the `streamMode` state hook was initialized.
 
