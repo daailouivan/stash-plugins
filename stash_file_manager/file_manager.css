@@ -2383,3 +2383,56 @@ button.badge.sfm-badge-btn:hover {
   color: #eceff4;
   word-break: break-all;
 }
+
+/* ==========================================================================
+   Selection-Driven Guided Regex Builder
+   ========================================================================== */
+
+.sfm-interactive-sample-input {
+  background-color: #141720 !important;
+  border: 1px solid #434c5e !important;
+  color: #eceff4 !important;
+  font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
+  font-size: 1.05rem !important;
+  letter-spacing: 0.02em;
+  cursor: text;
+  user-select: text;
+}
+
+.sfm-interactive-sample-input::selection {
+  background: #88c0d0;
+  color: #2e3440;
+}
+
+.sfm-selection-chip-bar {
+  background-color: #1a1e29 !important;
+  border: 1px solid #2e3545 !important;
+}
+
+.sfm-field-btn {
+  border-radius: 4px;
+  font-size: 0.8rem;
+  transition: transform 0.1s ease, filter 0.15s ease;
+}
+
+.sfm-field-btn:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.1);
+}
+
+.sfm-assigned-segments-box {
+  background-color: #1a1e29 !important;
+  border: 1px solid #2e3545 !important;
+}
+
+.sfm-segment-pill {
+  font-size: 0.82rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.sfm-segment-pill select {
+  font-weight: 500;
+  background-color: #1e222d !important;
+  border: 1px solid #3b4252 !important;
+  border-radius: 3px;
+}

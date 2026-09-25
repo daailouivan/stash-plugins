@@ -2216,18 +2216,223 @@
     // ==========================================
     // Modal: Folder-Scoped Filename Regex Parser (Feature 1)
     // ==========================================
+    // ==========================================
+    // Modal: Folder-Scoped Filename Regex Parser with Guided Builder
+    // ==========================================
     function FilenameParserModal({ currentFolder, directScenes, onClose, onApplied }) {
       const PRESETS = [
         { label: "Date & Title: ^(?<date>\\d{4}-\\d{2}-\\d{2})\\s+(?<title>.+)$", pattern: "^(?<date>\\d{4}-\\d{2}-\\d{2})\\s+(?<title>.+)$" },
         { label: "Studio - Title: ^(?<studio>[^-]+)\\s*-\\s*(?<title>.+)$", pattern: "^(?<studio>[^-]+)\\s*-\\s*(?<title>.+)$" },
         { label: "Studio - Date - Title: ^(?<studio>[^-]+)\\s*-\\s*(?<date>\\d{4}-\\d{2}-\\d{2})\\s*-\\s*(?<title>.+)$", pattern: "^(?<studio>[^-]+)\\s*-\\s*(?<date>\\d{4}-\\d{2}-\\d{2})\\s*-\\s*(?<title>.+)$" },
         { label: "Studio - Performer - Title: ^(?<studio>[^-]+)\\s*-\\s*(?<performers>[^-]+)\\s*-\\s*(?<title>.+)$", pattern: "^(?<studio>[^-]+)\\s*-\\s*(?<performers>[^-]+)\\s*-\\s*(?<title>.+)$" },
+        { label: "Studio - Code - Title: ^(?<studio>[^-]+)\\s*-\\s*(?<code>[A-Za-z0-9_.-]+)\\s*-\\s*(?<title>.+)$", pattern: "^(?<studio>[^-]+)\\s*-\\s*(?<code>[A-Za-z0-9_.-]+)\\s*-\\s*(?<title>.+)$" },
       ];
 
+      const FIELDS = [
+        { id: "title", label: "Title", group: "title", color: "#88c0d0" },
+        { id: "date", label: "Date", group: "date", color: "#a3be8c" },
+        { id: "code", label: "StudioCode", group: "code", color: "#ebcb8b" },
+        { id: "duration", label: "Duration", group: "duration", color: "#b48ead" },
+        { id: "studio", label: "Studio", group: "studio", color: "#81a1c1" },
+        { id: "performers", label: "Performers", group: "performers", color: "#d08770" },
+        { id: "ignore", label: "Ignore", group: "", color: "#4c566a" },
+      ];
+
+      const [builderMode, setBuilderMode] = useState("guided"); // "guided" | "raw"
+      const [sampleIndex, setSampleIndex] = useState(0);
       const [pattern, setPattern] = useState(PRESETS[0].pattern);
       const [caseInsensitive, setCaseInsensitive] = useState(true);
+      const [assignedSegments, setAssignedSegments] = useState([]);
+      const [selectedRange, setSelectedRange] = useState(null);
       const [isExecuting, setIsExecuting] = useState(false);
       const [progressText, setProgressText] = useState("");
+
+      const sampleScene = directScenes[sampleIndex] || directScenes[0];
+      const sampleRawBasename = sampleScene?.files?.[0]?.basename || "";
+      const sampleWithoutExt = sampleRawBasename.replace(/\\.[^/.]+$/, "");
+
+      // Helper: escape regex literal
+      const escapeRegex = (s) => s.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&");
+
+      // Calculate regex pattern from assigned segments
+      const computeRegexFromSegments = (segments, sampleText) => {
+        if (!segments || segments.length === 0) return;
+        const sorted = [...segments].sort((a, b) => a.start - b.start);
+        let regex = "^";
+        let lastEnd = 0;
+
+        for (let i = 0; i < sorted.length; i++) {
+          const seg = sorted[i];
+
+          // Text between last segment and this segment is literal delimiter
+          if (seg.start > lastEnd) {
+            const sep = sampleText.substring(lastEnd, seg.start);
+            if (/^\\s*-\\s*$/.test(sep)) {
+              regex += "\\s*-\\s*";
+            } else if (/^\\s*_\\s*$/.test(sep)) {
+              regex += "\\s*_\\s*";
+            } else if (/^\\s*\\.\\s*$/.test(sep)) {
+              regex += "\\s*\\.\\s*";
+            } else if (/^\\s+$/.test(sep)) {
+              regex += "\\s+";
+            } else {
+              regex += escapeRegex(sep);
+            }
+          }
+
+          // Next separator character for non-greedy or character-class boundary
+          let nextSepChar = "";
+          if (i < sorted.length - 1) {
+            const nextLiteral = sampleText.substring(seg.end, sorted[i + 1].start);
+            const trimmedNext = nextLiteral.trim();
+            if (trimmedNext.length > 0) {
+              nextSepChar = trimmedNext[0];
+            }
+          }
+
+          const isLast = (i === sorted.length - 1);
+
+          if (seg.fieldId === "ignore") {
+            if (isLast) regex += "(?:.+)";
+            else if (nextSepChar) regex += `(?:[^${escapeRegex(nextSepChar)}]+)`;
+            else regex += "(?:.+?)";
+          } else if (seg.fieldId === "date") {
+            const trimmed = seg.text.trim();
+            if (/^\\d{4}[-._]\\d{2}[-._]\\d{2}$/.test(trimmed)) {
+              regex += "(?<date>\\d{4}[-._]\\d{2}[-._]\\d{2})";
+            } else if (/^\\d{6,8}$/.test(trimmed)) {
+              regex += "(?<date>\\d{6,8})";
+            } else {
+              regex += "(?<date>\\d{2,4}[-._]\\d{1,2}[-._]\\d{1,2})";
+            }
+          } else if (seg.fieldId === "duration") {
+            regex += "(?<duration>\\d+(?:m|min|s|sec)?|\\d+:\\d+(?::\\d+)?)";
+          } else if (seg.fieldId === "code") {
+            if (isLast) regex += "(?<code>.+)";
+            else if (nextSepChar) regex += `(?<code>[^${escapeRegex(nextSepChar)}]+)`;
+            else regex += "(?<code>[A-Za-z0-9_.-]+)";
+          } else if (seg.fieldId === "title") {
+            if (isLast) regex += "(?<title>.+)";
+            else if (nextSepChar) regex += `(?<title>[^${escapeRegex(nextSepChar)}]+)`;
+            else regex += "(?<title>.+?)";
+          } else if (seg.fieldId === "studio") {
+            if (isLast) regex += "(?<studio>.+)";
+            else if (nextSepChar) regex += `(?<studio>[^${escapeRegex(nextSepChar)}]+)`;
+            else regex += "(?<studio>.+?)";
+          } else if (seg.fieldId === "performers") {
+            if (isLast) regex += "(?<performers>.+)";
+            else if (nextSepChar) regex += `(?<performers>[^${escapeRegex(nextSepChar)}]+)`;
+            else regex += "(?<performers>.+?)";
+          }
+
+          lastEnd = seg.end;
+        }
+
+        // Trailing literal text
+        if (lastEnd < sampleText.length) {
+          const trailing = sampleText.substring(lastEnd);
+          regex += escapeRegex(trailing);
+        }
+
+        regex += "$";
+        setPattern(regex);
+      };
+
+      // Handle text selection in the sample filename input
+      const handleSampleSelect = (e) => {
+        const input = e.target;
+        const start = input.selectionStart;
+        const end = input.selectionEnd;
+        if (start !== undefined && end !== undefined && start < end) {
+          const selectedText = sampleWithoutExt.substring(start, end);
+          setSelectedRange({ start, end, text: selectedText });
+        } else {
+          setSelectedRange(null);
+        }
+      };
+
+      // Assign highlighted selection to a field
+      const handleAssignField = (fieldId) => {
+        if (!selectedRange) return;
+        // Remove any overlapping segments
+        const filtered = assignedSegments.filter((s) => !(s.start < selectedRange.end && s.end > selectedRange.start));
+        const newSeg = {
+          id: Date.now() + Math.random(),
+          start: selectedRange.start,
+          end: selectedRange.end,
+          text: selectedRange.text,
+          fieldId,
+        };
+        const updated = [...filtered, newSeg].sort((a, b) => a.start - b.start);
+        setAssignedSegments(updated);
+        setSelectedRange(null);
+        computeRegexFromSegments(updated, sampleWithoutExt);
+      };
+
+      // Remove a segment
+      const handleRemoveSegment = (segId) => {
+        const updated = assignedSegments.filter((s) => s.id !== segId);
+        setAssignedSegments(updated);
+        if (updated.length > 0) {
+          computeRegexFromSegments(updated, sampleWithoutExt);
+        }
+      };
+
+      // Change role of an existing segment
+      const handleChangeSegmentField = (segId, newFieldId) => {
+        const updated = assignedSegments.map((s) => (s.id === segId ? { ...s, fieldId: newFieldId } : s));
+        setAssignedSegments(updated);
+        computeRegexFromSegments(updated, sampleWithoutExt);
+      };
+
+      // Quick Delimiter Split
+      const handleQuickSplit = (delimiter) => {
+        if (!sampleWithoutExt) return;
+        const parts = sampleWithoutExt.split(delimiter);
+        let cursor = 0;
+        const segments = [];
+
+        parts.forEach((rawPart, idx) => {
+          if (!rawPart) return;
+          const pos = sampleWithoutExt.indexOf(rawPart, cursor);
+          const start = pos >= 0 ? pos : cursor;
+          const end = start + rawPart.length;
+          cursor = end;
+
+          const trimmed = rawPart.trim();
+          let guessedField = "title";
+          if (/^\\d{4}[-._]\\d{2}[-._]\\d{2}$/.test(trimmed) || /^\\d{6,8}$/.test(trimmed)) {
+            guessedField = "date";
+          } else if (/^\\d+[mhms]$/i.test(trimmed)) {
+            guessedField = "duration";
+          } else if (/^[A-Z0-9]+-[0-9]+$/i.test(trimmed) || /^[A-Z]{2,}\\d{2,}$/i.test(trimmed)) {
+            guessedField = "code";
+          } else if (idx === 0 && parts.length > 1) {
+            guessedField = "studio";
+          } else if (idx === parts.length - 1) {
+            guessedField = "title";
+          } else if (idx === 1 && parts.length > 2) {
+            guessedField = "performers";
+          }
+
+          segments.push({
+            id: Date.now() + idx,
+            start,
+            end,
+            text: rawPart,
+            fieldId: guessedField,
+          });
+        });
+
+        setAssignedSegments(segments);
+        computeRegexFromSegments(segments, sampleWithoutExt);
+      };
+
+      // Reset all assignments
+      const handleResetSegments = () => {
+        setAssignedSegments([]);
+        setSelectedRange(null);
+      };
 
       // Compute parsed matches in real-time
       const parsedResults = useMemo(() => {
@@ -2240,7 +2445,6 @@
 
         const items = directScenes.map((scene) => {
           const rawBasename = scene.files?.[0]?.basename || "";
-          // Strip extension
           const nameWithoutExt = rawBasename.replace(/\\.[^/.]+$/, "");
           const match = re.exec(nameWithoutExt);
 
@@ -2269,10 +2473,15 @@
             setProgressText(`Updating scene ${i + 1}/${matchedItems.length}: ${item.rawBasename}...`);
 
             const updateInput = { id: item.scene.id };
-            const { title, date, studio, performers } = item.groups;
+            const { title, date, code, duration, studio, performers } = item.groups;
 
-            if (title) updateInput.title = title.trim();
-            if (date && /^\\d{4}-\\d{2}-\\d{2}$/.test(date.trim())) updateInput.date = date.trim();
+            if (title && title.trim()) updateInput.title = title.trim();
+            if (date && /^\\d{4}[-._]\\d{2}[-._]\\d{2}$/.test(date.trim())) {
+              updateInput.date = date.trim().replace(/[._]/g, "-");
+            }
+            if (code && code.trim()) {
+              updateInput.code = code.trim();
+            }
 
             if (studio && studio.trim()) {
               const sRes = await gqlFetch(
@@ -2332,56 +2541,295 @@
         { className: "sfm-modal-backdrop", onClick: onClose },
         React.createElement(
           "div",
-          { className: "sfm-modal-dialog sfm-modal-dialog-large", onClick: (e) => e.stopPropagation() },
+          { className: "sfm-modal-dialog sfm-modal-dialog-large sfm-parser-modal", onClick: (e) => e.stopPropagation() },
           React.createElement(
             "div",
-            { className: "sfm-modal-header" },
-            React.createElement("h5", { className: "mb-0" }, `🔍 Filename Parser: "${currentFolder}"`),
+            { className: "sfm-modal-header d-flex justify-content-between align-items-center" },
+            React.createElement(
+              "div",
+              { className: "d-flex align-items-center gap-3" },
+              React.createElement("h5", { className: "mb-0" }, "🔍 Filename Regex Parser"),
+              React.createElement(
+                "div",
+                { className: "btn-group btn-group-sm sfm-builder-mode-tabs ml-3" },
+                React.createElement(
+                  "button",
+                  {
+                    type: "button",
+                    className: `btn btn-sm ${builderMode === "guided" ? "btn-info font-weight-bold" : "btn-outline-secondary"} py-0 px-3`,
+                    onClick: () => setBuilderMode("guided"),
+                  },
+                  "🧭 Guided Builder"
+                ),
+                React.createElement(
+                  "button",
+                  {
+                    type: "button",
+                    className: `btn btn-sm ${builderMode === "raw" ? "btn-info font-weight-bold" : "btn-outline-secondary"} py-0 px-3`,
+                    onClick: () => setBuilderMode("raw"),
+                  },
+                  "⚙️ Raw Regex"
+                )
+              )
+            ),
             React.createElement("button", { className: "close text-light", onClick: onClose }, "×")
           ),
           React.createElement(
             "div",
             { className: "sfm-modal-body" },
-            React.createElement("p", { className: "text-muted small mb-3" },
-              "Extract Title, Date, Studio, or Performers from filenames in this folder using named capture groups (?<title>...), (?<date>...), (?<studio>...), (?<performers>...)."
-            ),
+            builderMode === "guided"
+              ? React.createElement(
+                  "div",
+                  { className: "sfm-guided-builder-section mb-3" },
+                  // Sample File Navigation Bar
+                  React.createElement(
+                    "div",
+                    { className: "d-flex justify-content-between align-items-center mb-2" },
+                    React.createElement(
+                      "span",
+                      { className: "small font-weight-bold text-muted text-uppercase" },
+                      "1. Sample Filename from Current Folder"
+                    ),
+                    directScenes.length > 1 &&
+                      React.createElement(
+                        "div",
+                        { className: "d-flex align-items-center gap-2" },
+                        React.createElement(
+                          "button",
+                          {
+                            type: "button",
+                            className: "btn btn-xs btn-outline-secondary py-0 px-2",
+                            disabled: sampleIndex <= 0,
+                            onClick: () => {
+                              const newIdx = Math.max(0, sampleIndex - 1);
+                              setSampleIndex(newIdx);
+                              setAssignedSegments([]);
+                              setSelectedRange(null);
+                            },
+                          },
+                          "◀ Prev"
+                        ),
+                        React.createElement("span", { className: "text-muted small" }, `${sampleIndex + 1} of ${directScenes.length}`),
+                        React.createElement(
+                          "button",
+                          {
+                            type: "button",
+                            className: "btn btn-xs btn-outline-secondary py-0 px-2",
+                            disabled: sampleIndex >= directScenes.length - 1,
+                            onClick: () => {
+                              const newIdx = Math.min(directScenes.length - 1, sampleIndex + 1);
+                              setSampleIndex(newIdx);
+                              setAssignedSegments([]);
+                              setSelectedRange(null);
+                            },
+                          },
+                          "Next ▶"
+                        )
+                      )
+                  ),
+                  // Selectable Sample Input Box
+                  React.createElement(
+                    "div",
+                    { className: "position-relative mb-2" },
+                    React.createElement("input", {
+                      type: "text",
+                      readOnly: true,
+                      className: "form-control form-control-lg sfm-interactive-sample-input",
+                      value: sampleWithoutExt,
+                      onSelect: handleSampleSelect,
+                      onMouseUp: handleSampleSelect,
+                      onKeyUp: handleSampleSelect,
+                      title: "Click and drag to highlight any text segment, then click a field chip below",
+                    })
+                  ),
+                  // Selection Tagging Bar
+                  React.createElement(
+                    "div",
+                    { className: "sfm-selection-chip-bar p-2 rounded mb-3 bg-dark border border-secondary" },
+                    selectedRange
+                      ? React.createElement(
+                          "div",
+                          { className: "d-flex align-items-center flex-wrap gap-2" },
+                          React.createElement(
+                            "span",
+                            { className: "small text-light font-weight-bold mr-2" },
+                            `Selected "${selectedRange.text}":`
+                          ),
+                          FIELDS.map((f) =>
+                            React.createElement(
+                              "button",
+                              {
+                                key: f.id,
+                                type: "button",
+                                className: "btn btn-sm py-1 px-2 font-weight-bold sfm-field-btn",
+                                style: { backgroundColor: f.color, color: "#1e222a", border: "none" },
+                                onClick: () => handleAssignField(f.id),
+                              },
+                              `+ ${f.label}`
+                            )
+                          )
+                        )
+                      : React.createElement(
+                          "div",
+                          { className: "d-flex justify-content-between align-items-center flex-wrap gap-2" },
+                          React.createElement(
+                            "span",
+                            { className: "small text-muted" },
+                            "💡 Tip: Click & drag to highlight any part of the filename above, then assign it to a field."
+                          ),
+                          React.createElement(
+                            "div",
+                            { className: "d-flex align-items-center gap-1" },
+                            React.createElement("span", { className: "small text-muted mr-1" }, "Quick Split:"),
+                            React.createElement(
+                              "button",
+                              {
+                                type: "button",
+                                className: "btn btn-xs btn-outline-info py-0 px-2",
+                                onClick: () => handleQuickSplit(" - "),
+                              },
+                              'Dash " - "'
+                            ),
+                            React.createElement(
+                              "button",
+                              {
+                                type: "button",
+                                className: "btn btn-xs btn-outline-info py-0 px-2",
+                                onClick: () => handleQuickSplit("_"),
+                              },
+                              'Underscore "_"'
+                            ),
+                            React.createElement(
+                              "button",
+                              {
+                                type: "button",
+                                className: "btn btn-xs btn-outline-info py-0 px-2",
+                                onClick: () => handleQuickSplit("."),
+                              },
+                              'Dot "."'
+                            ),
+                            React.createElement(
+                              "button",
+                              {
+                                type: "button",
+                                className: "btn btn-xs btn-outline-info py-0 px-2",
+                                onClick: () => handleQuickSplit(" "),
+                              },
+                              'Space " "'
+                            )
+                          )
+                        )
+                  ),
+                  // Assigned Segments Visual Flow
+                  assignedSegments.length > 0 &&
+                    React.createElement(
+                      "div",
+                      { className: "sfm-assigned-segments-box mb-3 p-2 rounded bg-dark border border-secondary" },
+                      React.createElement(
+                        "div",
+                        { className: "d-flex justify-content-between align-items-center mb-2" },
+                        React.createElement("span", { className: "small font-weight-bold text-muted" }, "ASSIGNED FIELD MAPPINGS:"),
+                        React.createElement(
+                          "button",
+                          {
+                            type: "button",
+                            className: "btn btn-xs btn-outline-danger py-0 px-2",
+                            onClick: handleResetSegments,
+                          },
+                          "Clear All"
+                        )
+                      ),
+                      React.createElement(
+                        "div",
+                        { className: "d-flex align-items-center flex-wrap gap-2" },
+                        assignedSegments.map((seg, idx) => {
+                          const fObj = FIELDS.find((f) => f.id === seg.fieldId) || FIELDS[0];
+                          return React.createElement(
+                            "div",
+                            {
+                              key: seg.id,
+                              className: "sfm-segment-pill d-inline-flex align-items-center px-2 py-1 rounded",
+                              style: { backgroundColor: `${fObj.color}22`, border: `1px solid ${fObj.color}` },
+                            },
+                            React.createElement(
+                              "span",
+                              { className: "font-weight-bold mr-2", style: { color: fObj.color } },
+                              `"${seg.text}"`
+                            ),
+                            React.createElement(
+                              "select",
+                              {
+                                className: "form-control form-control-sm bg-dark text-light border-0 py-0 px-1 mr-1",
+                                style: { width: "auto", height: "22px", fontSize: "0.75rem" },
+                                value: seg.fieldId,
+                                onChange: (e) => handleChangeSegmentField(seg.id, e.target.value),
+                              },
+                              FIELDS.map((f) => React.createElement("option", { key: f.id, value: f.id }, f.label))
+                            ),
+                            React.createElement(
+                              "button",
+                              {
+                                type: "button",
+                                className: "btn btn-xs text-muted p-0 ml-1",
+                                onClick: () => handleRemoveSegment(seg.id),
+                                title: "Remove this field mapping",
+                              },
+                              "×"
+                            )
+                          );
+                        })
+                      )
+                    )
+                )
+              : React.createElement(
+                  "div",
+                  { className: "sfm-raw-builder-section mb-3" },
+                  React.createElement(
+                    "div",
+                    { className: "form-group mb-2" },
+                    React.createElement("label", { className: "small font-weight-bold" }, "Preset Patterns"),
+                    React.createElement(
+                      "select",
+                      {
+                        className: "form-control form-control-sm bg-dark text-light border-secondary",
+                        onChange: (e) => setPattern(e.target.value),
+                      },
+                      PRESETS.map((p) => React.createElement("option", { key: p.pattern, value: p.pattern }, p.label))
+                    )
+                  )
+                ),
+            // Pattern Display & Options
             React.createElement(
               "div",
               { className: "form-group mb-3" },
-              React.createElement("label", { className: "small font-weight-bold" }, "Preset Patterns"),
-              React.createElement(
-                "select",
-                {
-                  className: "form-control form-control-sm bg-dark text-light border-secondary",
-                  onChange: (e) => setPattern(e.target.value),
-                },
-                PRESETS.map((p) => React.createElement("option", { key: p.pattern, value: p.pattern }, p.label))
-              )
-            ),
-            React.createElement(
-              "div",
-              { className: "form-group mb-3" },
-              React.createElement("label", { className: "small font-weight-bold" }, "Regular Expression"),
-              React.createElement("input", {
-                type: "text",
-                className: "form-control bg-dark text-light border-secondary",
-                value: pattern,
-                onChange: (e) => setPattern(e.target.value),
-              }),
               React.createElement(
                 "div",
-                { className: "mt-1 d-flex align-items-center gap-2 small text-muted" },
-                React.createElement("input", {
-                  type: "checkbox",
-                  id: "sfm-case-sens",
-                  checked: caseInsensitive,
-                  onChange: (e) => setCaseInsensitive(e.target.checked),
-                }),
-                React.createElement("label", { htmlFor: "sfm-case-sens", className: "mb-0 cursor-pointer" }, "Case insensitive (?i)")
-              )
+                { className: "d-flex justify-content-between align-items-center mb-1" },
+                React.createElement("label", { className: "small font-weight-bold mb-0" }, "Compiled Regular Expression"),
+                React.createElement(
+                  "div",
+                  { className: "d-flex align-items-center gap-2 small text-muted" },
+                  React.createElement("input", {
+                    type: "checkbox",
+                    id: "sfm-case-sens",
+                    checked: caseInsensitive,
+                    onChange: (e) => setCaseInsensitive(e.target.checked),
+                  }),
+                  React.createElement("label", { htmlFor: "sfm-case-sens", className: "mb-0 cursor-pointer" }, "Case insensitive (?i)")
+                )
+              ),
+              React.createElement("input", {
+                type: "text",
+                className: "form-control font-weight-bold bg-dark text-info border-secondary sfm-regex-input",
+                value: pattern,
+                readOnly: builderMode === "guided",
+                onChange: (e) => setPattern(e.target.value),
+                style: { fontFamily: "monospace", fontSize: "0.9rem" },
+              })
             ),
             parsedResults.error &&
               React.createElement("div", { className: "alert alert-danger py-2 px-3 small" }, `Regex Error: ${parsedResults.error}`),
+            // Live Match Preview Table
             React.createElement(
               "div",
               { className: "d-flex justify-content-between align-items-center mb-2" },
@@ -2401,8 +2849,10 @@
                     "tr",
                     null,
                     React.createElement("th", null, "Filename"),
-                    React.createElement("th", null, "Extracted Title"),
+                    React.createElement("th", null, "Title"),
                     React.createElement("th", null, "Date"),
+                    React.createElement("th", null, "StudioCode"),
+                    React.createElement("th", null, "Duration"),
                     React.createElement("th", null, "Studio"),
                     React.createElement("th", null, "Performers"),
                     React.createElement("th", null, "Status")
@@ -2415,9 +2865,11 @@
                     React.createElement(
                       "tr",
                       { key: item.scene.id },
-                      React.createElement("td", { className: "text-truncate", style: { maxWidth: "220px" }, title: item.rawBasename }, item.rawBasename),
+                      React.createElement("td", { className: "text-truncate", style: { maxWidth: "200px" }, title: item.rawBasename }, item.rawBasename),
                       React.createElement("td", { className: "text-info font-weight-bold" }, item.groups.title || "—"),
                       React.createElement("td", null, item.groups.date || "—"),
+                      React.createElement("td", null, item.groups.code || "—"),
+                      React.createElement("td", null, item.groups.duration || "—"),
                       React.createElement("td", null, item.groups.studio || "—"),
                       React.createElement("td", null, item.groups.performers || "—"),
                       React.createElement(
@@ -2441,7 +2893,7 @@
             React.createElement(
               "button",
               {
-                className: "btn btn-primary btn-sm",
+                className: "btn btn-primary btn-sm font-weight-bold",
                 disabled: isExecuting || matchedCount === 0,
                 onClick: handleExecute,
               },
@@ -2452,9 +2904,6 @@
       );
     }
 
-    // ==========================================
-    // Modal: Expanded Batch Metadata (Feature 4)
-    // ==========================================
     function BatchMetadataModal({ currentFolder, sceneCount, sceneIds, onClose, onApplied }) {
       const [studioName, setStudioName] = useState("");
       const [addPerformer, setAddPerformer] = useState("");
