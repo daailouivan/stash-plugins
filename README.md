@@ -134,6 +134,20 @@ Eliminate wasted vertical space with compact folder layouts tailored to any libr
 
 ## 📋 Changelog & Development History
 
+### [v2.9.0] — 2026-09-26 05:28:54
+* **Folder Profile Page & Video Wall Grid:** Implemented in-player creator-style Directory Profile view featuring folder avatar, path chip, live stats (video count, total file size, total duration, resolution breakdown), quick actions (*Play All*, *Shuffle Play*, *Stash Grid*), and a responsive video wall grid allowing instant preview and playback of any directory scene.
+* **Social Media Reel Avatar & Path Overlay:** Added a sleek pill in the video metadata overlay displaying the folder thumbnail avatar and current directory path, clicking which opens the Directory Profile page.
+* **Non-Repeating Fisher-Yates Shuffle Queue:** Integrated a shuffle engine with right-action-rail circle toggle button (`S` hotkey), HUD status indicator, and automatic non-repeating advancement upon scene completion.
+
+### [v2.8.2] — 2026-09-26 04:36:03
+* **Floating Toolbar & Icon Standardization:** Harmonized floating batch edit and regex parse buttons to match control line styling (`btn-outline-secondary py-1 px-2`). Standardized Stash Grid button to match its icon-only counterpart (`IconGrid size={14}`). Synchronized automated packaging script for `index.yml`.
+
+### [v2.8.1] — 2026-09-25 02:17:49
+* **UI Spacing, Badge Alignment & Field Splitting:** Separated directory metrics into discrete elements with explicit margins (`99 direct · 99 in tree`). Added 1rem margin on search bar. Standardized section title box (104px label) so count badges align vertically across headers. Added 1-click interactive field splitting (`✂️ Split`) in Regex Parser.
+
+### [v2.8.0] — 2026-09-24 20:53:48
+* **Names View Mode & Header Alignment:** Added compact `Names` (filenames-only) table view mode. Standardized persistent indicators and Group by Folder naming. Overhauled regex builder with visual chunks, double-underscore release auto-detection, and path clues.
+
 ### [v2.7.3] — 2026-09-24 10:35:00
 * **Standardized View Switcher Labels:** Removed inconsistent unicode glyphs (`田`, `☰`, `☷`, `⊞`), unifying both Subfolders and Files / Scenes to clean, sleek text (`Cards`, `List`, `Details` / `Cards`, `Table`).
 * **Modernized Floating Bulk Action Bar:** Replaced static count badge with dynamic `[N] Selected` button (click to deselect all), and upgraded all action buttons with vector SVGs (`IconEdit`, `IconSearch`, `IconGrid`, `IconX`) and title-cased labels (`Batch Edit`, `Stash Grid`).

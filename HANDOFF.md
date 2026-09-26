@@ -2,9 +2,10 @@
 
 **Current Version:** `v2.9.0`  
 **Active Repository:** `https://github.com/daailouivan/stash-plugins.git` (`main` branch)  
-**Distribution Package:** `stash_file_manager.zip` (SHA256: `84372072ef83a54e558d2b3b5a2d107d73466b481ccd7abe7c3ac7aa8e20d16e`)  
+**Distribution Package:** `stash_file_manager.zip` (SHA256: `f565b462b34d8af2758fce1e8af32df0e531ef262c06061b3d8a3c41dd9d120d`)  
 **Plugin Manifest:** `stash_file_manager/stash_file_manager.yml` (version `2.9.0`)  
 **Index Manifest:** `index.yml` (version `2.9.0`)  
+**Total Release Tags:** `30` (`v1.0.0` through `v2.9.0`)  
 
 ---
 
@@ -30,24 +31,54 @@ The **Stash Path File Manager (`stash_file_manager`)** is a community plugin for
 
 ---
 
-## 2. Recent Development History (v2.7.0 – v2.9.0)
+## 2. Release Tag Inventory (30 Tags)
 
-| Version | Description |
-|---|---|
-| **v2.9.0** | **Folder Profile Video Wall & Shuffle Queue:** Added non-repeating Fisher-Yates shuffle toggle circle button with HUD toast and auto-advance. Implemented in-player Directory Profile page with social-media-style avatar, path chip, live stats (video count, size, duration, 4K/1080p breakdown), and responsive video wall grid to preview and launch any scene without exiting the player. |
-| **v2.8.2** | **Floating Toolbar & Icon Standardization:** Harmonized floating batch edit and regex parse buttons to match control line styling (`btn-outline-secondary py-1 px-2`). Standardized Stash Grid button to match its icon-only counterpart (`IconGrid size={14}`). Synchronized automated packaging script for `index.yml`. |
-| **v2.8.1** | **UI Spacing, Badge Alignment & Field Splitting:** Separated directory metrics into discrete elements with explicit margins (`99 direct · 99 in tree`). Added 1rem margin on search bar. Pluralized `Include Sub-Folders`. Standardized section title box (104px label) so count badges align vertically across headers. Resized pills (142px / 126px / 96px). Added 1-click interactive field splitting (`✂️ Split`) in Regex Parser. |
-| **v2.8.0** | **Auto-Root, Names View & Regex Parser Overhaul:** Added Smart Common Root detection and single-child directory auto-collapsing. Added compact `Names` (filenames-only) table view mode. Overhauled regex builder with visual chunks, double-underscore release auto-detection, and path clues. |
-| **v2.7.2** | **SVG Sliders & Unified Select-All:** Replaced emoji sliders with vector SVGs; merged select-all and count badge into a dynamic `[N] Selected` button; aligned subfolder toggles and indicators. |
-| **v2.7.0** | **Binge Scrolling Physics & Recursion:** Upgraded reel track to 5-slide sliding window with touch/wheel momentum. Added `Include Sub-Folders` recursive scene aggregation and `Group by Folder` sorting. |
+| Tag | Commit | Release Summary |
+|---|---|---|
+| `v1.0.0` | `3af72c9` | Initial release: Hierarchical tree, trie caching, regex parser |
+| `v1.0.1` | `ee99f62` | Modernized nav button and UI refinements |
+| `v1.0.2` | `df1202c` | Navbar sibling positioning and matching dimensions |
+| `v1.1.0` | `c0d7254` | Multi-select, floating bulk action bar, detail table, folder scan |
+| `v1.1.1` | `1fb83c6` | Native `PluginApi.patch` integration |
+| `v2.0.0` | `ff5b450` | 3 folder views, Binge reel player, draggable floating PiP |
+| `v2.0.1` | `8c52900` | Stream authentication and history back navigation |
+| `v2.0.2` | `c97c72c` | Format seconds error boundary, collapsible headers |
+| `v2.0.3` | `d258f33` | Package plugin as zip archive with sha256 checksum |
+| `v2.0.4` | `d020407` | Menu container children insertion |
+| `v2.1.0` | `10f3001` | Player UI redesign, swipe threshold animation, seek |
+| `v2.1.1` | `129871a` | Decoupled HLS segmented protocol from WebM progressive container |
+| `v2.2.0` | `3aba8f0` | Unified section headers, relocated select-all, card sliders |
+| `v2.3.0` | `34b09b6` | Native settings schema, `sfm_tasks.py` backend runner |
+| `v2.4.0` | `81c7f00` | Right circular action rail, TikTok auto-hide overlay |
+| `v2.5.0` | `3a75f34` | MPEG-4 Part 2 smart transcode fallback, zero-lingering PiP |
+| `v2.5.1` | `d21f161` | Plugin manifest schema validation |
+| `v2.5.2` | `3a0c8df` | Action button transform clipping fix |
+| `v2.5.3` | `168249b` | 5 core settings, monochrome SVGs, elevated overlay |
+| `v2.5.4` | `1798ddd` | PiP divider restore, fullscreen above scrubber, codec chip icon |
+| `v2.5.5` | `e3f741d` | TDZ ReferenceError fix for `streamMode` |
+| `v2.6.0` | `d4fcd18` | 5-slide window buffer, eliminate thumbnail flash, recursive include subfolders |
+| `v2.7.0` | `9e9de98` | Binge physics, folder list width slider, 10 scenes/row |
+| `v2.7.1` | `7c0e3ef` | Folder-first recursive scene sorting |
+| `v2.7.2` | `cb76ba1` | Streamlined SVG sliders, dynamic `[N] Selected` button |
+| `v2.7.3` | `e8d8a6a` | Standardized view labels, 2-line navbar layout, keyboard shortcuts |
+| `v2.8.0` | `07bc0f8` | Aligned headers, Group by Folder naming, Names view mode |
+| `v2.8.1` | `b82d6d0` | Selection-driven guided regex builder with multi-field tagging |
+| `v2.8.2` | `51342a6` | Floating toolbar button standardization, index.yml sync |
+| `v2.9.0` | `HEAD` | Folder Profile Video Wall, Shuffle Queue, social avatar & path overlay |
 
 ---
 
-## 3. Workflow for New Commits (User Preference)
+## 3. Instructions for Force Pushing to GitHub
 
-The user maintains a local git clone of `https://github.com/daailouivan/stash-plugins.git`.
-When preparing updates:
-1. Ensure all changes build cleanly on top of the user's remote `main` branch.
-2. Build `stash_file_manager.zip` and update `index.yml` using `python3 /tmp/package_bundle.py` (which calculates SHA256 and updates timestamps automatically).
-3. Pack all commits into a ready-to-pull Git bundle using `git bundle create <bundle> --all`.
-4. The user pulls and pushes in single clean steps (`git pull <bundle> main && git push origin main`).
+To force push the repository branch and all 30 release tags to GitHub (`https://github.com/daailouivan/stash-plugins.git`):
+
+```bash
+# 1. Pull / update to the latest bundle commit
+git pull <path-to-bundle> main
+
+# 2. Force push the main branch to origin
+git push -u origin main --force
+
+# 3. Force push all 30 release tags to origin
+git push origin --tags --force
+```
