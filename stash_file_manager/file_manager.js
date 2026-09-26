@@ -1138,7 +1138,7 @@
       );
     }
 
-    function BingeReelPlayerModalBingeReelPlayerModal({ scene, scenes = [], onSelectScene, onClose, folderName, currentPath, onNavigateToFolder }) {
+    function BingeReelPlayerModal({ scene, scenes = [], onSelectScene, onClose, folderName, currentPath, onNavigateToFolder }) {
       const videoRef = useRef(null);
       const videoContainerRef = useRef(null);
       const hlsInstanceRef = useRef(null);

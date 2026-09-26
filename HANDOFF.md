@@ -2,7 +2,7 @@
 
 **Current Version:** `v2.9.1`  
 **Active Repository:** `https://github.com/daailouivan/stash-plugins.git` (`main` branch)  
-**Distribution Package:** `stash_file_manager.zip` (SHA256: `4ec1b3210ec25e8a4724c186cd43496bd6ad82cd54e003457a6795dbe1c4aabb`)  
+**Distribution Package:** `stash_file_manager.zip` (SHA256: `e8cdf02509f627549f16ba56645c57efbffca7e9de3ac54fd74cf9f8d630c631`)  
 **Plugin Manifest:** `stash_file_manager/stash_file_manager.yml` (version `2.9.1`)  
 **Index Manifest:** `index.yml` (version `2.9.1`)  
 **Total Release Tags:** `31` (`v1.0.0` through `v2.9.1`)  
