@@ -803,7 +803,7 @@
       return currentScene ? [currentScene, ...others] : others;
     }
 
-    function BingeReelPlayerModal({ scene, scenes = [], onSelectScene, onClose, folderName, currentPath }) {
+    function BingeReelPlayerModal({ scene, scenes = [], onSelectScene, onClose, folderName, currentPath, onNavigateToFolder }) {
       const videoRef = useRef(null);
       const videoContainerRef = useRef(null);
       const hlsInstanceRef = useRef(null);
@@ -900,6 +900,9 @@
 
       // Only native H.264, AV1, VP9 or WebM are direct-streamable in browsers
       const isNativeDirect = ["mp4", "m4v", "webm"].includes(fileExt) && !isUnsupportedCodec;
+
+      const targetFolderPath = scene?._folderPath !== undefined ? scene._folderPath : (currentPath || "");
+      const displayFolderPath = targetFolderPath ? `/${targetFolderPath}` : "/Stash";
 
       const extLabel = fileExt ? `.${fileExt.toUpperCase()}` : "VIDEO";
       const codecBadge = rawCodec ? rawCodec.toUpperCase() : isMpeg4 ? "MPEG-4" : "";
@@ -2164,6 +2167,44 @@
               React.createElement(
                 "div",
                 { className: `sfm-reel-description-overlay ${isControlsVisible ? "sfm-visible" : "sfm-hidden"}` },
+                // Social Media Avatar & Folder Path (Direct navigation on click)
+                React.createElement(
+                  "div",
+                  {
+                    className: "sfm-reel-avatar-bar d-inline-flex align-items-center mb-2",
+                    onClick: (e) => {
+                      e.stopPropagation();
+                      if (onNavigateToFolder) {
+                        onNavigateToFolder(targetFolderPath);
+                      }
+                      onClose();
+                    },
+                    title: `Navigate to folder "${targetFolderPath || "Root"}" in File Manager`,
+                  },
+                  React.createElement(
+                    "div",
+                    { className: "sfm-reel-avatar-box mr-2" },
+                    React.createElement("img", {
+                      src: posterUrl,
+                      className: "sfm-reel-avatar-img",
+                      alt: targetFolderPath || "Folder",
+                    }),
+                    React.createElement(
+                      "span",
+                      { className: "sfm-reel-avatar-badge" },
+                      React.createElement(IconFolder, { size: 9, color: "#141822" })
+                    )
+                  ),
+                  React.createElement(
+                    "div",
+                    { className: "sfm-reel-path-details" },
+                    React.createElement(
+                      "span",
+                      { className: "sfm-reel-path-label" },
+                      displayFolderPath
+                    )
+                  )
+                ),
                 // Line 1: Pure Title & Studio
                 React.createElement(
                   "div",
@@ -6180,6 +6221,7 @@
                 onClose: () => setPlayingScene(null),
                 folderName: currentFolderName,
                 currentPath: currentPath,
+                onNavigateToFolder: (path) => navigateToFolder(path),
               })
             )
         )
