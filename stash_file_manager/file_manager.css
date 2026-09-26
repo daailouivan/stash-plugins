@@ -3510,49 +3510,30 @@ button.badge.sfm-badge-btn:hover {
     display: flex !important;
     align-items: center !important;
     justify-content: space-between !important;
-    flex-wrap: nowrap !important;
+    flex-wrap: wrap !important;
     width: 100% !important;
-    gap: 4px !important;
+    gap: 8px !important;
   }
 
   .sfm-breadcrumbs-wrap {
     display: flex !important;
     align-items: center !important;
-    flex: 1 1 auto !important;
-    min-width: 0 !important;
-    overflow: hidden !important;
-  }
-
-  .sfm-breadcrumbs-track {
-    display: flex !important;
-    align-items: center !important;
-    overflow-x: auto !important;
-    white-space: nowrap !important;
-    scrollbar-width: none !important;
-    -webkit-overflow-scrolling: touch !important;
-    flex: 1 1 auto !important;
-    min-width: 0 !important;
-    margin: 0 4px !important;
-  }
-
-  .sfm-breadcrumbs-track::-webkit-scrollbar {
-    display: none !important;
+    flex-wrap: wrap !important;
+    gap: 6px !important;
   }
 
   .sfm-crumb-btn {
-    font-size: 0.76rem !important;
-    padding: 2px 4px !important;
+    font-size: 0.78rem !important;
+    padding: 2px 6px !important;
   }
 
-  .sfm-nav-right-cluster {
-    display: flex !important;
-    align-items: center !important;
-    gap: 4px !important;
-    flex-shrink: 0 !important;
+  .sfm-stat-pill {
+    margin-left: 0.45rem !important;
+    margin-right: 0.45rem !important;
   }
 
-  .sfm-nav-stat-pill {
-    display: none !important; /* Hide verbose path stat pill on narrow mobile to keep path bar clean */
+  .sfm-nav-actions-group {
+    margin-left: 0.4rem !important;
   }
 
   .sfm-nav-history-group .btn,
@@ -3643,42 +3624,7 @@ button.badge.sfm-badge-btn:hover {
     text-align: center !important;
   }
 
-  /* 3. Section Headers (Subfolders & Files/Scenes) on Mobile */
-  .sfm-section-header-container {
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 4px !important;
-    width: 100% !important;
-  }
-
-  .sfm-section-header-top-row {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: space-between !important;
-    width: 100% !important;
-  }
-
-  .sfm-section-title-box {
-    width: auto !important;
-    min-width: 0 !important;
-    max-width: none !important;
-    flex: 0 0 auto !important;
-  }
-
-  .sfm-section-title-label {
-    width: auto !important;
-    min-width: 0 !important;
-    max-width: none !important;
-    font-size: 0.88rem !important;
-  }
-
-  .sfm-section-count-badge {
-    height: 20px !important;
-    font-size: 0.72rem !important;
-    padding: 0 0.35rem !important;
-  }
-
-  /* Hide sliders on mobile touch screens */
+  /* 3. Section Headers (Subfolders & Files/Scenes) on Mobile - Clean spacing */
   .sfm-size-slider-wrap {
     display: none !important;
   }
@@ -3695,38 +3641,10 @@ button.badge.sfm-badge-btn:hover {
     font-size: 0.72rem !important;
   }
 
-  /* Toggle Pills & Indicators Row on Mobile */
-  .sfm-subfolders-pills-row,
-  .sfm-files-pills-row {
-    display: flex !important;
-    align-items: center !important;
-    gap: 5px !important;
-    width: 100% !important;
-    overflow-x: auto !important;
-    white-space: nowrap !important;
-    scrollbar-width: none !important;
-    -webkit-overflow-scrolling: touch !important;
-    padding-bottom: 2px !important;
-  }
-
-  .sfm-subfolders-pills-row::-webkit-scrollbar,
-  .sfm-files-pills-row::-webkit-scrollbar {
-    display: none !important;
-  }
-
-  .sfm-pill-subfolders,
-  .sfm-pill-foldersort,
-  .sfm-pill-hideempty,
-  .sfm-pill-selectall {
-    width: auto !important;
-    min-width: 0 !important;
-    max-width: none !important;
-    flex: 1 1 auto !important;
-    padding: 0.22rem 0.5rem !important;
-    font-size: 0.72rem !important;
-    text-align: center !important;
-    white-space: nowrap !important;
-    margin-left: 0 !important;
+  .sfm-badge-indicator,
+  .sfm-state-pill,
+  button.badge.sfm-badge-btn {
+    margin-left: 0.45rem !important;
   }
 
   /* 4. Responsive Grid Column Scaling on Mobile */

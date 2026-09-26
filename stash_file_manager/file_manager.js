@@ -6411,11 +6411,11 @@ function BingeReelPlayerModal({ scene, scenes = [], onSelectScene, onClose, fold
               { className: "sfm-nav-line sfm-nav-line-path d-flex align-items-center justify-content-between flex-wrap gap-2" },
               React.createElement(
                 "div",
-                { className: "sfm-breadcrumbs-wrap d-flex align-items-center" },
+                { className: "sfm-breadcrumbs-wrap d-flex align-items-center flex-wrap gap-2" },
                 // Back & Up (Icons only, hover tooltip, grouped 2 as 1)
                 React.createElement(
                   "div",
-                  { className: "btn-group btn-group-sm mr-2 sfm-nav-history-group flex-shrink-0" },
+                  { className: "btn-group btn-group-sm mr-1 sfm-nav-history-group flex-shrink-0" },
                   React.createElement(
                     "button",
                     {
@@ -6439,65 +6439,55 @@ function BingeReelPlayerModal({ scene, scenes = [], onSelectScene, onClose, fold
                     React.createElement(IconArrowUp, { size: 14 })
                   )
                 ),
-                // Path Track (smooth horizontal scroll on mobile, zero line breaks!)
+                // Path Root: Stash (with Home Icon)
                 React.createElement(
-                  "div",
-                  { className: "sfm-breadcrumbs-track d-flex align-items-center" },
-                  // Path Root: Stash (with Home Icon)
-                  React.createElement(
-                    "button",
-                    {
-                      type: "button",
-                      className: `sfm-crumb-btn ${!currentPath ? "sfm-crumb-active" : ""}`,
-                      onClick: () => navigateToFolder(""),
-                      title: "Return to Stash Root",
-                    },
-                    React.createElement(IconHome, { size: 14, color: "#88c0d0" }),
-                    React.createElement("span", { className: "ml-1 font-weight-bold" }, "Stash")
-                  ),
-                  // Segments
-                  segments.map((seg, idx) => {
-                    const p = segments.slice(0, idx + 1).join("/");
-                    const isLast = idx === segments.length - 1;
-                    return React.createElement(
-                      React.Fragment,
-                      { key: p },
-                      React.createElement("span", { className: "sfm-crumb-separator" }, "›"),
-                      React.createElement(
-                        "button",
-                        {
-                          type: "button",
-                          className: `sfm-crumb-btn ${isLast ? "sfm-crumb-active" : ""}`,
-                          onClick: () => navigateToFolder(p),
-                          title: seg,
-                        },
-                        seg
-                      )
-                    );
-                  })
-                )
-              ),
-              // Right Cluster: Counts + Actions + Settings
-              React.createElement(
-                "div",
-                { className: "sfm-nav-right-cluster d-flex align-items-center gap-2 flex-shrink-0 ml-auto" },
-                // Counts and size with colored digits
+                  "button",
+                  {
+                    type: "button",
+                    className: `sfm-crumb-btn ${!currentPath ? "sfm-crumb-active" : ""}`,
+                    onClick: () => navigateToFolder(""),
+                    title: "Return to Stash Root",
+                  },
+                  React.createElement(IconHome, { size: 14, color: "#88c0d0" }),
+                  React.createElement("span", { className: "ml-1 font-weight-bold" }, "Stash")
+                ),
+                // Segments
+                segments.map((seg, idx) => {
+                  const p = segments.slice(0, idx + 1).join("/");
+                  const isLast = idx === segments.length - 1;
+                  return React.createElement(
+                    React.Fragment,
+                    { key: p },
+                    React.createElement("span", { className: "sfm-crumb-separator mx-1" }, "›"),
+                    React.createElement(
+                      "button",
+                      {
+                        type: "button",
+                        className: `sfm-crumb-btn ${isLast ? "sfm-crumb-active" : ""}`,
+                        onClick: () => navigateToFolder(p),
+                        title: seg,
+                      },
+                      seg
+                    )
+                  );
+                }),
+                // Counts and size with colored digits - positioned immediately after path, with clean spacing!
                 React.createElement(
                   "span",
-                  { className: "sfm-stat-pill badge badge-dark font-weight-normal sfm-nav-stat-pill flex-shrink-0" },
+                  { className: "sfm-stat-pill ml-2 mr-2 badge badge-dark font-weight-normal flex-shrink-0" },
                   React.createElement("strong", { style: { color: "#88c0d0" } }, currentNode ? currentNode.directScenes.length : 0),
-                  React.createElement("span", { className: "sfm-stat-label" }, "direct"),
-                  React.createElement("span", { className: "sfm-stat-dot" }, "·"),
+                  React.createElement("span", { className: "sfm-stat-label ml-1" }, "direct"),
+                  React.createElement("span", { className: "sfm-stat-dot mx-1" }, "·"),
                   React.createElement("strong", { style: { color: "#81a1c1" } }, allDescendantIds.length),
-                  React.createElement("span", { className: "sfm-stat-label" }, "in tree"),
-                  React.createElement("span", { className: "sfm-stat-paren" }, "("),
+                  React.createElement("span", { className: "sfm-stat-label ml-1" }, "in tree"),
+                  React.createElement("span", { className: "sfm-stat-paren ml-1" }, "("),
                   React.createElement("strong", { style: { color: "#a3be8c" } }, formatBytes(currentNode?.totalSize)),
                   React.createElement("span", { className: "sfm-stat-paren" }, ")")
                 ),
-                // Scan and Grid (Icons only, hover tooltip, grouped 2 as 1)
+                // Scan and Grid (Icons only, hover tooltip, grouped 2 as 1 - clean gap after counter!)
                 React.createElement(
                   "div",
-                  { className: "btn-group btn-group-sm sfm-nav-actions-group flex-shrink-0" },
+                  { className: "btn-group btn-group-sm ml-1 sfm-nav-actions-group flex-shrink-0" },
                   React.createElement(
                     "button",
                     {
@@ -6518,22 +6508,21 @@ function BingeReelPlayerModal({ scene, scenes = [], onSelectScene, onClose, fold
                     },
                     React.createElement(IconGrid, { size: 14 })
                   )
-                ),
-                // Settings button
-                React.createElement(
-                  "button",
-                  {
-                    type: "button",
-                    className: "sfm-workspace-settings-btn flex-shrink-0",
-                    onClick: () => setShowSettingsModal(true),
-                    title: "Stash Settings & Plugin Tasks",
-                  },
-                  React.createElement(IconGear, { size: 14, color: "currentColor" }),
-                  React.createElement("span", { className: "sfm-btn-label-desktop ml-1" }, "Settings")
                 )
+              ),
+              // Settings (aligned and anchored to the right of Line 1)
+              React.createElement(
+                "button",
+                {
+                  type: "button",
+                  className: "sfm-workspace-settings-btn ml-auto flex-shrink-0",
+                  onClick: () => setShowSettingsModal(true),
+                  title: "Stash Settings & Plugin Tasks",
+                },
+                React.createElement(IconGear, { size: 14, color: "currentColor" }),
+                React.createElement("span", { className: "sfm-btn-label-desktop ml-1" }, "Settings")
               )
             ),
-            // Line 2: [folder sort / scene sort] [the search box (stretch till fit)] [batch edit / parse (anchor right)]
             React.createElement(
               "div",
               { className: "sfm-nav-line sfm-nav-line-controls d-flex align-items-center gap-2 mt-2" },
@@ -6649,11 +6638,10 @@ function BingeReelPlayerModal({ scene, scenes = [], onSelectScene, onClose, fold
               { className: "mb-4" },
               React.createElement(
                 "div",
-                { className: "sfm-section-header-container mb-2" },
-                // Header Row 1: Section Title on left, View Switcher on right
+                { className: "d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2" },
                 React.createElement(
                   "div",
-                  { className: "sfm-section-header-top-row d-flex justify-content-between align-items-center" },
+                  { className: "d-flex align-items-center flex-wrap gap-2" },
                   React.createElement(
                     "div",
                     {
@@ -6670,98 +6658,18 @@ function BingeReelPlayerModal({ scene, scenes = [], onSelectScene, onClose, fold
                     React.createElement("span", { className: "sfm-section-title-label font-weight-bold" }, "Subfolders"),
                     React.createElement(
                       "span",
-                      { className: "badge badge-dark sfm-section-count-badge font-weight-normal" },
+                      { className: "badge badge-dark sfm-section-count-badge font-weight-normal ml-2" },
                       React.createElement("strong", { style: { color: "#88c0d0" } }, filteredAndSortedSubfolders.length)
                     ),
                     isSubfoldersCollapsed &&
                       React.createElement("span", { className: "text-muted small ml-2 font-italic" }, "(collapsed)")
                   ),
-                  !isSubfoldersCollapsed &&
-                    React.createElement(
-                      "div",
-                      { className: "d-flex align-items-center justify-content-end gap-2 ml-auto sfm-section-controls-right" },
-                      folderViewMode === "cards" &&
-                        React.createElement(
-                          "div",
-                          {
-                            className: "d-flex align-items-center sfm-size-slider-wrap mr-2",
-                            title: `Adjust folder card thumbnail size: ${folderCardSize}px`,
-                          },
-                          React.createElement(IconZoom, { size: 12, color: "#81a1c1" }),
-                          React.createElement("input", {
-                            type: "range",
-                            className: "sfm-size-slider",
-                            min: 120,
-                            max: 300,
-                            step: 10,
-                            value: folderCardSize,
-                            onChange: (e) => handleSetFolderCardSize(Number(e.target.value)),
-                          })
-                        ),
-                      folderViewMode === "list" &&
-                        React.createElement(
-                          "div",
-                          {
-                            className: "d-flex align-items-center sfm-size-slider-wrap mr-2",
-                            title: `Adjust folder list box length: ${folderListWidth}px`,
-                          },
-                          React.createElement(IconWidth, { size: 12, color: "#81a1c1" }),
-                          React.createElement("input", {
-                            type: "range",
-                            className: "sfm-size-slider",
-                            min: 140,
-                            max: 420,
-                            step: 10,
-                            value: folderListWidth,
-                            onChange: (e) => handleSetFolderListWidth(Number(e.target.value)),
-                          })
-                        ),
-                      React.createElement(
-                        "div",
-                        { className: "btn-group btn-group-sm sfm-view-toggle-group" },
-                        React.createElement(
-                          "button",
-                          {
-                            type: "button",
-                            className: `btn btn-sm ${folderViewMode === "cards" ? "btn-info" : "btn-outline-secondary"} py-0 px-2`,
-                            onClick: () => { setIsSubfoldersCollapsed(false); handleSetFolderViewMode("cards"); },
-                            title: "Compact Cards View",
-                          },
-                          "Cards"
-                        ),
-                        React.createElement(
-                          "button",
-                          {
-                            type: "button",
-                            className: `btn btn-sm ${folderViewMode === "list" ? "btn-info" : "btn-outline-secondary"} py-0 px-2`,
-                            onClick: () => { setIsSubfoldersCollapsed(false); handleSetFolderViewMode("list"); },
-                            title: "Compact List View",
-                          },
-                          "List"
-                        ),
-                        React.createElement(
-                          "button",
-                          {
-                            type: "button",
-                            className: `btn btn-sm ${folderViewMode === "detail" ? "btn-info" : "btn-outline-secondary"} py-0 px-2`,
-                            onClick: () => { setIsSubfoldersCollapsed(false); handleSetFolderViewMode("detail"); },
-                            title: "Detail Table View",
-                          },
-                          "Details"
-                        )
-                      )
-                    )
-                ),
-                // Header Row 2: Subfolder Toggle Pills (Include Sub-Folders, Group by Folder, Hide Empty)
-                React.createElement(
-                  "div",
-                  { className: "sfm-subfolders-pills-row d-flex align-items-center flex-wrap gap-2 mt-2" },
                   // Toggle 1: Include Sub-Folders
                   React.createElement(
                     "button",
                     {
                       type: "button",
-                      className: `badge sfm-badge-btn sfm-state-pill font-weight-bold sfm-pill-subfolders ${includeSubfolders ? "sfm-state-active" : "sfm-state-inactive"}`,
+                      className: `badge sfm-badge-btn sfm-state-pill ml-2 font-weight-bold sfm-pill-subfolders ${includeSubfolders ? "sfm-state-active" : "sfm-state-inactive"}`,
                       onClick: (e) => {
                         e.stopPropagation();
                         handleToggleIncludeSubfolders(!includeSubfolders);
@@ -6777,7 +6685,7 @@ function BingeReelPlayerModal({ scene, scenes = [], onSelectScene, onClose, fold
                     "button",
                     {
                       type: "button",
-                      className: `badge sfm-badge-btn sfm-state-pill font-weight-bold sfm-pill-foldersort ${sortByFolderFirst ? "sfm-state-active" : "sfm-state-inactive"}`,
+                      className: `badge sfm-badge-btn sfm-state-pill ml-2 font-weight-bold sfm-pill-foldersort ${sortByFolderFirst ? "sfm-state-active" : "sfm-state-inactive"}`,
                       onClick: (e) => {
                         e.stopPropagation();
                         handleToggleSortByFolderFirst(!sortByFolderFirst);
@@ -6793,7 +6701,7 @@ function BingeReelPlayerModal({ scene, scenes = [], onSelectScene, onClose, fold
                     "button",
                     {
                       type: "button",
-                      className: `badge sfm-badge-btn sfm-state-pill font-weight-bold sfm-pill-hideempty ${hideEmpty ? "sfm-state-active" : "sfm-state-inactive"}`,
+                      className: `badge sfm-badge-btn sfm-state-pill ml-2 font-weight-bold sfm-pill-hideempty ${hideEmpty ? "sfm-state-active" : "sfm-state-inactive"}`,
                       onClick: (e) => {
                         e.stopPropagation();
                         handleToggleHideEmpty(!hideEmpty);
@@ -6802,9 +6710,83 @@ function BingeReelPlayerModal({ scene, scenes = [], onSelectScene, onClose, fold
                     },
                     "Hide Empty"
                   )
-                )
+                ),
+                !isSubfoldersCollapsed &&
+                  React.createElement(
+                    "div",
+                    { className: "d-flex align-items-center justify-content-end flex-wrap gap-2 ml-auto" },
+                    folderViewMode === "cards" &&
+                      React.createElement(
+                        "div",
+                        {
+                          className: "d-flex align-items-center sfm-size-slider-wrap mr-2",
+                          title: `Adjust folder card thumbnail size: ${folderCardSize}px`,
+                        },
+                        React.createElement(IconZoom, { size: 12, color: "#81a1c1" }),
+                        React.createElement("input", {
+                          type: "range",
+                          className: "sfm-size-slider",
+                          min: 120,
+                          max: 300,
+                          step: 10,
+                          value: folderCardSize,
+                          onChange: (e) => handleSetFolderCardSize(Number(e.target.value)),
+                        })
+                      ),
+                    folderViewMode === "list" &&
+                      React.createElement(
+                        "div",
+                        {
+                          className: "d-flex align-items-center sfm-size-slider-wrap mr-2",
+                          title: `Adjust folder list box length: ${folderListWidth}px`,
+                        },
+                        React.createElement(IconWidth, { size: 12, color: "#81a1c1" }),
+                        React.createElement("input", {
+                          type: "range",
+                          className: "sfm-size-slider",
+                          min: 140,
+                          max: 420,
+                          step: 10,
+                          value: folderListWidth,
+                          onChange: (e) => handleSetFolderListWidth(Number(e.target.value)),
+                        })
+                      ),
+                    React.createElement(
+                      "div",
+                      { className: "btn-group btn-group-sm sfm-view-toggle-group" },
+                      React.createElement(
+                        "button",
+                        {
+                          type: "button",
+                          className: `btn btn-sm ${folderViewMode === "cards" ? "btn-info" : "btn-outline-secondary"} py-0 px-2`,
+                          onClick: () => { setIsSubfoldersCollapsed(false); handleSetFolderViewMode("cards"); },
+                          title: "Compact Cards View",
+                        },
+                        "Cards"
+                      ),
+                      React.createElement(
+                        "button",
+                        {
+                          type: "button",
+                          className: `btn btn-sm ${folderViewMode === "list" ? "btn-info" : "btn-outline-secondary"} py-0 px-2`,
+                          onClick: () => { setIsSubfoldersCollapsed(false); handleSetFolderViewMode("list"); },
+                          title: "Compact List View",
+                        },
+                        "List"
+                      ),
+                      React.createElement(
+                        "button",
+                        {
+                          type: "button",
+                          className: `btn btn-sm ${folderViewMode === "detail" ? "btn-info" : "btn-outline-secondary"} py-0 px-2`,
+                          onClick: () => { setIsSubfoldersCollapsed(false); handleSetFolderViewMode("detail"); },
+                          title: "Detail Table View",
+                        },
+                        "Details"
+                      )
+                    )
+                  )
               ),
-              // Render Folder View based on mode (if not collapsed)
               !isSubfoldersCollapsed &&
                 (folderViewMode === "cards"
                   ? React.createElement(
@@ -6958,11 +6940,11 @@ function BingeReelPlayerModal({ scene, scenes = [], onSelectScene, onClose, fold
               { className: "mb-4" },
               React.createElement(
                 "div",
-                { className: "sfm-section-header-container mb-3" },
-                // Header Row 1: Section Title on left, View Switcher on right
+                { className: "d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2 position-relative" },
+                // Left group: Title + count + indicator 1 + indicator 2
                 React.createElement(
                   "div",
-                  { className: "sfm-section-header-top-row d-flex justify-content-between align-items-center" },
+                  { className: "d-flex align-items-center flex-wrap gap-2" },
                   React.createElement(
                     "div",
                     {
@@ -6979,76 +6961,36 @@ function BingeReelPlayerModal({ scene, scenes = [], onSelectScene, onClose, fold
                     React.createElement("span", { className: "sfm-section-title-label font-weight-bold" }, "Files / Scenes"),
                     React.createElement(
                       "span",
-                      { className: "badge badge-dark sfm-section-count-badge font-weight-normal" },
+                      { className: "badge badge-dark sfm-section-count-badge font-weight-normal ml-2" },
                       React.createElement("strong", { style: { color: "#88c0d0" } }, filteredAndSortedScenes.length)
                     ),
                     isFilesCollapsed &&
                       React.createElement("span", { className: "text-muted small ml-2 font-italic" }, "(collapsed)")
                   ),
-                  !isFilesCollapsed &&
-                    React.createElement(
-                      "div",
-                      { className: "d-flex align-items-center justify-content-end gap-2 ml-auto sfm-section-controls-right" },
-                      viewMode === "grid" &&
-                        React.createElement(
-                          "div",
-                          {
-                            className: "d-flex align-items-center sfm-size-slider-wrap mr-2",
-                            title: `Adjust scene thumbnail card size: ${sceneCardSize}px (up to 10 per row)`,
-                          },
-                          React.createElement(IconZoom, { size: 12, color: "#81a1c1" }),
-                          React.createElement("input", {
-                            type: "range",
-                            className: "sfm-size-slider",
-                            min: 110,
-                            max: 460,
-                            step: 10,
-                            value: sceneCardSize,
-                            onChange: (e) => handleSetSceneCardSize(Number(e.target.value)),
-                          })
-                        ),
-                      React.createElement(
-                        "div",
-                        { className: "btn-group btn-group-sm sfm-view-toggle-group" },
-                        React.createElement(
-                          "button",
-                          {
-                            type: "button",
-                            className: `btn btn-sm ${viewMode === "grid" ? "btn-info" : "btn-outline-secondary"} py-0 px-2`,
-                            onClick: () => handleToggleViewMode("grid"),
-                            title: "16:9 Thumbnail Cards View",
-                          },
-                          "Cards"
-                        ),
-                        React.createElement(
-                          "button",
-                          {
-                            type: "button",
-                            className: `btn btn-sm ${viewMode === "list" ? "btn-info" : "btn-outline-secondary"} py-0 px-2`,
-                            onClick: () => handleToggleViewMode("list"),
-                            title: "Detailed Metadata Table View",
-                          },
-                          "Table"
-                        ),
-                        React.createElement(
-                          "button",
-                          {
-                            type: "button",
-                            className: `btn btn-sm ${viewMode === "names" ? "btn-info" : "btn-outline-secondary"} py-0 px-2`,
-                            onClick: () => handleToggleViewMode("names"),
-                            title: "Fast Filename Inspector List",
-                          },
-                          "Names"
-                        )
-                      )
-                    )
+                  // Status Button 1: Sub-Folders Included / Excluded
+                  React.createElement(
+                    "span",
+                    {
+                      className: `sfm-stat-pill badge badge-dark sfm-badge-indicator sfm-state-pill ml-2 font-weight-bold sfm-pill-subfolders ${includeSubfolders ? "sfm-state-active" : "sfm-state-inactive"}`,
+                      title: includeSubfolders ? "Sub-folders are included in scenes view" : "Sub-folders are excluded from scenes view",
+                    },
+                    includeSubfolders ? "Sub-Folders Included" : "Sub-Folders Excluded"
+                  ),
+                  // Status Button 2: Grouped by Folder / Sorted Altogether
+                  React.createElement(
+                    "span",
+                    {
+                      className: `sfm-stat-pill badge badge-dark sfm-badge-indicator sfm-state-pill ml-2 font-weight-bold sfm-pill-foldersort ${sortByFolderFirst ? "sfm-state-active" : "sfm-state-inactive"}`,
+                      title: sortByFolderFirst ? "Scenes ordered by folder sort first, then sorted within each folder" : "Scenes sorted altogether across all folders flatly",
+                    },
+                    sortByFolderFirst ? "Grouped by Folder" : "Sorted Altogether"
+                  )
                 ),
-                // Header Row 2: Select All button + Persistent Status Indicators
-                React.createElement(
-                  "div",
-                  { className: "sfm-files-pills-row d-flex align-items-center flex-wrap gap-2 mt-2" },
-                  // Select All / [N] Selected pill
-                  !isFilesCollapsed &&
+                // Center: [select all (centered) - restored back to center!]
+                !isFilesCollapsed &&
+                  React.createElement(
+                    "div",
+                    { className: "d-flex align-items-center justify-content-center flex-grow-1 mx-2" },
                     React.createElement(
                       "button",
                       {
@@ -7058,26 +7000,66 @@ function BingeReelPlayerModal({ scene, scenes = [], onSelectScene, onClose, fold
                         title: selectedSceneIds.size > 0 ? `Click to deselect all (${selectedSceneIds.size} selected)` : "Select all visible scenes in folder",
                       },
                       selectedSceneIds.size > 0 ? `${selectedSceneIds.size} Selected` : "Select All"
-                    ),
-                  // Status Indicator 1: Sub-Folders Included / Excluded
-                  React.createElement(
-                    "span",
-                    {
-                      className: `sfm-stat-pill badge badge-dark sfm-badge-indicator sfm-state-pill font-weight-bold sfm-pill-subfolders ${includeSubfolders ? "sfm-state-active" : "sfm-state-inactive"}`,
-                      title: includeSubfolders ? "Sub-folders are included in scenes view" : "Sub-folders are excluded from scenes view",
-                    },
-                    includeSubfolders ? "Sub-Folders Included" : "Sub-Folders Excluded"
+                    )
                   ),
-                  // Status Indicator 2: Grouped by Folder / Sorted Altogether
+                // Right: slider + [Cards, Table, Names]
+                !isFilesCollapsed &&
                   React.createElement(
-                    "span",
-                    {
-                      className: `sfm-stat-pill badge badge-dark sfm-badge-indicator sfm-state-pill font-weight-bold sfm-pill-foldersort ${sortByFolderFirst ? "sfm-state-active" : "sfm-state-inactive"}`,
-                      title: sortByFolderFirst ? "Scenes ordered by folder sort first, then sorted within each folder" : "Scenes sorted altogether across all folders flatly",
-                    },
-                    sortByFolderFirst ? "Grouped by Folder" : "Sorted Altogether"
+                    "div",
+                    { className: "d-flex align-items-center justify-content-end flex-wrap gap-2 ml-auto" },
+                    viewMode === "grid" &&
+                      React.createElement(
+                        "div",
+                        {
+                          className: "d-flex align-items-center sfm-size-slider-wrap mr-2",
+                          title: `Adjust scene thumbnail card size: ${sceneCardSize}px (up to 10 per row)`,
+                        },
+                        React.createElement(IconZoom, { size: 12, color: "#81a1c1" }),
+                        React.createElement("input", {
+                          type: "range",
+                          className: "sfm-size-slider",
+                          min: 110,
+                          max: 460,
+                          step: 10,
+                          value: sceneCardSize,
+                          onChange: (e) => handleSetSceneCardSize(Number(e.target.value)),
+                        })
+                      ),
+                    React.createElement(
+                      "div",
+                      { className: "btn-group btn-group-sm sfm-view-toggle-group" },
+                      React.createElement(
+                        "button",
+                        {
+                          type: "button",
+                          className: `btn btn-sm ${viewMode === "grid" ? "btn-info" : "btn-outline-secondary"} py-0 px-2`,
+                          onClick: () => handleToggleViewMode("grid"),
+                          title: "16:9 Thumbnail Cards View",
+                        },
+                        "Cards"
+                      ),
+                      React.createElement(
+                        "button",
+                        {
+                          type: "button",
+                          className: `btn btn-sm ${viewMode === "list" ? "btn-info" : "btn-outline-secondary"} py-0 px-2`,
+                          onClick: () => handleToggleViewMode("list"),
+                          title: "Detailed Metadata Table View",
+                        },
+                        "Table"
+                      ),
+                      React.createElement(
+                        "button",
+                        {
+                          type: "button",
+                          className: `btn btn-sm ${viewMode === "names" ? "btn-info" : "btn-outline-secondary"} py-0 px-2`,
+                          onClick: () => handleToggleViewMode("names"),
+                          title: "Fast Filename Inspector List",
+                        },
+                        "Names"
+                      )
+                    )
                   )
-                )
               ),
               !isFilesCollapsed &&
                 (viewMode === "list"

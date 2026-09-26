@@ -134,6 +134,12 @@ Eliminate wasted vertical space with compact folder layouts tailored to any libr
 
 ## 📋 Changelog & Development History
 
+### [v2.9.6] — 2026-09-26 13:25:11
+* **Main Interface Layout & Spacing Polish:**
+  * **Centered Select All Button Restored:** Restored the `Select All` / `[N] Selected` button back to its centered position on the Files / Scenes header line (`d-flex align-items-center justify-content-center flex-grow-1 mx-2`), perfectly balancing title indicators on the left and view mode toggles on the right.
+  * **File Counter Relocated After Path:** Repositioned the file counter stat pill (`xx direct · xx in tree (xx GB)`) directly following the folder path breadcrumbs, removing the forced right-alignment.
+  * **Harmonized Spacing & Padding:** Added consistent spacing and margin gaps (`gap-2`, `ml-2`, `mx-1`) between all buttons, filter indicators, the file counter pill, and the icon-only Scan & Grid button group of 2 to eliminate crowded elements.
+
 ### [v2.9.5] — 2026-09-26 13:09:47
 * **Autonomous Discovery Feed & Elastic 2-Page Carousel:**
   * **Decoupled Discovery Page:** Extracted the Library Discovery feed out from beneath the Folder Profile header into its own full-height page. The Folder Profile header (avatar, stats, bio, quick actions) is strictly reserved for Page 0 (Directory Reels), giving Discovery a clean, uncluttered interface.
