@@ -361,6 +361,25 @@
       );
     }
 
+    function IconSmartphone({ size = 14, color = "currentColor", style = {} }) {
+      return React.createElement(
+        "svg",
+        {
+          viewBox: "0 0 24 24",
+          width: size,
+          height: size,
+          stroke: color,
+          strokeWidth: "2",
+          fill: "none",
+          strokeLinecap: "round",
+          strokeLinejoin: "round",
+          style: { display: "inline-block", verticalAlign: "middle", ...style },
+        },
+        React.createElement("rect", { x: "5", y: "2", width: "14", height: "20", rx: "2", ry: "2" }),
+        React.createElement("line", { x1: "12", y1: "18", x2: "12.01", y2: "18" })
+      );
+    }
+
     function IconShuffle({ size = 16, color = "currentColor", style = {} }) {
       return React.createElement(
         "svg",
@@ -813,6 +832,8 @@
       scenes = [],
       currentScene,
       posterUrl,
+      isForceMobile,
+      onToggleForceMobile,
       onSelectScene,
       onCloseProfile,
       onNavigateToDirectory,
@@ -855,7 +876,7 @@
       return React.createElement(
         "div",
         {
-          className: "sfm-folder-profile-page",
+          className: `sfm-folder-profile-page ${isForceMobile ? "sfm-profile-force-mobile" : ""}`,
           onClick: (e) => e.stopPropagation(),
           onWheel: (e) => e.stopPropagation(),
           onTouchStart: (e) => e.stopPropagation(),
@@ -886,6 +907,18 @@
           React.createElement(
             "div",
             { className: "d-flex align-items-center gap-2 flex-shrink-0" },
+            // Force Mobile View Toggle Button
+            React.createElement(
+              "button",
+              {
+                type: "button",
+                className: `btn btn-sm ${isForceMobile ? "btn-info font-weight-bold" : "btn-outline-secondary"} py-1 px-2 d-inline-flex align-items-center sfm-profile-mode-btn`,
+                onClick: onToggleForceMobile,
+                title: isForceMobile ? "Switch to Desktop Grid View" : "Force Mobile Phone View (Instagram/TikTok 3-Column Wall)",
+              },
+              React.createElement(IconSmartphone, { size: 14, className: "mr-1" }),
+              isForceMobile ? "Desktop Mode" : "Mobile View"
+            ),
             React.createElement(
               "button",
               {
@@ -910,220 +943,227 @@
           )
         ),
 
-        // 2. Profile Header Section (Creator Profile Simulation)
+        // Main Profile Content Container (Mobile-framed when force mobile, web-centered on desktop)
         React.createElement(
           "div",
-          { className: "sfm-profile-header-container" },
+          { className: `sfm-profile-main-container ${isForceMobile ? "sfm-profile-mobile-container" : ""}` },
+          // 2. Profile Header Section (Social Media Creator Profile Simulation)
           React.createElement(
             "div",
-            { className: "sfm-profile-header-content d-flex align-items-center flex-wrap" },
-            // Large Avatar Box
+            { className: "sfm-profile-header-container" },
+            // Mobile Header Layout: Top row [Avatar] + [3 Stats Columns]
             React.createElement(
               "div",
-              { className: "sfm-profile-avatar-large mr-4 position-relative" },
-              React.createElement("img", {
-                src: posterUrl,
-                className: "sfm-profile-avatar-large-img",
-                alt: displayName,
-              }),
+              { className: "sfm-profile-header-top d-flex align-items-center mb-3" },
+              // Large Avatar with IG-style gradient ring
               React.createElement(
                 "div",
-                { className: "sfm-profile-avatar-large-badge" },
-                React.createElement(IconFolder, { size: 14, color: "#ffffff" })
+                { className: "sfm-profile-avatar-wrap position-relative flex-shrink-0" },
+                React.createElement("img", {
+                  src: posterUrl,
+                  className: "sfm-profile-avatar-large-img",
+                  alt: displayName,
+                }),
+                React.createElement(
+                  "div",
+                  { className: "sfm-profile-avatar-large-badge" },
+                  React.createElement(IconFolder, { size: 12, color: "#ffffff" })
+                )
+              ),
+              // Stats Row (IG Profile format: 3 vertical stacks)
+              React.createElement(
+                "div",
+                { className: "sfm-profile-stats-grid d-flex justify-content-around flex-grow-1 ml-3" },
+                React.createElement(
+                  "div",
+                  { className: "sfm-profile-stat-col text-center" },
+                  React.createElement("div", { className: "sfm-profile-stat-num" }, stats.count),
+                  React.createElement("div", { className: "sfm-profile-stat-lbl" }, "Videos")
+                ),
+                React.createElement(
+                  "div",
+                  { className: "sfm-profile-stat-col text-center" },
+                  React.createElement("div", { className: "sfm-profile-stat-num" }, stats.formattedSize),
+                  React.createElement("div", { className: "sfm-profile-stat-lbl" }, "Size")
+                ),
+                React.createElement(
+                  "div",
+                  { className: "sfm-profile-stat-col text-center" },
+                  React.createElement("div", { className: "sfm-profile-stat-num" }, stats.formattedDuration),
+                  React.createElement("div", { className: "sfm-profile-stat-lbl" }, "Duration")
+                )
               )
             ),
-            // Folder Name, Path, Stats & Action Triggers
+            // Folder Bio: Title, Path Chip, Resolution Tags
             React.createElement(
               "div",
-              { className: "sfm-profile-info-box flex-grow-1" },
+              { className: "sfm-profile-bio-box mb-3" },
+              React.createElement("h2", { className: "sfm-profile-title mb-1 font-weight-bold text-light" }, displayName),
               React.createElement(
                 "div",
-                { className: "d-flex align-items-center flex-wrap gap-2 mb-1" },
-                React.createElement("h2", { className: "sfm-profile-title mb-0 font-weight-bold text-light" }, displayName),
-                React.createElement("span", { className: "badge badge-dark sfm-profile-path-badge" }, displayFolderPath)
-              ),
-              // Metrics Pills Row
-              React.createElement(
-                "div",
-                { className: "sfm-profile-stats-row d-flex align-items-center flex-wrap gap-2 my-2" },
-                React.createElement(
-                  "span",
-                  { className: "sfm-stat-pill badge badge-dark" },
-                  React.createElement("strong", { style: { color: "#88c0d0" } }, stats.count),
-                  React.createElement("span", { className: "ml-1" }, stats.count === 1 ? "Video" : "Videos")
-                ),
-                React.createElement(
-                  "span",
-                  { className: "sfm-stat-pill badge badge-dark" },
-                  React.createElement("strong", { style: { color: "#a3be8c" } }, stats.formattedSize),
-                  React.createElement("span", { className: "ml-1" }, "Total Size")
-                ),
-                React.createElement(
-                  "span",
-                  { className: "sfm-stat-pill badge badge-dark" },
-                  React.createElement("strong", { style: { color: "#ebcb8b" } }, stats.formattedDuration),
-                  React.createElement("span", { className: "ml-1" }, "Total Duration")
-                ),
+                { className: "d-flex align-items-center flex-wrap gap-1 mb-2" },
+                React.createElement("span", { className: "badge badge-dark sfm-profile-path-badge" }, displayFolderPath),
                 Object.entries(stats.resCounts).map(([res, count]) =>
                   React.createElement(
                     "span",
-                    { key: res, className: "badge badge-info font-weight-normal py-1 px-2" },
+                    { key: res, className: "badge badge-info font-weight-normal py-1 px-2 sfm-res-chip" },
                     `${res}: ${count}`
                   )
                 )
-              ),
-              // Action Buttons
+              )
+            ),
+            // Action Buttons Row (IG/TikTok Style Full-Width)
+            React.createElement(
+              "div",
+              { className: "sfm-profile-action-row d-flex align-items-center gap-2" },
               React.createElement(
-                "div",
-                { className: "d-flex align-items-center flex-wrap gap-2 mt-3" },
-                React.createElement(
-                  "button",
-                  {
-                    type: "button",
-                    className: "btn btn-sm btn-primary px-3 py-1 font-weight-bold d-inline-flex align-items-center",
-                    onClick: onPlayAll,
-                    title: "Play all videos sequentially from the beginning",
+                "button",
+                {
+                  type: "button",
+                  className: "btn btn-sm btn-primary flex-grow-1 py-1 font-weight-bold d-inline-flex align-items-center justify-content-center",
+                  onClick: onPlayAll,
+                  title: "Play all videos sequentially",
+                },
+                React.createElement("span", { className: "mr-1" }, "▶"),
+                "Play All"
+              ),
+              React.createElement(
+                "button",
+                {
+                  type: "button",
+                  className: "btn btn-sm btn-outline-info flex-grow-1 py-1 d-inline-flex align-items-center justify-content-center",
+                  onClick: onShuffleAll,
+                  title: "Shuffle play all videos",
+                },
+                React.createElement(IconShuffle, { size: 14, className: "mr-1" }),
+                "Shuffle"
+              ),
+              React.createElement(
+                "button",
+                {
+                  type: "button",
+                  className: "btn btn-sm btn-outline-secondary py-1 px-3 d-inline-flex align-items-center justify-content-center",
+                  onClick: () => {
+                    const filter = { type: "path", value: targetFolderPath, modifier: "MATCHES_REGEX" };
+                    window.open(`/scenes?c=${encodeURIComponent(JSON.stringify(filter))}`, "_blank");
                   },
-                  React.createElement("span", { className: "mr-1" }, "▶"),
-                  "Play All"
-                ),
-                React.createElement(
-                  "button",
-                  {
-                    type: "button",
-                    className: "btn btn-sm btn-outline-info px-3 py-1 d-inline-flex align-items-center",
-                    onClick: onShuffleAll,
-                    title: "Play all videos in random order without repeats",
-                  },
-                  React.createElement(IconShuffle, { size: 14, className: "mr-1" }),
-                  "Shuffle Play"
-                ),
-                React.createElement(
-                  "button",
-                  {
-                    type: "button",
-                    className: "btn btn-sm btn-outline-secondary px-3 py-1 d-inline-flex align-items-center",
-                    onClick: () => {
-                      const filter = { type: "path", value: targetFolderPath, modifier: "MATCHES_REGEX" };
-                      window.open(`/scenes?c=${encodeURIComponent(JSON.stringify(filter))}`, "_blank");
-                    },
-                    title: "Open this directory in Stash native scene grid (new tab)",
-                  },
-                  React.createElement(IconGrid, { size: 13, className: "mr-1" }),
-                  "Stash Grid"
-                )
+                  title: "Open in Stash scene grid (new tab)",
+                },
+                React.createElement(IconGrid, { size: 13, className: "mr-1" }),
+                "Stash"
               )
             )
-          )
-        ),
+          ),
 
-        // 3. Section Title: Video Wall
-        React.createElement(
-          "div",
-          { className: "sfm-profile-wall-header d-flex align-items-center justify-content-between px-4 pt-3 pb-2" },
+          // 3. Tab Bar Header: Reels / Video Wall (Clean line like IG profile)
           React.createElement(
             "div",
-            { className: "d-flex align-items-center" },
-            React.createElement("span", { className: "font-weight-bold text-uppercase text-muted small letter-spacing-1" }, "Video Wall"),
-            React.createElement("span", { className: "badge badge-dark ml-2" }, scenes.length)
-          ),
-          React.createElement(
-            "span",
-            { className: "text-muted small" },
-            "Click any video to play"
-          )
-        ),
-
-        // 4. Video Wall Grid
-        React.createElement(
-          "div",
-          { className: "sfm-profile-wall-grid px-4 pb-5" },
-          scenes.map((s) => {
-            const isCurrent = s.id === currentScene?.id;
-            const sPoster = s.paths?.screenshot || `/scene/${s.id}/screenshot`;
-            const sTitle = s.title || s.files?.[0]?.basename || `Scene #${s.id}`;
-            const sDuration = formatDuration(s.files?.[0]?.duration);
-            const sHeight = s.files?.[0]?.height;
-            const sRes = sHeight >= 2160 ? "4K" : sHeight >= 1080 ? "1080p" : sHeight >= 720 ? "720p" : "";
-            const sSize = formatBytes(s.files?.[0]?.size);
-
-            return React.createElement(
+            { className: "sfm-profile-wall-tab-bar d-flex align-items-center justify-content-center" },
+            React.createElement(
               "div",
-              {
-                key: s.id,
-                className: `sfm-wall-card ${isCurrent ? "sfm-wall-card-active" : ""}`,
-                onClick: () => onSelectScene(s),
-                title: `Play: ${sTitle}`,
-              },
-              // Poster Container
-              React.createElement(
+              { className: "sfm-profile-tab-active d-flex align-items-center" },
+              React.createElement("span", { className: "mr-2 font-weight-bold" }, "▦"),
+              React.createElement("span", { className: "font-weight-bold text-uppercase letter-spacing-1 small" }, "REELS & VIDEOS"),
+              React.createElement("span", { className: "badge badge-dark ml-2" }, scenes.length)
+            )
+          ),
+
+          // 4. Real Video Wall Grid (Zero border gaps between videos!)
+          React.createElement(
+            "div",
+            { className: "sfm-profile-wall-grid" },
+            scenes.map((s) => {
+              const isCurrent = s.id === currentScene?.id;
+              const sPoster = s.paths?.screenshot || `/scene/${s.id}/screenshot`;
+              const sTitle = s.title || s.files?.[0]?.basename || `Scene #${s.id}`;
+              const sDuration = formatDuration(s.files?.[0]?.duration);
+              const sHeight = s.files?.[0]?.height;
+              const sRes = sHeight >= 2160 ? "4K" : sHeight >= 1080 ? "1080p" : sHeight >= 720 ? "720p" : "";
+
+              return React.createElement(
                 "div",
-                { className: "sfm-wall-card-thumb-wrap" },
+                {
+                  key: s.id,
+                  className: `sfm-wall-tile ${isCurrent ? "sfm-wall-tile-active" : ""}`,
+                  onClick: () => onSelectScene(s),
+                  title: `Play: ${sTitle}`,
+                },
+                // Poster Image
                 React.createElement("img", {
                   src: sPoster,
-                  className: "sfm-wall-card-thumb",
+                  className: "sfm-wall-tile-img",
                   alt: sTitle,
                   loading: "lazy",
                 }),
-                // Badges
+                // Top-Left Playing Badge
                 isCurrent &&
                   React.createElement(
-                    "span",
-                    { className: "sfm-wall-badge-playing" },
-                    "▶ NOW PLAYING"
+                    "div",
+                    { className: "sfm-wall-tile-playing" },
+                    "▶ PLAYING"
                   ),
+                // Top-Right Resolution Badge
                 sRes &&
                   React.createElement(
-                    "span",
-                    { className: "sfm-wall-badge-res" },
+                    "div",
+                    { className: "sfm-wall-tile-res" },
                     sRes
                   ),
-                sDuration &&
-                  React.createElement(
-                    "span",
-                    { className: "sfm-wall-badge-duration" },
-                    sDuration
-                  ),
-                // Play overlay on hover
+                // Bottom-Left Views / Duration (Instagram Reel style)
                 React.createElement(
                   "div",
-                  { className: "sfm-wall-play-overlay" },
+                  { className: "sfm-wall-tile-views" },
+                  React.createElement("span", { className: "mr-1", style: { fontSize: "0.65rem" } }, "▶"),
+                  React.createElement("span", null, sDuration)
+                ),
+                // Desktop Hover Overlay (Dark gradient, title, play icon)
+                React.createElement(
+                  "div",
+                  { className: "sfm-wall-tile-hover-overlay" },
                   React.createElement(
                     "div",
-                    { className: "sfm-wall-play-circle" },
+                    { className: "sfm-wall-tile-hover-center" },
                     "▶"
+                  ),
+                  React.createElement(
+                    "div",
+                    { className: "sfm-wall-tile-hover-title" },
+                    sTitle
                   )
                 )
-              ),
-              // Metadata below poster
-              React.createElement(
-                "div",
-                { className: "sfm-wall-card-body" },
-                React.createElement(
-                  "div",
-                  { className: "sfm-wall-card-title text-truncate", title: sTitle },
-                  sTitle
-                ),
-                React.createElement(
-                  "div",
-                  { className: "sfm-wall-card-sub text-muted small d-flex align-items-center justify-content-between mt-1" },
-                  React.createElement("span", null, s.studio?.name || (s.files?.[0]?.format || "").toUpperCase()),
-                  React.createElement("span", null, sSize)
-                )
-              )
-            );
-          })
+              );
+            })
+          )
         )
       );
     }
 
-    function BingeReelPlayerModal({ scene, scenes = [], onSelectScene, onClose, folderName, currentPath, onNavigateToFolder }) {
+    function BingeReelPlayerModalBingeReelPlayerModal({ scene, scenes = [], onSelectScene, onClose, folderName, currentPath, onNavigateToFolder }) {
       const videoRef = useRef(null);
       const videoContainerRef = useRef(null);
       const hlsInstanceRef = useRef(null);
       const hideTimeoutRef = useRef(null);
       const [isVideoReady, setIsVideoReady] = useState(false);
       const [showFolderProfile, setShowFolderProfile] = useState(false);
+
+      // Force Mobile View State (IG/TikTok Phone Frame simulation)
+      const [isForceMobile, setIsForceMobile] = useState(() => {
+        try {
+          return window.localStorage.getItem("sfm_force_mobile_view") === "true";
+        } catch (e) {
+          return false;
+        }
+      });
+
+      const handleToggleForceMobile = useCallback(() => {
+        setIsForceMobile((prev) => {
+          const next = !prev;
+          try {
+            window.localStorage.setItem("sfm_force_mobile_view", String(next));
+          } catch (e) {}
+          return next;
+        });
+      }, []);
 
       // 1. Shuffle Queue State & Non-Repeating Active Queue
       const [isShuffle, setIsShuffle] = useState(() => {
@@ -1933,6 +1973,8 @@
             scenes: scenes,
             currentScene: scene,
             posterUrl: posterUrl,
+            isForceMobile: isForceMobile,
+            onToggleForceMobile: handleToggleForceMobile,
             onSelectScene: (s) => {
               onSelectScene(s);
               setShowFolderProfile(false);
@@ -2015,7 +2057,7 @@
           React.createElement(
             "div",
             {
-              className: `sfm-reel-modal-dialog ${isPipMode ? "sfm-pip-dialog-detached" : ""}`,
+              className: `sfm-reel-modal-dialog ${isPipMode ? "sfm-pip-dialog-detached" : ""} ${isForceMobile ? "sfm-reel-mobile-frame" : ""}`,
               onClick: (e) => e.stopPropagation(),
               onWheel: handleWheel,
               onTouchStart: handleTouchStart,
@@ -2475,6 +2517,17 @@
                       : `Shuffle: OFF (sequential folder order) — Click to randomize without repeats (S)`,
                   },
                   React.createElement(IconShuffle, { size: 16 })
+                ),
+                // Toggle Mobile Phone / Desktop View
+                React.createElement(
+                  "button",
+                  {
+                    type: "button",
+                    className: `sfm-reel-circle-btn ${isForceMobile ? "sfm-btn-mobile-active" : ""}`,
+                    onClick: handleToggleForceMobile,
+                    title: isForceMobile ? "Switch to Fullscreen Desktop Player" : "Switch to Mobile Phone Reel View (TikTok/IG)",
+                  },
+                  React.createElement(IconSmartphone, { size: 15 })
                 ),
 
                 // Bottom actions group: Pushed down so Fullscreen is directly above the scrubbing line
@@ -6257,38 +6310,22 @@
                     isFilesCollapsed &&
                       React.createElement("span", { className: "text-muted small ml-2 font-italic" }, "(collapsed)")
                   ),
-                  // Indicator 1 (always on)
+                  // Indicator 1 (always on, matching top file count style, no dot, high visibility)
                   React.createElement(
                     "span",
                     {
-                      className: `sfm-stat-pill badge badge-dark sfm-badge-indicator ml-2 font-weight-normal sfm-pill-subfolders ${includeSubfolders ? "sfm-indicator-active" : "sfm-indicator-inactive"}`,
+                      className: "sfm-stat-pill badge badge-dark sfm-badge-indicator ml-2 font-weight-normal sfm-pill-subfolders",
                       title: includeSubfolders ? "Sub-folders are included in scenes view" : "Sub-folders are excluded from scenes view",
                     },
-                    React.createElement(
-                      "span",
-                      {
-                        className: "sfm-indicator-dot mr-1 font-weight-bold",
-                        style: { color: includeSubfolders ? "#88c0d0" : "#6c7a96" },
-                      },
-                      includeSubfolders ? "●" : "○"
-                    ),
                     includeSubfolders ? "Sub-Folders Included" : "Sub-Folders Excluded"
                   ),
-                  // Indicator 2 (always on)
+                  // Indicator 2 (always on, matching top file count style, no dot, high visibility)
                   React.createElement(
                     "span",
                     {
-                      className: `sfm-stat-pill badge badge-dark sfm-badge-indicator ml-2 font-weight-normal sfm-pill-foldersort ${sortByFolderFirst ? "sfm-indicator-active" : "sfm-indicator-inactive"}`,
+                      className: "sfm-stat-pill badge badge-dark sfm-badge-indicator ml-2 font-weight-normal sfm-pill-foldersort",
                       title: sortByFolderFirst ? "Scenes ordered by folder sort first, then sorted within each folder" : "Scenes sorted altogether across all folders flatly",
                     },
-                    React.createElement(
-                      "span",
-                      {
-                        className: "sfm-indicator-dot mr-1 font-weight-bold",
-                        style: { color: sortByFolderFirst ? "#88c0d0" : "#6c7a96" },
-                      },
-                      sortByFolderFirst ? "●" : "○"
-                    ),
                     sortByFolderFirst ? "Grouped by Folder" : "Sorted Altogether"
                   )
                 ),

@@ -134,9 +134,11 @@ Eliminate wasted vertical space with compact folder layouts tailored to any libr
 
 ## 📋 Changelog & Development History
 
-### [v2.9.0] — 2026-09-26 05:28:54
-* **Folder Profile Page & Video Wall Grid:** Implemented in-player creator-style Directory Profile view featuring folder avatar, path chip, live stats (video count, total file size, total duration, resolution breakdown), quick actions (*Play All*, *Shuffle Play*, *Stash Grid*), and a responsive video wall grid allowing instant preview and playback of any directory scene.
-* **Social Media Reel Avatar & Path Overlay:** Added a sleek pill in the video metadata overlay displaying the folder thumbnail avatar and current directory path, clicking which opens the Directory Profile page.
+### [v2.9.0] — 2026-09-26 06:38:31
+* **Instagram / TikTok Seamless Video Wall:** Re-architected Directory Profile into an authentic zero-border-gap 3-column video wall with edge-to-edge portrait tiles, views/duration overlay (`▶ 04:15`), resolution chips, and desktop hover card inspection.
+* **Force Mobile View & Responsive Layout:** Added an interactive mobile view toggle (`IconSmartphone`) allowing one-click switching between an Instagram/TikTok mobile phone frame (430px) and a web desktop view, with full scrolling reel player integration.
+* **Refined Persistent Indicators & Elevated Interface Buttons:** Harmonized browser indicators (`Sub-Folders Included/Excluded` and `Grouped by Folder / Sorted Altogether`) to match the top total file count pill style with pure high-contrast text and no leading dots; elevated all navigation and action buttons with high-contrast surfaces (`#222938`) for improved visibility.
+* **Social Media Reel Avatar & Path Overlay:** Added interactive creator avatar pill in video metadata overlay linking directly to the Directory Profile Video Wall with pointer-events and z-index priority.
 * **Non-Repeating Fisher-Yates Shuffle Queue:** Integrated a shuffle engine with right-action-rail circle toggle button (`S` hotkey), HUD status indicator, and automatic non-repeating advancement upon scene completion.
 
 ### [v2.8.2] — 2026-09-26 04:36:03
