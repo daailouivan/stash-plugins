@@ -1,11 +1,11 @@
 # Project Handoff Document: Stash Path File Manager Plugin
 
-**Current Version:** `v2.9.4`  
+**Current Version:** `v2.9.5`  
 **Active Repository:** `https://github.com/daailouivan/stash-plugins.git` (`main` branch)  
-**Distribution Package:** `stash_file_manager.zip` (SHA256: `022ee721bb02fa1b7559ee53ac8d66908a9e2dfb7fd62700aa882ed033fc81ea`)  
-**Plugin Manifest:** `stash_file_manager/stash_file_manager.yml` (version `2.9.4`)  
-**Index Manifest:** `index.yml` (version `2.9.4`)  
-**Total Release Tags:** `34` (`v1.0.0` through `v2.9.4`)  
+**Distribution Package:** `stash_file_manager.zip` (SHA256: `d3ac8398882f2cbab2525c3f910da1d5ea1e4a68cfc36012d9d647d045dbd310`)  
+**Plugin Manifest:** `stash_file_manager/stash_file_manager.yml` (version `2.9.5`)  
+**Index Manifest:** `index.yml` (version `2.9.5`)  
+**Total Release Tags:** `35` (`v1.0.0` through `v2.9.5`)  
 
 ---
 

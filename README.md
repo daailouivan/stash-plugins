@@ -134,6 +134,14 @@ Eliminate wasted vertical space with compact folder layouts tailored to any libr
 
 ## 📋 Changelog & Development History
 
+### [v2.9.5] — 2026-09-26 13:09:47
+* **Autonomous Discovery Feed & Elastic 2-Page Carousel:**
+  * **Decoupled Discovery Page:** Extracted the Library Discovery feed out from beneath the Folder Profile header into its own full-height page. The Folder Profile header (avatar, stats, bio, quick actions) is strictly reserved for Page 0 (Directory Reels), giving Discovery a clean, uncluttered interface.
+  * **Elastic Drag & Swipe Viewport Slider:** Implemented an Instagram/TikTok-style 2-page horizontal sliding carousel featuring real-time gesture tracking, boundary rubber-banding with elastic resistance (`dx * 0.28`), desktop mouse drag-to-swipe, keyboard arrow navigation, and smooth spring snap deceleration (`cubic-bezier(0.22, 1, 0.36, 1)`).
+  * **Dual Top-Bar & Floating Shuffle Buttons:** Added a persistent Shuffle Feed button in the sticky top navigation bar alongside a floating glass pill (`.sfm-float-shuffle-btn`) in the lower corner, ensuring one-tap re-rolling of discovery scenes is always accessible at any scroll depth.
+  * **Memory-Safe Infinite Scrolling:** Implemented an infinite scrolling engine loading batches of 36 scenes (3 complete 12-item Instagram mosaic cycles) via `IntersectionObserver`. Built with compact tile data models (~80 bytes), $O(k)$ random index picking without array cloning, `decoding="async"` image offloading, and a strict 180-scene active DOM buffer cap to prevent memory leaks and browser tab crashes.
+  * **System Lifecycle Optimization:** Replaced the perpetual navbar injector `setInterval` with a self-terminating 10-attempt loop.
+
 ### [v2.9.4] — 2026-09-26 12:46:34
 * **Complete Mobile Interface Redesign & Overflow Elimination:**
   * **Full-Width Mobile Search Bar:** Eliminated search box out-of-bounds overflow on phones by converting the control bar into a structured, full-width responsive stack (`order: 1` 100% width search bar, `order: 2` side-by-side 50% sort dropdowns, and `order: 3` 50% batch/parse tools).
