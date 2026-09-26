@@ -965,11 +965,15 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
       // Memory-Safe Infinite Scrolling Discovery Feed Engine
       // ==========================================
       const BATCH_SIZE = 36; // Exactly 3 Instagram 12-item mosaic blocks
-      const MAX_LOADED_SCENES = 180; // Strictly bounded DOM buffer
+      const MAX_LOADED_SCENES = 360; // Generous DOM buffer up to 10 batches without scroll jumps
 
       const [exploreScenes, setExploreScenes] = useState([]);
       const [isExploreLoading, setIsExploreLoading] = useState(false);
       const sentinelRef = useRef(null);
+      const discoveryPageRef = useRef(null);
+      const isExploreLoadingRef = useRef(false);
+      const isExploreCooldownRef = useRef(false);
+      const hasMoreExploreRef = useRef(true);
       const seenExploreIdsRef = useRef(new Set());
 
       // Helper to transform any scene into lightweight compact tile object (~80 bytes)
@@ -1025,11 +1029,16 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
       }, []);
 
       const loadNextExploreBatch = useCallback(async (isFresh = false) => {
-        if (isExploreLoading) return;
+        if (isExploreLoadingRef.current || isExploreCooldownRef.current) return;
+        if (!isFresh && !hasMoreExploreRef.current) return;
+
+        isExploreLoadingRef.current = true;
+        isExploreCooldownRef.current = true;
         setIsExploreLoading(true);
 
         if (isFresh) {
           seenExploreIdsRef.current = new Set();
+          hasMoreExploreRef.current = true;
         }
 
         try {
@@ -1042,12 +1051,11 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
             setExploreScenes((prev) => {
               if (isFresh) return compactBatch;
               const combined = [...prev, ...compactBatch];
-              if (combined.length > MAX_LOADED_SCENES) {
-                return combined.slice(combined.length - MAX_LOADED_SCENES);
+              if (combined.length >= MAX_LOADED_SCENES) {
+                hasMoreExploreRef.current = false;
               }
               return combined;
             });
-            setIsExploreLoading(false);
             return;
           }
 
@@ -1072,47 +1080,75 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
             setExploreScenes((prev) => {
               if (isFresh) return compactBatch;
               const combined = [...prev, ...compactBatch];
-              if (combined.length > MAX_LOADED_SCENES) {
-                return combined.slice(combined.length - MAX_LOADED_SCENES);
+              if (combined.length >= MAX_LOADED_SCENES) {
+                hasMoreExploreRef.current = false;
               }
               return combined;
             });
           } else if (scenes.length > 0) {
             const rawSample = pickRandomBatch(scenes, BATCH_SIZE, seenExploreIdsRef.current);
             const compactBatch = rawSample.map(toCompactExploreTile);
-            setExploreScenes((prev) => (isFresh ? compactBatch : [...prev, ...compactBatch]));
+            setExploreScenes((prev) => {
+              if (isFresh) return compactBatch;
+              const combined = [...prev, ...compactBatch];
+              if (combined.length >= MAX_LOADED_SCENES) {
+                hasMoreExploreRef.current = false;
+              }
+              return combined;
+            });
+          } else {
+            hasMoreExploreRef.current = false;
           }
         } catch (err) {
           console.error("Explore infinite load error:", err);
         } finally {
           setIsExploreLoading(false);
+          isExploreLoadingRef.current = false;
+          // Cooldown timer to prevent consecutive runaway trigger loops
+          setTimeout(() => {
+            isExploreCooldownRef.current = false;
+          }, 800);
         }
-      }, [isExploreLoading, scenes, pickRandomBatch, toCompactExploreTile]);
+      }, [scenes, pickRandomBatch, toCompactExploreTile]);
 
       // Initial batch load
       useEffect(() => {
         loadNextExploreBatch(true);
       }, []);
 
-      // IntersectionObserver sentinel for smooth infinite scroll
+      // IntersectionObserver sentinel scoped to discovery scroll container with cooldown guards
       useEffect(() => {
         if (typeof IntersectionObserver === "undefined") return;
         const sentinel = sentinelRef.current;
+        const rootContainer = discoveryPageRef.current;
         if (!sentinel) return;
 
         const observer = new IntersectionObserver(
           (entries) => {
             const first = entries[0];
-            if (first.isIntersecting && !isExploreLoading) {
+            if (first.isIntersecting && !isExploreLoadingRef.current && !isExploreCooldownRef.current && hasMoreExploreRef.current) {
               loadNextExploreBatch(false);
             }
           },
-          { rootMargin: "450px 0px", threshold: 0.1 }
+          {
+            root: rootContainer || null,
+            rootMargin: "120px 0px",
+            threshold: 0.05,
+          }
         );
 
         observer.observe(sentinel);
         return () => observer.disconnect();
-      }, [loadNextExploreBatch, isExploreLoading]);
+      }, [loadNextExploreBatch]);
+
+      // Fallback scroll listener on the discovery container
+      const handleDiscoveryScroll = useCallback((e) => {
+        const el = e.currentTarget;
+        const distFromBottom = el.scrollHeight - (el.scrollTop + el.clientHeight);
+        if (distFromBottom < 180 && !isExploreLoadingRef.current && !isExploreCooldownRef.current && hasMoreExploreRef.current) {
+          loadNextExploreBatch(false);
+        }
+      }, [loadNextExploreBatch]);
 
       // Selection handler for explore scene: plays scene and returns to standard player view
       const handleSelectExploreScene = (s) => {
@@ -1642,7 +1678,11 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
             // ==========================================
             React.createElement(
               "div",
-              { className: "sfm-page-container sfm-page-discovery" },
+              {
+                ref: discoveryPageRef,
+                className: "sfm-page-container sfm-page-discovery",
+                onScroll: handleDiscoveryScroll,
+              },
               React.createElement(
                 "div",
                 { className: `sfm-discovery-main-container ${isForceMobile ? "sfm-profile-mobile-container" : ""}` },
@@ -1758,9 +1798,24 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                   isExploreLoading &&
                     React.createElement(
                       "div",
-                      { className: "d-inline-flex align-items-center text-muted small" },
+                      { className: "d-inline-flex align-items-center text-muted small py-2" },
                       React.createElement("div", { className: "spinner-border spinner-border-sm text-info mr-2" }),
-                      "Loading more scenes..."
+                      React.createElement("span", null, "Loading more scenes...")
+                    ),
+                  !hasMoreExploreRef.current && exploreScenes.length >= MAX_LOADED_SCENES &&
+                    React.createElement(
+                      "div",
+                      { className: "text-muted small py-3" },
+                      React.createElement("p", { className: "mb-2" }, "✨ You've explored 360 scenes in this session!"),
+                      React.createElement(
+                        "button",
+                        {
+                          type: "button",
+                          className: "btn btn-sm btn-outline-info px-3 py-1",
+                          onClick: () => loadNextExploreBatch(true),
+                        },
+                        "🔀 Shuffle New Feed"
+                      )
                     )
                 ),
 
@@ -6405,22 +6460,22 @@ function BingeReelPlayerModal({ scene, scenes = [], onSelectScene, onClose, fold
           React.createElement(
             "div",
             { className: "sfm-nav-control-line mb-3" },
-            // Line 1: [◀] [▲] | 🏠 Stash › ... › Folder | [counts and size with colored digits] | [Scan] [Grid] | ... [Settings]
+            // Line 1: [back / up] [path root / path crumbs] [Counts and size + Scan/Grid] [Settings on the right]
             React.createElement(
               "div",
               { className: "sfm-nav-line sfm-nav-line-path d-flex align-items-center justify-content-between flex-wrap gap-2" },
               React.createElement(
                 "div",
                 { className: "sfm-breadcrumbs-wrap d-flex align-items-center flex-wrap gap-2" },
-                // Back & Up (Icons only, hover tooltip, grouped 2 as 1)
+                // Back & Up (Icons only, hover tooltip, grouped 2 as 1 - with clean gap)
                 React.createElement(
                   "div",
-                  { className: "btn-group btn-group-sm mr-1 sfm-nav-history-group flex-shrink-0" },
+                  { className: "btn-group btn-group-sm mr-2 sfm-nav-history-group flex-shrink-0" },
                   React.createElement(
                     "button",
                     {
                       type: "button",
-                      className: "btn btn-sm btn-outline-secondary py-0 px-2",
+                      className: "btn btn-sm btn-outline-secondary py-0 px-2 mr-1",
                       onClick: handleGoBackInHistory,
                       disabled: historyStack.current.length === 0 && !currentPath,
                       title: "Go back to previous folder (Alt+Left)",
@@ -6444,7 +6499,7 @@ function BingeReelPlayerModal({ scene, scenes = [], onSelectScene, onClose, fold
                   "button",
                   {
                     type: "button",
-                    className: `sfm-crumb-btn ${!currentPath ? "sfm-crumb-active" : ""}`,
+                    className: `sfm-crumb-btn mr-1 ${!currentPath ? "sfm-crumb-active" : ""}`,
                     onClick: () => navigateToFolder(""),
                     title: "Return to Stash Root",
                   },
@@ -6463,7 +6518,7 @@ function BingeReelPlayerModal({ scene, scenes = [], onSelectScene, onClose, fold
                       "button",
                       {
                         type: "button",
-                        className: `sfm-crumb-btn ${isLast ? "sfm-crumb-active" : ""}`,
+                        className: `sfm-crumb-btn mr-1 ${isLast ? "sfm-crumb-active" : ""}`,
                         onClick: () => navigateToFolder(p),
                         title: seg,
                       },
@@ -6476,10 +6531,10 @@ function BingeReelPlayerModal({ scene, scenes = [], onSelectScene, onClose, fold
                   "span",
                   { className: "sfm-stat-pill ml-2 mr-2 badge badge-dark font-weight-normal flex-shrink-0" },
                   React.createElement("strong", { style: { color: "#88c0d0" } }, currentNode ? currentNode.directScenes.length : 0),
-                  React.createElement("span", { className: "sfm-stat-label ml-1" }, "direct"),
+                  React.createElement("span", { className: "sfm-stat-label ml-1 mr-1" }, "direct"),
                   React.createElement("span", { className: "sfm-stat-dot mx-1" }, "·"),
                   React.createElement("strong", { style: { color: "#81a1c1" } }, allDescendantIds.length),
-                  React.createElement("span", { className: "sfm-stat-label ml-1" }, "in tree"),
+                  React.createElement("span", { className: "sfm-stat-label ml-1 mr-1" }, "in tree"),
                   React.createElement("span", { className: "sfm-stat-paren ml-1" }, "("),
                   React.createElement("strong", { style: { color: "#a3be8c" } }, formatBytes(currentNode?.totalSize)),
                   React.createElement("span", { className: "sfm-stat-paren" }, ")")
@@ -6487,12 +6542,12 @@ function BingeReelPlayerModal({ scene, scenes = [], onSelectScene, onClose, fold
                 // Scan and Grid (Icons only, hover tooltip, grouped 2 as 1 - clean gap after counter!)
                 React.createElement(
                   "div",
-                  { className: "btn-group btn-group-sm ml-1 sfm-nav-actions-group flex-shrink-0" },
+                  { className: "btn-group btn-group-sm ml-2 sfm-nav-actions-group flex-shrink-0" },
                   React.createElement(
                     "button",
                     {
                       type: "button",
-                      className: "btn btn-sm btn-outline-secondary py-0 px-2",
+                      className: "btn btn-sm btn-outline-secondary py-0 px-2 mr-1",
                       onClick: handleScanFolder,
                       title: currentPath ? `Trigger Stash filesystem scan on "${currentPath}"` : "Trigger Stash filesystem scan on all libraries",
                     },
@@ -6669,7 +6724,7 @@ function BingeReelPlayerModal({ scene, scenes = [], onSelectScene, onClose, fold
                     "button",
                     {
                       type: "button",
-                      className: `badge sfm-badge-btn sfm-state-pill ml-2 font-weight-bold sfm-pill-subfolders ${includeSubfolders ? "sfm-state-active" : "sfm-state-inactive"}`,
+                      className: `badge sfm-badge-btn sfm-state-pill mr-2 font-weight-bold sfm-pill-subfolders ${includeSubfolders ? "sfm-state-active" : "sfm-state-inactive"}`,
                       onClick: (e) => {
                         e.stopPropagation();
                         handleToggleIncludeSubfolders(!includeSubfolders);
@@ -6685,7 +6740,7 @@ function BingeReelPlayerModal({ scene, scenes = [], onSelectScene, onClose, fold
                     "button",
                     {
                       type: "button",
-                      className: `badge sfm-badge-btn sfm-state-pill ml-2 font-weight-bold sfm-pill-foldersort ${sortByFolderFirst ? "sfm-state-active" : "sfm-state-inactive"}`,
+                      className: `badge sfm-badge-btn sfm-state-pill mr-2 font-weight-bold sfm-pill-foldersort ${sortByFolderFirst ? "sfm-state-active" : "sfm-state-inactive"}`,
                       onClick: (e) => {
                         e.stopPropagation();
                         handleToggleSortByFolderFirst(!sortByFolderFirst);
@@ -6701,7 +6756,7 @@ function BingeReelPlayerModal({ scene, scenes = [], onSelectScene, onClose, fold
                     "button",
                     {
                       type: "button",
-                      className: `badge sfm-badge-btn sfm-state-pill ml-2 font-weight-bold sfm-pill-hideempty ${hideEmpty ? "sfm-state-active" : "sfm-state-inactive"}`,
+                      className: `badge sfm-badge-btn sfm-state-pill mr-2 font-weight-bold sfm-pill-hideempty ${hideEmpty ? "sfm-state-active" : "sfm-state-inactive"}`,
                       onClick: (e) => {
                         e.stopPropagation();
                         handleToggleHideEmpty(!hideEmpty);
@@ -6971,7 +7026,7 @@ function BingeReelPlayerModal({ scene, scenes = [], onSelectScene, onClose, fold
                   React.createElement(
                     "span",
                     {
-                      className: `sfm-stat-pill badge badge-dark sfm-badge-indicator sfm-state-pill ml-2 font-weight-bold sfm-pill-subfolders ${includeSubfolders ? "sfm-state-active" : "sfm-state-inactive"}`,
+                      className: `sfm-stat-pill badge badge-dark sfm-badge-indicator sfm-state-pill mr-2 font-weight-bold sfm-pill-subfolders ${includeSubfolders ? "sfm-state-active" : "sfm-state-inactive"}`,
                       title: includeSubfolders ? "Sub-folders are included in scenes view" : "Sub-folders are excluded from scenes view",
                     },
                     includeSubfolders ? "Sub-Folders Included" : "Sub-Folders Excluded"
@@ -6980,7 +7035,7 @@ function BingeReelPlayerModal({ scene, scenes = [], onSelectScene, onClose, fold
                   React.createElement(
                     "span",
                     {
-                      className: `sfm-stat-pill badge badge-dark sfm-badge-indicator sfm-state-pill ml-2 font-weight-bold sfm-pill-foldersort ${sortByFolderFirst ? "sfm-state-active" : "sfm-state-inactive"}`,
+                      className: `sfm-stat-pill badge badge-dark sfm-badge-indicator sfm-state-pill mr-2 font-weight-bold sfm-pill-foldersort ${sortByFolderFirst ? "sfm-state-active" : "sfm-state-inactive"}`,
                       title: sortByFolderFirst ? "Scenes ordered by folder sort first, then sorted within each folder" : "Scenes sorted altogether across all folders flatly",
                     },
                     sortByFolderFirst ? "Grouped by Folder" : "Sorted Altogether"

@@ -2754,7 +2754,8 @@ button.badge.sfm-badge-btn:hover {
   width: 100%;
   flex: 1 1 auto;
   overflow: hidden;
-  height: calc(100vh - 52px);
+  height: 100%;
+  min-height: 0;
   user-select: none;
 }
 
@@ -2893,11 +2894,13 @@ button.badge.sfm-badge-btn:hover {
   position: sticky;
   top: 0;
   z-index: 30;
-  background: rgba(10, 12, 16, 0.95);
+  background: rgba(10, 12, 16, 0.98);
   backdrop-filter: blur(14px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  padding: 0.6rem 1.25rem;
+  padding: 0.65rem 1.25rem;
+  padding-top: max(0.65rem, env(safe-area-inset-top, 0px));
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  flex-shrink: 0;
 }
 
 .sfm-profile-back-btn {
@@ -3500,7 +3503,7 @@ button.badge.sfm-badge-btn:hover {
     padding: 0.5rem 0.65rem 5rem !important;
   }
 
-  /* 1. Navigation & Path Line on Mobile */
+  /* 1. Navigation & Path Line on Mobile - Uncrowded, comfortable gaps */
   .sfm-nav-control-line {
     padding: 0.5rem 0.65rem !important;
     margin-bottom: 0.75rem !important;
@@ -3512,39 +3515,49 @@ button.badge.sfm-badge-btn:hover {
     justify-content: space-between !important;
     flex-wrap: wrap !important;
     width: 100% !important;
-    gap: 8px !important;
+    gap: 10px !important;
   }
 
   .sfm-breadcrumbs-wrap {
     display: flex !important;
     align-items: center !important;
     flex-wrap: wrap !important;
-    gap: 6px !important;
+    gap: 8px !important;
+    row-gap: 8px !important;
   }
 
   .sfm-crumb-btn {
-    font-size: 0.78rem !important;
-    padding: 2px 6px !important;
+    font-size: 0.8rem !important;
+    padding: 3px 7px !important;
+    min-height: 28px !important;
+    margin-right: 2px !important;
   }
 
   .sfm-stat-pill {
-    margin-left: 0.45rem !important;
-    margin-right: 0.45rem !important;
+    padding: 0.24rem 0.65rem !important;
+    font-size: 0.76rem !important;
+    margin: 2px 6px !important;
   }
 
+  /* Separate button groups so buttons never fuse together */
+  .sfm-nav-history-group,
   .sfm-nav-actions-group {
-    margin-left: 0.4rem !important;
+    display: inline-flex !important;
+    gap: 4px !important;
+    margin-left: 0 !important;
   }
 
   .sfm-nav-history-group .btn,
   .sfm-nav-actions-group .btn,
   .sfm-workspace-settings-btn {
-    width: 28px !important;
-    height: 26px !important;
+    width: 32px !important;
+    height: 30px !important;
     padding: 0 !important;
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
+    border-radius: 4px !important;
+    margin-left: 0 !important;
   }
 
   .sfm-workspace-settings-btn span.sfm-btn-label-desktop {
@@ -3609,11 +3622,12 @@ button.badge.sfm-badge-btn:hover {
     padding: 2px 4px !important;
   }
 
-  /* Tools Group: 50% / 50% Clean Row on Mobile */
+  /* Tools Group: 50% / 50% Clean Row on Mobile with gap */
   .sfm-tools-group {
     order: 3 !important;
     width: 100% !important;
     display: flex !important;
+    gap: 6px !important;
     margin: 0 !important;
   }
 
@@ -3622,9 +3636,11 @@ button.badge.sfm-badge-btn:hover {
     font-size: 0.74rem !important;
     padding: 0.25rem 0.5rem !important;
     text-align: center !important;
+    border-radius: 4px !important;
+    margin-left: 0 !important;
   }
 
-  /* 3. Section Headers (Subfolders & Files/Scenes) on Mobile - Clean spacing */
+  /* 3. Section Headers (Subfolders & Files/Scenes) on Mobile - Clean uncrowded spacing */
   .sfm-size-slider-wrap {
     display: none !important;
   }
@@ -3634,17 +3650,29 @@ button.badge.sfm-badge-btn:hover {
     min-width: 0 !important;
     flex: 0 0 auto !important;
     margin-left: auto !important;
+    display: inline-flex !important;
+    gap: 3px !important;
   }
 
   .sfm-view-toggle-group .btn {
     padding: 0.2rem 0.45rem !important;
     font-size: 0.72rem !important;
+    border-radius: 4px !important;
+    margin-left: 0 !important;
   }
 
   .sfm-badge-indicator,
   .sfm-state-pill,
   button.badge.sfm-badge-btn {
-    margin-left: 0.45rem !important;
+    padding: 0.26rem 0.65rem !important;
+    margin: 3px 5px !important;
+    font-size: 0.74rem !important;
+    display: inline-flex !important;
+  }
+
+  .sfm-pill-selectall {
+    margin: 4px 6px !important;
+    padding: 0.25rem 0.85rem !important;
   }
 
   /* 4. Responsive Grid Column Scaling on Mobile */
@@ -3673,6 +3701,14 @@ button.badge.sfm-badge-btn:hover {
 
   .sfm-scene-card .sfm-scene-card-title {
     font-size: 0.76rem !important;
+  }
+
+    .sfm-profile-nav-bar {
+    padding-top: max(48px, calc(env(safe-area-inset-top, 44px) + 8px)) !important;
+    padding-bottom: 0.75rem !important;
+    padding-left: max(0.85rem, env(safe-area-inset-left, 0px)) !important;
+    padding-right: max(0.85rem, env(safe-area-inset-right, 0px)) !important;
+    min-height: 84px !important;
   }
 
   /* 5. Video Wall & Explore Profile Overlay on Mobile */
@@ -3744,7 +3780,11 @@ button.badge.sfm-badge-btn:hover {
   }
 
   .sfm-profile-nav-bar {
-    padding: 0.5rem 0.75rem !important;
+    padding-top: max(54px, calc(env(safe-area-inset-top, 47px) + 10px)) !important;
+    padding-bottom: 0.75rem !important;
+    padding-left: max(0.75rem, env(safe-area-inset-left, 0px)) !important;
+    padding-right: max(0.75rem, env(safe-area-inset-right, 0px)) !important;
+    min-height: 88px !important;
   }
 
   .sfm-profile-back-btn .sfm-btn-label-desktop,

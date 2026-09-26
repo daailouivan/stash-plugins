@@ -134,6 +134,12 @@ Eliminate wasted vertical space with compact folder layouts tailored to any libr
 
 ## 📋 Changelog & Development History
 
+### [v2.9.7] — 2026-09-26 13:35:20
+* **iPhone Top Bar Safe Area Clearance, Infinite Scroll Cooldown & Mobile Button Uncrowding:**
+  * **iPhone Notch & Dynamic Island Clearance:** Added comprehensive `env(safe-area-inset-top)` safe area padding (`padding-top: max(54px, calc(env(safe-area-inset-top, 47px) + 10px))`) to `.sfm-profile-nav-bar`, shifting all controls, the Back button, segmented page switcher, and Shuffle button comfortably below the iPhone notch, camera cutout, and status bar.
+  * **Infinite Scroll Rapid-Fire & Page-Breaking Fix:** Eliminated runaway re-fetching by binding `IntersectionObserver` strictly to the local discovery scroll container (`root: discoveryPageRef.current`), decoupling observer attachment from loading state changes, introducing an 800ms cooldown window (`isExploreCooldownRef`), and removing top-item slicing to maintain stable scroll heights.
+  * **Mobile Button & Indicator Uncrowding:** Separated compressed button groups (`.sfm-nav-history-group`, `.sfm-nav-actions-group`, `.sfm-tools-group`, `.sfm-view-toggle-group`) with explicit 4px gaps, enlarged touch targets to 32×30px on mobile screens, and harmonized margins across breadcrumbs, badges, and the file counter.
+
 ### [v2.9.6] — 2026-09-26 13:25:11
 * **Main Interface Layout & Spacing Polish:**
   * **Centered Select All Button Restored:** Restored the `Select All` / `[N] Selected` button back to its centered position on the Files / Scenes header line (`d-flex align-items-center justify-content-center flex-grow-1 mx-2`), perfectly balancing title indicators on the left and view mode toggles on the right.
