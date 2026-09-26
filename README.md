@@ -134,6 +134,13 @@ Eliminate wasted vertical space with compact folder layouts tailored to any libr
 
 ## 📋 Changelog & Development History
 
+### [v2.9.4] — 2026-09-26 12:46:34
+* **Complete Mobile Interface Redesign & Overflow Elimination:**
+  * **Full-Width Mobile Search Bar:** Eliminated search box out-of-bounds overflow on phones by converting the control bar into a structured, full-width responsive stack (`order: 1` 100% width search bar, `order: 2` side-by-side 50% sort dropdowns, and `order: 3` 50% batch/parse tools).
+  * **Horizontal Scroll Breadcrumb Track:** Converted breadcrumbs into a smooth, native touch-scrolling track (`.sfm-breadcrumbs-track`) that keeps deep folder paths on a single line with zero vertical wrapping.
+  * **Structured 2-Row Section Headers:** Redesigned both Subfolders and Files/Scenes headers: Row 1 houses the section title and view switchers, while Row 2 provides a clean, unified horizontal bar for toggle pills and indicators without rigid fixed widths or chaotic warping.
+  * **Responsive 2-Column Cards Grid:** Configured folder cards and scene cards to display in 2 balanced columns (`repeat(2, 1fr)`) on mobile devices, with zoom sliders automatically hidden on touchscreens.
+
 ### [v2.9.3] — 2026-09-26 12:29:19
 * **Profile-Exclusive Video Wall Sorting:** Integrated an independent "Sort by" selector into the Directory Reels subtoolbar on the video wall profile page. Supports all standard sorting criteria (*Default Folder Order*, *Date Newest/Oldest*, *Title A-Z/Z-A*, *Rating Highest*, *Duration Longest*, *Size Largest*, and *Shuffle/Random*).
 * **Strict Profile Isolation:** Persisted under `sfm_profile_wall_sort` in `localStorage` to ensure sorting applies strictly to the video wall profile view without mutating or altering the primary file manager's `sceneSort` state.
