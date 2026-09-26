@@ -1,11 +1,11 @@
 # Project Handoff Document: Stash Path File Manager Plugin
 
-**Current Version:** `v2.9.2`  
+**Current Version:** `v2.9.8`  
 **Active Repository:** `https://github.com/daailouivan/stash-plugins.git` (`main` branch)  
-**Distribution Package:** `stash_file_manager.zip` (SHA256: `7b720b38fc57b34c817cb212c3575f90acf2e507fc5d37caf107c2c6cdf8f15f`)  
-**Plugin Manifest:** `stash_file_manager/stash_file_manager.yml` (version `2.9.2`)  
-**Index Manifest:** `index.yml` (version `2.9.2`)  
-**Total Release Tags:** `32` (`v1.0.0` through `v2.9.2`)  
+**Distribution Package:** `stash_file_manager.zip` (SHA256: `acd3946e95c8f8b3c4cec6f07803557af7639c0490e991a0207a97e8aaba7cb2`)  
+**Plugin Manifest:** `stash_file_manager/stash_file_manager.yml` (version `2.9.8`)  
+**Index Manifest:** `index.yml` (version `2.9.8`)  
+**Total Release Tags:** `38` (`v1.0.0` through `v2.9.8`)  
 
 ---
 
@@ -76,7 +76,7 @@ The **Stash Path File Manager (`stash_file_manager`)** is a community plugin for
 
 ## 3. Instructions for Force Pushing to GitHub
 
-To force push the repository branch and all 31 release tags to GitHub (`https://github.com/daailouivan/stash-plugins.git`):
+To force push the repository branch and all 33 release tags to GitHub (`https://github.com/daailouivan/stash-plugins.git`):
 
 ```bash
 # 1. Pull / update to the latest bundle commit
@@ -85,6 +85,6 @@ git pull <path-to-bundle> main
 # 2. Force push the main branch to origin
 git push -u origin main --force
 
-# 3. Force push all 31 release tags to origin
+# 3. Force push all 33 release tags to origin
 git push origin --tags --force
 ```

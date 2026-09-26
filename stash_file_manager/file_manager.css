@@ -1,3 +1,44 @@
+/* ==========================================================================
+   Scroll Isolation, Overlay Containment & Zero-Bleed Mobile Architecture
+   ========================================================================== */
+body.sfm-body-locked {
+  overflow: hidden !important;
+  touch-action: pan-y pinch-zoom;
+  overscroll-behavior: none !important;
+}
+
+#sfm-workspace-root {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100vh;
+  height: 100dvh;
+  max-height: 100dvh;
+  z-index: 10030 !important;
+  overflow: hidden !important;
+  overscroll-behavior: none !important;
+  background: transparent;
+}
+
+.sfm-workspace-content {
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain !important;
+  overscroll-behavior-y: contain !important;
+}
+
+.sfm-folder-profile-page,
+.sfm-reel-modal-dialog,
+.sfm-page-container,
+.sfm-profile-viewport {
+  overscroll-behavior: contain !important;
+  overscroll-behavior-y: contain !important;
+  -webkit-overflow-scrolling: touch;
+}
+
 /* Stash Path File Manager Styles */
 
 /* ==========================================================================
@@ -1474,7 +1515,7 @@
 .sfm-reel-modal-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 10000;
+  z-index: 10060 !important;
   background: rgba(0, 0, 0, 0.92);
   backdrop-filter: blur(8px);
   display: flex;
@@ -2742,11 +2783,149 @@ button.badge.sfm-badge-btn:hover {
   z-index: 10050 !important;
   background: #000000;
   color: #eceff4;
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: hidden !important;
+  overscroll-behavior: contain !important;
+  overscroll-behavior-y: contain !important;
   display: flex;
   flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+  max-height: 100dvh;
   animation: sfmFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Horizontal Sliding Viewport & 2-Page Carousel */
+.sfm-profile-viewport {
+  position: relative;
+  width: 100%;
+  flex: 1 1 auto;
+  overflow: hidden;
+  height: 100%;
+  min-height: 0;
+  overscroll-behavior: contain !important;
+  user-select: none;
+}
+
+.sfm-pages-track {
+  display: flex;
+  width: 200%;
+  height: 100%;
+  will-change: transform;
+}
+
+.sfm-page-container {
+  width: 50%;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain !important;
+  overscroll-behavior-y: contain !important;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+/* Discovery Page Main Container (Autonomous from Profile Header!) */
+.sfm-discovery-main-container {
+  width: 100%;
+  max-width: 980px;
+  margin: 0 auto;
+  background: #05070a;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.sfm-discovery-sticky-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: rgba(10, 14, 20, 0.95);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Segmented Page Switcher in Sticky Top Bar */
+.sfm-nav-page-switcher {
+  background: #141822;
+  border: 1px solid #2e3548;
+  border-radius: 20px;
+  padding: 3px;
+  gap: 4px;
+}
+
+.sfm-nav-tab-pill {
+  background: transparent;
+  border: none;
+  outline: none !important;
+  color: #81a1c1;
+  font-size: 0.76rem;
+  font-weight: 700;
+  padding: 5px 14px;
+  border-radius: 16px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+}
+
+.sfm-nav-tab-pill:hover {
+  color: #eceff4;
+}
+
+.sfm-nav-tab-pill.sfm-nav-tab-active {
+  background: #2b3345;
+  color: #88c0d0;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+
+/* Sticky Top Bar Shuffle Button */
+.sfm-topbar-shuffle-btn {
+  border-radius: 14px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  background-color: #5e81ac !important;
+  border-color: #88c0d0 !important;
+  color: #ffffff !important;
+}
+
+.sfm-topbar-shuffle-btn:hover:not(:disabled) {
+  background-color: #81a1c1 !important;
+  transform: scale(1.03);
+}
+
+/* Floating Shuffle Button on Discovery Page (Accessible at any scroll depth!) */
+.sfm-float-shuffle-btn {
+  position: fixed;
+  bottom: 24px;
+  right: 28px;
+  z-index: 100;
+  background: linear-gradient(135deg, #5e81ac 0%, #88c0d0 100%);
+  color: #0c1017;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 24px;
+  padding: 8px 18px;
+  font-size: 0.82rem;
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(136, 192, 208, 0.45), 0 2px 8px rgba(0, 0, 0, 0.6);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  user-select: none;
+}
+
+.sfm-float-shuffle-btn:hover:not(:disabled) {
+  transform: scale(1.05);
+  box-shadow: 0 8px 24px rgba(136, 192, 208, 0.6);
+}
+
+.sfm-float-shuffle-btn:active {
+  transform: scale(0.96);
+}
+
+.sfm-scroll-sentinel {
+  min-height: 40px;
 }
 
 @keyframes sfmFadeIn {
@@ -2764,11 +2943,13 @@ button.badge.sfm-badge-btn:hover {
   position: sticky;
   top: 0;
   z-index: 30;
-  background: rgba(10, 12, 16, 0.95);
+  background: rgba(10, 12, 16, 0.98);
   backdrop-filter: blur(14px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  padding: 0.6rem 1.25rem;
+  padding: 0.65rem 1.25rem;
+  padding-top: max(0.65rem, env(safe-area-inset-top, 0px));
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  flex-shrink: 0;
 }
 
 .sfm-profile-back-btn {
@@ -2793,7 +2974,8 @@ button.badge.sfm-badge-btn:hover {
 }
 
 .sfm-profile-mobile-container,
-.sfm-folder-profile-page.sfm-profile-force-mobile .sfm-profile-main-container {
+.sfm-folder-profile-page.sfm-profile-force-mobile .sfm-profile-main-container,
+.sfm-folder-profile-page.sfm-profile-force-mobile .sfm-discovery-main-container {
   max-width: 440px !important;
   border-left: 1px solid rgba(255, 255, 255, 0.1);
   border-right: 1px solid rgba(255, 255, 255, 0.1);
@@ -3337,160 +3519,522 @@ button.badge.sfm-badge-btn:hover {
 
 /* Responsive Scaling for Real Mobile Screens */
 @media (max-width: 768px) {
-  .sfm-profile-main-container {
+  /* ========================================================================
+     COMPLETE MOBILE REDESIGN FOR THE MAIN INTERFACE (Zero Scaling Warp)
+     ======================================================================== */
+
+  /* 0. Viewport & Body Zero-Overflow Enforcement */
+  html, body {
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+  }
+
+  #sfm-workspace-root {
+    width: 100% !important;
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
+    box-sizing: border-box !important;
+  }
+
+  .sfm-workspace-overlay {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    overflow-x: hidden !important;
+  }
+
+  .sfm-workspace-header {
+    padding: 0.5rem 0.75rem !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    gap: 0.5rem !important;
+  }
+
+  .sfm-workspace-title {
+    font-size: 0.95rem !important;
+  }
+
+  .sfm-workspace-close {
+    padding: 0.25rem 0.6rem !important;
+    font-size: 0.82rem !important;
+  }
+
+  .sfm-workspace-content {
+    padding: 0.5rem 0.5rem 6rem !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    overflow-x: hidden !important;
+    overscroll-behavior: contain !important;
+  }
+
+  /* 1. Line 1: Navigation & Path Line on Mobile - Redesigned Structured Flow */
+  .sfm-nav-control-line {
+    padding: 0.5rem 0.65rem !important;
+    margin-bottom: 0.65rem !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .sfm-nav-line-path {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .sfm-breadcrumbs-wrap {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    gap: 6px !important;
+    row-gap: 6px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .sfm-nav-history-group {
+    display: inline-flex !important;
+    gap: 6px !important;
+    margin-right: 4px !important;
+    flex-shrink: 0 !important;
+  }
+
+  .sfm-nav-history-group .btn,
+  .sfm-nav-actions-group .btn,
+  .sfm-workspace-settings-btn {
+    width: 34px !important;
+    height: 32px !important;
+    padding: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 6px !important;
+    margin: 0 !important;
+    flex-shrink: 0 !important;
+  }
+
+  .sfm-workspace-settings-btn {
+    margin-left: auto !important;
+  }
+
+  .sfm-workspace-settings-btn span.sfm-btn-label-desktop {
+    display: none !important;
+  }
+
+  .sfm-crumb-btn {
+    font-size: 0.82rem !important;
+    padding: 4px 8px !important;
+    min-height: 30px !important;
+    margin: 2px !important;
+    border-radius: 6px !important;
+    max-width: 140px !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+  }
+
+  .sfm-crumb-separator {
+    margin: 0 2px !important;
+    color: #4c566a !important;
+    flex-shrink: 0 !important;
+  }
+
+  .sfm-stat-pill {
+    padding: 0.28rem 0.65rem !important;
+    font-size: 0.74rem !important;
+    margin: 2px 4px !important;
+    gap: 0.35rem !important;
+    border-radius: 6px !important;
+    display: inline-flex !important;
+    flex: 0 1 auto !important;
+    white-space: nowrap !important;
+  }
+
+  .sfm-nav-actions-group {
+    display: inline-flex !important;
+    gap: 6px !important;
+    margin-left: 4px !important;
+    flex-shrink: 0 !important;
+  }
+
+  /* 2. Line 2: Controls Line on Mobile - Search 100%, Dual Sorts 50/50, Dual Tools 50/50 */
+  .sfm-nav-line-controls {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+    margin-top: 6px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .sfm-search-wrap,
+  .sfm-search-wrap.sfm-search-stretch {
+    order: 1 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    flex: 1 1 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .sfm-search-input {
+    width: 100% !important;
+    font-size: 0.82rem !important;
+    padding: 0.42rem 1.8rem 0.42rem 2rem !important;
+    box-sizing: border-box !important;
+    border-radius: 6px !important;
+  }
+
+  .sfm-sort-group {
+    order: 2 !important;
+    display: flex !important;
+    align-items: center !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    gap: 8px !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  .sfm-sort-item {
+    flex: 1 1 calc(50% - 4px) !important;
+    min-width: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    box-sizing: border-box !important;
+  }
+
+  .sfm-sort-label {
+    font-size: 0.72rem !important;
+    flex-shrink: 0 !important;
+    margin-right: 4px !important;
+  }
+
+  .sfm-sort-select {
+    width: 100% !important;
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    font-size: 0.76rem !important;
+    padding: 4px 6px !important;
+    border-radius: 6px !important;
+    box-sizing: border-box !important;
+  }
+
+  .sfm-tools-group {
+    order: 3 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    display: flex !important;
+    gap: 8px !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  .sfm-tools-group .btn {
+    flex: 1 1 50% !important;
+    font-size: 0.78rem !important;
+    padding: 0.38rem 0.75rem !important;
+    text-align: center !important;
+    border-radius: 6px !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  /* 3. Redesigned Section Headers (Subfolders & Files/Scenes) on Mobile */
+  .sfm-section-header-wrap {
+    margin-bottom: 0.65rem !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .sfm-section-header-row,
+  .sfm-section-header.d-flex {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .sfm-section-header-left {
+    display: flex !important;
+    align-items: center !important;
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+    row-gap: 6px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .sfm-section-header-right {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  /* RESET ALL FIXED DESKTOP PIXEL WIDTHS THAT CAUSED SCALING WARP */
+  .sfm-section-title-box {
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    flex: 0 0 auto !important;
+    margin-right: 6px !important;
+    box-sizing: border-box !important;
+  }
+
+  .sfm-section-title-label {
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    font-size: 0.88rem !important;
+  }
+
+  .sfm-section-count-badge {
+    min-width: 28px !important;
+    height: 20px !important;
+    font-size: 0.72rem !important;
+    padding: 0 0.35rem !important;
+    margin-left: 0.25rem !important;
+  }
+
+  .sfm-pill-subfolders,
+  .sfm-pill-foldersort,
+  .sfm-pill-hideempty,
+  .sfm-badge-indicator,
+  .sfm-state-pill,
+  button.badge.sfm-badge-btn {
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    padding: 0.32rem 0.65rem !important;
+    margin: 2px 3px !important;
+    font-size: 0.74rem !important;
+    border-radius: 6px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-sizing: border-box !important;
+    white-space: nowrap !important;
+    line-height: 1.2 !important;
+  }
+
+  /* Centered Full-Width Select All Action Button on Mobile */
+  .sfm-selectall-container,
+  .sfm-section-header-row > div.mx-3 {
+    width: 100% !important;
+    margin: 4px 0 !important;
+    display: flex !important;
+    justify-content: center !important;
+    box-sizing: border-box !important;
+    flex-grow: 1 !important;
+  }
+
+  .sfm-pill-selectall {
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0.45rem 1rem !important;
+    font-size: 0.82rem !important;
+    border-radius: 6px !important;
+    text-align: center !important;
+    display: block !important;
+    font-weight: 700 !important;
+    box-sizing: border-box !important;
+  }
+
+  .sfm-view-toggle-group {
+    width: 100% !important;
+    min-width: 0 !important;
+    display: flex !important;
+    gap: 4px !important;
+    box-sizing: border-box !important;
+  }
+
+  .sfm-view-toggle-group .btn {
+    flex: 1 1 0 !important;
+    padding: 0.32rem 0.4rem !important;
+    font-size: 0.76rem !important;
+    border-radius: 6px !important;
+    margin: 0 !important;
+    text-align: center !important;
+    box-sizing: border-box !important;
+  }
+
+  .sfm-size-slider-wrap {
+    display: none !important;
+  }
+
+  /* 4. Perfect 2-Column Responsive Card Grids (Zero Overflow, Zero Warp) */
+  .sfm-folder-cards-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .sfm-folder-card-compact {
+    width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+    padding: 0.5rem !important;
+  }
+
+  .sfm-folder-card-compact .sfm-folder-name {
+    font-size: 0.78rem !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  .sfm-folder-list-grid {
+    grid-template-columns: 1fr !important;
+    gap: 6px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .sfm-scene-cards-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .sfm-scene-card {
+    width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  .sfm-scene-card .sfm-scene-card-thumb {
+    width: 100% !important;
+    aspect-ratio: 16/9 !important;
+  }
+
+  .sfm-scene-card .sfm-scene-card-title {
+    font-size: 0.74rem !important;
+    line-height: 1.25 !important;
+    word-break: break-word !important;
+  }
+
+  /* 5. Video Wall & Explore Profile Overlay on Mobile with Safe Area Clearance */
+  .sfm-profile-nav-bar {
+    padding-top: max(50px, calc(env(safe-area-inset-top, 44px) + 8px)) !important;
+    padding-bottom: 0.75rem !important;
+    padding-left: max(0.85rem, env(safe-area-inset-left, 0px)) !important;
+    padding-right: max(0.85rem, env(safe-area-inset-right, 0px)) !important;
+    min-height: 84px !important;
+  }
+
+  .sfm-profile-main-container,
+  .sfm-discovery-main-container {
     max-width: 100vw !important;
     border: none !important;
   }
+
+  .sfm-float-shuffle-btn {
+    bottom: 18px !important;
+    right: 18px !important;
+    padding: 8px 16px !important;
+    font-size: 0.78rem !important;
+  }
+
   .sfm-profile-wall-grid,
   .sfm-explore-grid {
     grid-template-columns: repeat(3, 1fr) !important;
     gap: 1px !important;
   }
+
   .sfm-profile-tab-btn {
     padding: 0.65rem 0.5rem !important;
   }
+
   .sfm-profile-tab-btn .sfm-tab-text {
     font-size: 0.72rem !important;
   }
+
   .sfm-reel-modal-dialog {
     max-width: 100vw !important;
     max-height: 100vh !important;
+    max-height: 100dvh !important;
     border-radius: 0 !important;
   }
+
+  /* 6. Floating Action Bar on Mobile */
   .sfm-floating-actions-bar {
-    bottom: 14px !important;
+    bottom: 12px !important;
     padding: 4px 8px !important;
-    gap: 6px !important;
+    gap: 5px !important;
     max-width: 96vw !important;
   }
-}
 
-/* Extra Compact Scaling for Small Mobile Screens */
-.sfm-btn-label-mobile {
-  display: none;
-}
-
-@media (max-width: 576px) {
-  .sfm-profile-nav-bar {
-    padding: 0.5rem 0.75rem !important;
-  }
-  .sfm-profile-back-btn .sfm-btn-label-desktop,
-  .sfm-profile-mode-btn .sfm-btn-label-desktop,
-  .sfm-profile-fm-btn .sfm-btn-label-desktop {
-    display: none !important;
-  }
-  .sfm-btn-label-mobile {
-    display: inline !important;
-  }
   .sfm-floating-actions-bar .btn {
     font-size: 0.72rem !important;
     padding: 0.2rem 0.45rem !important;
   }
 }
 
-/* ==========================================================================
-   2 Sets of Colors for Status Buttons & Subfolder Toggles (Active vs Inactive)
-   ========================================================================== */
-
-/* State Set 1: ACTIVE (ON) - Vibrant Ice Cyan Accent & Highlighted Border */
-.sfm-state-active,
-.sfm-stat-pill.sfm-state-active,
-button.badge.sfm-badge-btn.sfm-state-active {
-  background-color: #242933 !important;
-  border: 1px solid rgba(136, 192, 208, 0.75) !important;
-  color: #88c0d0 !important;
-  font-weight: 700 !important;
-  box-shadow: 0 0 10px rgba(136, 192, 208, 0.28) !important;
+/* Extra Compact Scaling for Small Mobile Screens (≤ 576px) */
+.sfm-btn-label-mobile {
+  display: none;
 }
 
-button.badge.sfm-badge-btn.sfm-state-active:hover:not(:disabled) {
-  background-color: #2e3646 !important;
-  border-color: #88c0d0 !important;
-  color: #ffffff !important;
-}
+@media (max-width: 576px) {
+  .sfm-profile-nav-bar {
+    padding-top: max(54px, calc(env(safe-area-inset-top, 47px) + 10px)) !important;
+    padding-bottom: 0.75rem !important;
+    padding-left: max(0.75rem, env(safe-area-inset-left, 0px)) !important;
+    padding-right: max(0.75rem, env(safe-area-inset-right, 0px)) !important;
+    min-height: 88px !important;
+  }
 
-/* State Set 2: INACTIVE (OFF) - Muted Frost Slate Accent & Dark Border */
-.sfm-state-inactive,
-.sfm-stat-pill.sfm-state-inactive,
-button.badge.sfm-badge-btn.sfm-state-inactive {
-  background-color: #242933 !important;
-  border: 1px solid #3b4252 !important;
-  color: #81a1c1 !important;
-  font-weight: 700 !important;
-  opacity: 0.9;
-}
+  .sfm-profile-reels-toolbar {
+    padding: 0.35rem 0.65rem !important;
+  }
 
-button.badge.sfm-badge-btn.sfm-state-inactive:hover:not(:disabled) {
-  background-color: #2a313f !important;
-  border-color: #4c566a !important;
-  color: #d8dee9 !important;
-  opacity: 1;
-}
+  .sfm-profile-sort-select {
+    font-size: 0.72rem !important;
+    padding: 2px 6px !important;
+    max-width: 135px !important;
+  }
 
-/* Section Header Count Badges - Highlighted Numbers */
-.sfm-section-count-badge strong,
-.sfm-folder-list-badge strong,
-.sfm-badge strong {
-  color: #88c0d0 !important;
-  font-weight: 700;
-}
+  .sfm-sort-label-text {
+    display: none !important;
+  }
 
-/* Shared Select Button Style (Center Line & Floating Bar) */
-.sfm-pill-selectall {
-  height: 24px;
-  line-height: 22px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.76rem;
-  font-weight: 700 !important;
-  border-radius: 12px !important;
-  padding: 0 0.85rem !important;
-  white-space: nowrap;
-  user-select: none;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
-  transition: all 0.15s ease;
-}
+  .sfm-profile-back-btn .sfm-btn-label-desktop,
+  .sfm-profile-mode-btn .sfm-btn-label-desktop,
+  .sfm-profile-fm-btn .sfm-btn-label-desktop {
+    display: none !important;
+  }
 
-.sfm-bulk-inner {
-  background: #181c25;
-  border: 1px solid #3b4252;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.75);
-  border-radius: 30px;
-  padding: 0.35rem 0.65rem;
-  display: flex;
-  align-items: center;
-  gap: 0.65rem;
-}
+  .sfm-btn-label-mobile {
+    display: inline !important;
+  }
 
-.sfm-bulk-inner .sfm-bulk-select-btn {
-  background-color: #5e81ac !important;
-  border: 1px solid #88c0d0 !important;
-  color: #ffffff !important;
-  cursor: pointer;
-}
-
-.sfm-bulk-inner .sfm-bulk-select-btn:hover {
-  background-color: #81a1c1 !important;
-  transform: scale(1.02);
-}
-
-.sfm-bulk-inner .btn-group .btn {
-  background-color: #222938 !important;
-  border-color: #353f50 !important;
-  color: #c0c8d6 !important;
-  font-weight: 600;
-  font-size: 0.78rem;
-  height: 24px;
-  line-height: 22px;
-  padding: 0 0.65rem !important;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.sfm-bulk-inner .btn-group .btn:hover:not(:disabled) {
-  background-color: #2d374a !important;
-  border-color: #4a566d !important;
-  color: #ffffff !important;
+  .sfm-floating-actions-bar .btn {
+    font-size: 0.72rem !important;
+    padding: 0.2rem 0.45rem !important;
+  }
 }

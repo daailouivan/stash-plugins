@@ -89,6 +89,35 @@ Eliminate wasted vertical space with compact folder layouts tailored to any libr
 
 ---
 
+### 6. 📋 Fast Filename Inspector View (`Names` Table)
+* **High-Speed Text-Only Inspection:** An ultra-fast, virtualized filename listing designed for fast directory scanning, zero thumbnail decoding overhead, and instant inspection of deep library trees.
+* **Interactive Clipboard Tools:** One-click copy for clean filenames, file basenames, or complete filesystem paths.
+* **Direct Playback & Regex Previews:** Launch scenes directly or evaluate regex token captures in-place with zero lag.
+
+---
+
+### 7. 📸 Folder Profile & Directory Video Wall (`Explore Mode`)
+* **Dedicated Directory Profile Canvas:** Social-media-style directory profile header displaying dynamic folder avatar with gradient ring, live metrics (direct files, recursive tree count, total disk space), directory bio, and quick-action triggers (`Play All`, `Shuffle`, `Stash Grid`).
+* **Instagram/TikTok-Style 3-Column Video Wall:** Flush 3-column mosaic grid with zero border gaps, alternating 2×2 featured hero video cards (`★ FEATURED`) and 1×1 standard cards, view counts, and duration overlays.
+* **Profile-Isolated Sorting:** Independent sort selector for the video wall profile view with persistent `localStorage` isolation, ensuring profile sorts do not mutate primary file manager state.
+
+---
+
+### 8. 🧭 Autonomous Discovery Feed & Elastic 2-Page Carousel
+* **Decoupled Discovery Canvas:** A full-height, clutter-free discovery feed separated from directory profile headers for pure browsing immersion.
+* **Elastic Drag & Swipe Viewport:** 2-page horizontal sliding track (`.sfm-pages-track`) featuring real-time gesture tracking, boundary rubber-banding with elastic resistance (`dx * 0.28`), desktop mouse drag-to-swipe, and spring snap deceleration curve (`cubic-bezier(0.22, 1, 0.36, 1)`).
+* **Dual Top-Bar & Floating Shuffle Controls:** Persistent shuffle button in the sticky top navigation bar alongside a floating glass pill (`.sfm-float-shuffle-btn`) for one-tap feed re-rolling at any scroll depth.
+* **Memory-Safe Infinite Scrolling Engine:** 36-scene batch ingestion (3 full 12-item Instagram mosaic cycles) with compact tile dictionaries (~80 bytes), $O(k)$ random index picking without array cloning, container-scoped `IntersectionObserver`, and an 800ms cooldown guard preventing runaway re-fetching loops.
+
+---
+
+### 9. 📱 Mobile Viewport Optimization & iOS Safe Area Support
+* **iOS Notch & Dynamic Island Clearance:** Comprehensive safe area padding (`env(safe-area-inset-top)`) moving controls safely below the iPhone notch, camera cutout, and status bar.
+* **Uncrowded Mobile Navigation:** 4px button group separation, 34×32px touch targets, and generous margins across breadcrumbs, badges, and the file counter.
+* **Centered Multi-Select:** Perfectly centered `Select All` / `[N] Selected` button on the Files / Scenes header line.
+
+---
+
 ## 🗺️ Roadmap & Architectural Evolution
 
 ### 📍 Phase 1: Core Navigation & Player Foundation (Completed — v1.0.0 to v2.4.0)
@@ -117,22 +146,62 @@ Eliminate wasted vertical space with compact folder layouts tailored to any libr
 - [x] **Circular Vector Search Clear Button:** Tactile circular hover button with vector cross icon. *(v2.7.3 — 2026-09-24)*
 - [x] **Directory Keyboard Navigation Shortcuts:** Global single-key hotkeys for `/` (search), `Backspace`/`Alt+Left` (go up), `Ctrl+A` (select all), and `Esc` (clear/dismiss). *(v2.7.3 — 2026-09-24)*
 
-### 📍 Phase 3: Frictionless Directory Traversal & Deep Native Integration (In Progress / Next)
-- [ ] **Smart Common Root Detection (Auto-Root):** Automatically detect the common filesystem base directory across all indexed scenes (e.g., `/data/` or `/data/stash/`) when no manual root override is configured, eliminating empty top-level single-folder navigation hallways. *(Design Philosophy: Zero Dead Clicks)*
-- [ ] **Auto-Collapsing Single-Child Directories:** Automatically collapse or skip single-child intermediate path hallways that contain no direct scene files (GitHub-style path chaining, e.g., `Studio / 2024 /`), jumping directly to the first branching directory level. *(Design Philosophy: Zero Dead Clicks)*
-- [ ] **Actionable Empty-State Guidance for Parent Folders:** When navigating into a parent directory containing subdirectories but 0 direct scene files, display a proactive inline prompt to toggle "Include Sub-folders" to immediately view all nested media. *(Design Philosophy: Flow Continuity)*
-- [ ] **Transition from Overlay Layer to Native Routed View:** Re-architecting the workspace from a `position: fixed` overlay layer into an integrated page view mounted inside Stash's native main container (`/scenes?view=folder` or `/plugin/file-manager`).
-- [ ] **Native Navigation Bar & Settings Retention:** Retaining Stash's top navigation bar, global search, background task queue spinners, and user settings dropdown at all times during folder browsing.
-- [ ] **Theme Parity:** Seamless automatic glass and accent adaptation with community themes (e.g., Refract, Dark, Nord).
+### 📍 Phase 3: Fast Inspection, Folder Profile & Autonomous Discovery Feed (Completed — v2.8.0 to v2.9.8)
+- [x] **Fast Filename Inspector View (`Names` Table):** Ultra-fast, text-only table view designed for instant scanning, regex evaluation, direct scene opening, and one-click clipboard copying. *(v2.8.0 — 2026-09-24)*
+- [x] **Browser History & URL Deep Linking:** Full browser history integration (`popstate`, hash routing `#file-manager?path=...`) with seamless Back/Forward navigation, `Alt+Left`, and `Backspace` folder level traversals. *(v2.8.0 — 2026-09-24)*
+- [x] **Folder Profile & Directory Video Wall (`FolderProfileView`):** Dedicated in-player directory profile view featuring folder avatar with gradient ring, 3 live metric columns (direct scenes, total tree scenes, total size), directory bio, and quick-action triggers (`Play All`, `Shuffle`, `Stash Grid`). *(v2.9.0 — 2026-09-26)*
+- [x] **Instagram/TikTok-Style 3-Column Video Wall Mosaic:** Flush 3-column mosaic grid with alternating 2×2 featured hero video cards (`★ FEATURED`) and 1×1 standard cards with zero border gaps, view counters, and duration overlays. *(v2.9.0 — 2026-09-26)*
+- [x] **Profile-Isolated Sorting:** Independent sort selector for the video wall profile page with persistent `localStorage` isolation, ensuring profile sorts do not mutate primary file manager state. *(v2.9.3 — 2026-09-26)*
+- [x] **Autonomous Discovery Feed:** Fully decoupled discovery page separated from folder profile headers into an immersive, clutter-free browsing canvas with dedicated sticky controls and floating shuffle pill. *(v2.9.5 — 2026-09-26)*
+- [x] **Elastic Horizontal 2-Page Gesture Carousel:** Smooth horizontal sliding track with real-time touch swipe and desktop mouse drag-to-swipe physics, elastic rubber-band resistance (`dx * 0.28`), and spring snap deceleration curve (`cubic-bezier(0.22, 1, 0.36, 1)`). *(v2.9.5 — 2026-09-26)*
+- [x] **Memory-Safe Infinite Scrolling Engine:** 36-scene batch ingestion with compact tile data structures (~80 bytes), $O(k)$ random index picking without array cloning, container-scoped `IntersectionObserver`, and an 800ms cooldown guard preventing runaway re-fetching loops. *(v2.9.5 - v2.9.7 — 2026-09-26)*
+- [x] **Centered Multi-Select & Natural Path Metrics:** Refined main interface layout with centered `Select All` / `[N] Selected` button and file counter stat badge positioned immediately following folder breadcrumbs. *(v2.9.6 — 2026-09-26)*
+- [x] **iPhone Notch & Safe Area Clearance:** Full iOS safe area inset support (`env(safe-area-inset-top)` with 54px fallback) moving top bar controls safely below iPhone notches, Dynamic Islands, and carrier status bars. *(v2.9.7 — 2026-09-26)*
+- [x] **Sub-Route Browser History & Back Functionality:** Deep URL hash routing (`#file-manager?path=...&view=profile|discover&scene=ID`) ensuring browser Back navigates backwards naturally without closing the plugin. *(v2.9.8 — 2026-09-26)*
+- [x] **Background Scroll Isolation & Mobile Jitter Fix:** Complete hidden background overlay mounting (`style: { display: "none" }`) with strict `overscroll-behavior: contain` and body locking to prevent mobile browser UI collapse spasms. *(v2.9.8 — 2026-09-26)*
+- [x] **Mobile Touch Target Optimization & Spacing Harmonization:** 4px–6px button group separation, 34×32px touch targets, and generous margins across breadcrumbs, action groups, and filter badges. *(v2.9.8 — 2026-09-26)*
 
-### 📍 Phase 4: Advanced Folder Metadata & Media Management (Planned)
-- [ ] **Folder Poster Art & Custom Covers:** Ability to select any scene poster or custom graphic as a persistent folder thumbnail cover.
-- [ ] **In-Folder Filter Parity:** Filtering items inside a specific folder by Performer, Tag, Studio, or Rating without leaving the directory hierarchy.
-- [ ] **Directory Playlist Queue:** One-click queueing of entire directory trees into Stash's native playback queue or MultiView.
+### 📍 Phase 4: Native Stash Card Integration & Deep Platform Embedding (Upcoming — v3.0.0)
+- [ ] **Native Stash Card Integration:** Deeply embed File Manager actions directly into Stash's native scene cards, studio cards, and performer cards across all native grids. Add a 1-click "Browse Folder" / "Open in File Manager" button and directory path badges directly onto standard Stash scene cards.
+- [ ] **Native Scene Detail Page Integration:** Add folder hierarchy badges and instant directory traversal triggers on Stash's native scene view page (`/scenes/{id}`), allowing users to jump directly from any playing scene into its filesystem folder.
+- [ ] **Native Main Viewport Mounting:** Seamlessly mount the file manager inside Stash's native routed layout container (`/scenes?view=folder` or `/plugin/file-manager`), fully retaining Stash's top navigation bar, global search, background task spinners, and user settings at all times.
+- [ ] **Theme & Accent Color Parity:** Full CSS custom property inheritance from community themes (Refract, Nord, Dark, Midnight) for native glassmorphism, surface blur, and accent color adaptation.
 
 ---
 
 ## 📋 Changelog & Development History
+
+### [v2.9.8] — 2026-09-26 14:20:00
+* **Browser History State Routing, Overlay Scroll Isolation & Mobile Spacing Polish:**
+  * **Unified Browser History & Sub-Route Hash Navigation:** Implemented deep URL hash routing (`#file-manager?path=...&view=profile|discover&scene=ID`) across the entire plugin. Pressing the browser's Back button or using system back gestures now seamlessly closes the video player modal (returning to profile/discover or folder) or closes the profile/discover page (returning to the folder view), completely preventing the plugin workspace from closing unintentionally.
+  * **Overlay Scroll Isolation & Out-of-Bounds Glitch Elimination:** Resolved mobile touch jitter and browser UI address-bar collapse spasms by hiding the underlying main workspace (`.sfm-workspace-content`) via `style: { display: "none" }` whenever an overlay (Video Player, Profile, or Discover) is active. Bound strict `overscroll-behavior: contain !important;` across all scroll containers and enforced document body locking (`body.sfm-body-locked`) to prevent layer bleed and momentum scroll chaining.
+  * **Mobile View Button & Indicator Un-Crowding:** Enlarged touch targets to 34×32px, introduced explicit 6px–8px gaps across history and action button groups (`.sfm-nav-history-group`, `.sfm-nav-actions-group`, `.sfm-tools-group`, `.sfm-view-toggle-group`), added spacious padding to breadcrumb chips and filter badges, and increased spacing around the file counter stat pill.
+
+### [v2.9.2] — 2026-09-26 12:23:05
+* **Instagram-Style Explore Mosaic Page:** Integrated an Explore discovery feed alongside the directory video wall featuring randomized global library scenes in a 3-column mosaic grid with alternating 2×2 featured video hero tiles (`★ FEATURED`) and 1×1 standard tiles with zero border gaps.
+* **Mobile Swipe Left/Right Gesture Navigation:** Implemented touch gesture tracking (`onTouchStart`/`onTouchEnd`) enabling users on mobile devices and inside Force Mobile View to swipe left to transition to Explore and swipe right to return to Reels & Videos, without interfering with vertical scroll.
+* **Dual-Tab Header & Keyboard Navigation:** Upgraded the profile tab bar with `▦ REELS & VIDEOS` and `🧭 EXPLORE` tabs, active cyan indicator underline, responsive badges, and desktop keyboard arrow navigation (`←` / `→`).
+* **Global Discovery Engine & Standard Player Return:** Powered by instant client-side cache and GraphQL randomized queries with inline "Shuffle Feed" re-rolls. Selecting any explore scene automatically opens and plays it in Binge Reel Player, synchronizing folder context and returning to standard queue playback.
+* **Responsive Scaling Audit:** Polished scaling across desktop (centered 980px container) and mobile view (440px phone frame / 100vw native mobile) with adaptive typography and safe bounds to prevent horizontal overflow.
+
+### [v2.9.1] — 2026-09-26 08:59:47
+* **Instagram / TikTok Seamless Video Wall:** Re-architected Directory Profile into an authentic zero-border-gap 3-column video wall with edge-to-edge portrait tiles, views/duration overlay (`▶ 04:15`), resolution chips, and desktop hover card inspection.
+* **Force Mobile View & Responsive Layout:** Added an interactive mobile view toggle (`IconSmartphone`) allowing one-click switching between an Instagram/TikTok mobile phone frame (430px) and a web desktop view, with full scrolling reel player integration.
+* **Refined Persistent Indicators & Elevated Interface Buttons:** Harmonized browser indicators (`Sub-Folders Included/Excluded` and `Grouped by Folder / Sorted Altogether`) to match the top total file count pill style with pure high-contrast text and no leading dots; elevated all navigation and action buttons with high-contrast surfaces (`#222938`) for improved visibility.
+
+### [v2.9.0] — 2026-09-26 05:28:54
+* **Folder Profile Page & Video Wall Grid Overlay:** Implemented in-player creator-style Directory Profile view featuring folder avatar, path chip, live stats (video count, total file size, total duration, resolution breakdown), quick actions (*Play All*, *Shuffle Play*, *Stash Grid*), and a video wall grid allowing instant preview and playback of any directory scene.
+* **Social Media Reel Avatar & Path Overlay:** Added interactive creator avatar pill in video metadata overlay linking directly to the Directory Profile Video Wall with pointer-events and z-index priority.
+* **Non-Repeating Fisher-Yates Shuffle Queue:** Integrated a shuffle engine with right-action-rail circle toggle button (`S` hotkey), HUD status indicator, and automatic non-repeating advancement upon scene completion.
+
+### [v2.8.2] — 2026-09-26 04:36:03
+* **Floating Toolbar & Icon Standardization:** Harmonized floating batch edit and regex parse buttons to match control line styling (`btn-outline-secondary py-1 px-2`). Standardized Stash Grid button to match its icon-only counterpart (`IconGrid size={14}`). Synchronized automated packaging script for `index.yml`.
+
+### [v2.8.1] — 2026-09-25 02:17:49
+* **UI Spacing, Badge Alignment & Field Splitting:** Separated directory metrics into discrete elements with explicit margins (`99 direct · 99 in tree`). Added 1rem margin on search bar. Standardized section title box (104px label) so count badges align vertically across headers. Added 1-click interactive field splitting (`✂️ Split`) in Regex Parser.
+
+### [v2.8.0] — 2026-09-24 20:53:48
+* **Names View Mode & Header Alignment:** Added compact `Names` (filenames-only) table view mode. Standardized persistent indicators and Group by Folder naming. Overhauled regex builder with visual chunks, double-underscore release auto-detection, and path clues.
 
 ### [v2.7.3] — 2026-09-24 10:35:00
 * **Standardized View Switcher Labels:** Removed inconsistent unicode glyphs (`田`, `☰`, `☷`, `⊞`), unifying both Subfolders and Files / Scenes to clean, sleek text (`Cards`, `List`, `Details` / `Cards`, `Table`).
