@@ -5741,7 +5741,12 @@
             { className: "sfm-workspace-title" },
             React.createElement(IconFolder, { size: 22, color: "#88c0d0" }),
             React.createElement("span", { className: "ml-2" }, "Stash File Manager"),
-            trie && React.createElement("span", { className: "badge badge-dark ml-2 text-muted small" }, `${trie.root.allSceneIds.size} total scenes`)
+            trie && React.createElement(
+              "span",
+              { className: "sfm-stat-pill badge badge-dark ml-2 font-weight-normal" },
+              React.createElement("strong", { style: { color: "#88c0d0" } }, trie.root.allSceneIds.size),
+              React.createElement("span", { className: "ml-1 text-muted" }, "total scenes")
+            )
           ),
           // Right: Close Button
           onClose && React.createElement("button", { className: "sfm-workspace-close", onClick: onClose }, "✕ Close")
@@ -6006,16 +6011,20 @@
                       isSubfoldersCollapsed ? "▶" : "▼"
                     ),
                     React.createElement("span", { className: "sfm-section-title-label" }, "Subfolders"),
-                    React.createElement("span", { className: "badge badge-dark sfm-section-count-badge font-weight-normal" }, filteredAndSortedSubfolders.length),
+                    React.createElement(
+                      "span",
+                      { className: "badge badge-dark sfm-section-count-badge font-weight-normal" },
+                      React.createElement("strong", { style: { color: "#88c0d0" } }, filteredAndSortedSubfolders.length)
+                    ),
                     isSubfoldersCollapsed &&
                       React.createElement("span", { className: "text-muted small ml-2 font-italic" }, "(collapsed)")
                   ),
-                  // Toggle 1: Include Sub-Folder
+                  // Toggle 1: Include Sub-Folders (Bold, 2 color states matching status indicators)
                   React.createElement(
                     "button",
                     {
                       type: "button",
-                      className: `badge ${includeSubfolders ? "badge-info" : "badge-secondary"} sfm-badge-btn ml-2 font-weight-normal sfm-pill-subfolders`,
+                      className: `badge sfm-badge-btn sfm-state-pill ml-2 font-weight-bold sfm-pill-subfolders ${includeSubfolders ? "sfm-state-active" : "sfm-state-inactive"}`,
                       onClick: (e) => {
                         e.stopPropagation();
                         handleToggleIncludeSubfolders(!includeSubfolders);
@@ -6026,12 +6035,12 @@
                     },
                     "Include Sub-Folders"
                   ),
-                  // Toggle 2: Group by Folder
+                  // Toggle 2: Group by Folder (Bold, 2 color states matching status indicators)
                   React.createElement(
                     "button",
                     {
                       type: "button",
-                      className: `badge ${sortByFolderFirst ? "badge-info" : "badge-secondary"} sfm-badge-btn ml-2 font-weight-normal sfm-pill-foldersort`,
+                      className: `badge sfm-badge-btn sfm-state-pill ml-2 font-weight-bold sfm-pill-foldersort ${sortByFolderFirst ? "sfm-state-active" : "sfm-state-inactive"}`,
                       onClick: (e) => {
                         e.stopPropagation();
                         handleToggleSortByFolderFirst(!sortByFolderFirst);
@@ -6042,12 +6051,12 @@
                     },
                     "Group by Folder"
                   ),
-                  // Toggle 3: Hide Empty
+                  // Toggle 3: Hide Empty (Bold, 2 color states matching status indicators, unified padding)
                   React.createElement(
                     "button",
                     {
                       type: "button",
-                      className: `badge ${hideEmpty ? "badge-info" : "badge-secondary"} sfm-badge-btn ml-2 font-weight-normal sfm-pill-hideempty`,
+                      className: `badge sfm-badge-btn sfm-state-pill ml-2 font-weight-bold sfm-pill-hideempty ${hideEmpty ? "sfm-state-active" : "sfm-state-inactive"}`,
                       onClick: (e) => {
                         e.stopPropagation();
                         handleToggleHideEmpty(!hideEmpty);
@@ -6160,7 +6169,7 @@
                       React.createElement(
                         "div",
                         { className: "sfm-folder-badges" },
-                        React.createElement("span", { className: "sfm-badge" }, `${count} scenes`),
+                        React.createElement("span", { className: "sfm-badge" }, React.createElement("strong", { style: { color: "#88c0d0" } }, count), " scenes"),
                         count > 0 && React.createElement("span", { className: "sfm-badge text-muted" }, size)
                       )
                     );
@@ -6188,7 +6197,7 @@
                       },
                       React.createElement("div", { className: "sfm-folder-list-icon" }, React.createElement(IconFolderCard, { size: 18, color: "#81a1c1" })),
                       React.createElement("div", { className: "sfm-folder-list-name text-truncate font-weight-bold" }, folderName),
-                      React.createElement("span", { className: "sfm-folder-list-badge" }, count)
+                      React.createElement("span", { className: "sfm-folder-list-badge" }, React.createElement("strong", { style: { color: "#88c0d0" } }, count))
                     );
                   })
                 )
@@ -6238,7 +6247,7 @@
                             )
                           ),
                           React.createElement("td", { className: "text-muted small" }, "Directory"),
-                          React.createElement("td", null, React.createElement("span", { className: "badge badge-dark" }, `${count} scenes`)),
+                          React.createElement("td", null, React.createElement("span", { className: "badge badge-dark" }, React.createElement("strong", { style: { color: "#88c0d0" } }, count), " scenes")),
                           React.createElement("td", { className: "text-muted small" }, size),
                           React.createElement(
                             "td",
@@ -6306,24 +6315,28 @@
                       isFilesCollapsed ? "▶" : "▼"
                     ),
                     React.createElement("span", { className: "sfm-section-title-label" }, "Files / Scenes"),
-                    React.createElement("span", { className: "badge badge-dark sfm-section-count-badge font-weight-normal" }, filteredAndSortedScenes.length),
+                    React.createElement(
+                      "span",
+                      { className: "badge badge-dark sfm-section-count-badge font-weight-normal" },
+                      React.createElement("strong", { style: { color: "#88c0d0" } }, filteredAndSortedScenes.length)
+                    ),
                     isFilesCollapsed &&
                       React.createElement("span", { className: "text-muted small ml-2 font-italic" }, "(collapsed)")
                   ),
-                  // Indicator 1 (always on, matching top file count style, no dot, high visibility)
+                  // Status Button 1: Sub-Folders Included / Excluded (Bold, 2 color sets for state, matching top file count style)
                   React.createElement(
                     "span",
                     {
-                      className: "sfm-stat-pill badge badge-dark sfm-badge-indicator ml-2 font-weight-normal sfm-pill-subfolders",
+                      className: `sfm-stat-pill badge badge-dark sfm-badge-indicator sfm-state-pill ml-2 font-weight-bold sfm-pill-subfolders ${includeSubfolders ? "sfm-state-active" : "sfm-state-inactive"}`,
                       title: includeSubfolders ? "Sub-folders are included in scenes view" : "Sub-folders are excluded from scenes view",
                     },
                     includeSubfolders ? "Sub-Folders Included" : "Sub-Folders Excluded"
                   ),
-                  // Indicator 2 (always on, matching top file count style, no dot, high visibility)
+                  // Status Button 2: Grouped by Folder / Sorted Altogether (Bold, 2 color sets for state, matching top file count style)
                   React.createElement(
                     "span",
                     {
-                      className: "sfm-stat-pill badge badge-dark sfm-badge-indicator ml-2 font-weight-normal sfm-pill-foldersort",
+                      className: `sfm-stat-pill badge badge-dark sfm-badge-indicator sfm-state-pill ml-2 font-weight-bold sfm-pill-foldersort ${sortByFolderFirst ? "sfm-state-active" : "sfm-state-inactive"}`,
                       title: sortByFolderFirst ? "Scenes ordered by folder sort first, then sorted within each folder" : "Scenes sorted altogether across all folders flatly",
                     },
                     sortByFolderFirst ? "Grouped by Folder" : "Sorted Altogether"
@@ -6455,7 +6468,7 @@
                 ? React.createElement("button", { className: "btn btn-outline-secondary mt-2", onClick: () => setSearchQuery("") }, "Clear Search")
                 : React.createElement("button", { className: "btn btn-outline-secondary mt-2", onClick: () => navigateToFolder("") }, "Return to Stash")
             ),
-          // Floating Bulk Action Bar (Milestone 1)
+          // Floating Bulk Action Bar (Centered Bottom)
           selectedSceneIds.size > 0 &&
             React.createElement(
               "div",
@@ -6463,12 +6476,13 @@
               React.createElement(
                 "div",
                 { className: "sfm-bulk-inner" },
+                // Selected counter doubles as Clear when clicked, styled exactly like center select button
                 React.createElement(
                   "button",
                   {
                     type: "button",
-                    className: "btn btn-sm btn-primary font-weight-bold py-1 px-2 sfm-bulk-count-btn",
-                    onClick: handleSelectAllFolderScenes,
+                    className: "btn btn-sm btn-primary font-weight-bold py-0 px-3 sfm-pill-selectall sfm-bulk-select-btn",
+                    onClick: handleClearSelection,
                     title: `Click to deselect all (${selectedSceneIds.size} selected)`,
                   },
                   `${selectedSceneIds.size} Selected`
@@ -6515,17 +6529,6 @@
                       title: "Open selected scenes in Stash native grid (new tab)",
                     },
                     React.createElement(IconGrid, { size: 14 })
-                  ),
-                  React.createElement(
-                    "button",
-                    {
-                      type: "button",
-                      className: "btn btn-sm btn-outline-secondary py-1 px-2",
-                      onClick: handleClearSelection,
-                      title: "Clear selection (Esc)",
-                    },
-                    React.createElement(IconX, { size: 12, className: "mr-1" }),
-                    "Clear"
                   )
                 )
               )
