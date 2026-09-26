@@ -1,11 +1,11 @@
 # Project Handoff Document: Stash Path File Manager Plugin
 
-**Current Version:** `v2.9.0`  
+**Current Version:** `v2.9.1`  
 **Active Repository:** `https://github.com/daailouivan/stash-plugins.git` (`main` branch)  
-**Distribution Package:** `stash_file_manager.zip` (SHA256: `13ee0e7edb24a3b246cf885ffc5a8637de81aca5234cc676e9c3a76367da6554`)  
-**Plugin Manifest:** `stash_file_manager/stash_file_manager.yml` (version `2.9.0`)  
-**Index Manifest:** `index.yml` (version `2.9.0`)  
-**Total Release Tags:** `30` (`v1.0.0` through `v2.9.0`)  
+**Distribution Package:** `stash_file_manager.zip` (SHA256: `4ec1b3210ec25e8a4724c186cd43496bd6ad82cd54e003457a6795dbe1c4aabb`)  
+**Plugin Manifest:** `stash_file_manager/stash_file_manager.yml` (version `2.9.1`)  
+**Index Manifest:** `index.yml` (version `2.9.1`)  
+**Total Release Tags:** `31` (`v1.0.0` through `v2.9.1`)  
 
 ---
 
@@ -21,17 +21,19 @@ The **Stash Path File Manager (`stash_file_manager`)** is a community plugin for
    - Multi-slide sliding window (`OVERSCAN = 2`) maintaining preloaded video elements and unblurred posters for adjacent scenes (`-2`, `-1`, `+1`, `+2`) to eliminate buffering delays.
    - **Non-Repeating Shuffle Queue**: Fisher-Yates permutation anchor queue with right-rail circle toggle button (`S` hotkey) and auto-advancing `onEnded`.
    - **Folder Profile & Video Wall Page**: In-player directory profile view with social-media-style avatar, folder path, live metrics (video counts, size, duration, resolutions), and a responsive video wall grid.
+   - **Instagram / TikTok Seamless Video Wall**: Flush 3-column video wall with zero border gaps, views/duration overlays, and Force Mobile View phone frame simulation.
+   - **Elevated Button Surfaces & Persistent Indicators**: High-contrast button backgrounds (`#222938`) and indicators matching top total file counts pill style (`#242933` with `#4c566a` border and `#eceff4` white text).
 2. **Backend Tasks (`stash_file_manager/sfm_tasks.py`)**:
    - Executed via Stash's native Python plugin runner.
    - Provides filesystem tree building, directory hierarchy caching, and regex-based filename metadata extraction.
 3. **Plugin Manifest (`stash_file_manager/stash_file_manager.yml`)**:
-   - Conforms strictly to Stash's plugin schema specification (`version: 2.9.0`).
+   - Conforms strictly to Stash's plugin schema specification (`version: 2.9.1`).
 4. **Repository Index (`index.yml`)**:
    - Allows users to add the repository directly as a plugin source in **Stash → Settings → Plugins → Available Plugins → Add Source**.
 
 ---
 
-## 2. Release Tag Inventory (30 Tags)
+## 2. Release Tag Inventory (31 Tags)
 
 | Tag | Commit | Release Summary |
 |---|---|---|
@@ -64,13 +66,14 @@ The **Stash Path File Manager (`stash_file_manager`)** is a community plugin for
 | `v2.8.0` | `07bc0f8` | Aligned headers, Group by Folder naming, Names view mode |
 | `v2.8.1` | `b82d6d0` | Selection-driven guided regex builder with multi-field tagging |
 | `v2.8.2` | `51342a6` | Floating toolbar button standardization, index.yml sync |
-| `v2.9.0` | `HEAD` | Folder Profile Video Wall, Shuffle Queue, social avatar & path overlay |
+| `v2.9.0` | `d6bb569` | Folder Profile Video Wall, Shuffle Queue, social avatar & path overlay |
+| `v2.9.1` | `HEAD` | Instagram/TikTok seamless video wall, Force Mobile View toggle, button contrast overhaul |
 
 ---
 
 ## 3. Instructions for Force Pushing to GitHub
 
-To force push the repository branch and all 30 release tags to GitHub (`https://github.com/daailouivan/stash-plugins.git`):
+To force push the repository branch and all 31 release tags to GitHub (`https://github.com/daailouivan/stash-plugins.git`):
 
 ```bash
 # 1. Pull / update to the latest bundle commit
@@ -79,6 +82,6 @@ git pull <path-to-bundle> main
 # 2. Force push the main branch to origin
 git push -u origin main --force
 
-# 3. Force push all 30 release tags to origin
+# 3. Force push all 31 release tags to origin
 git push origin --tags --force
 ```
