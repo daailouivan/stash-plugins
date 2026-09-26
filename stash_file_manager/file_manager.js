@@ -854,7 +854,14 @@
 
       return React.createElement(
         "div",
-        { className: "sfm-folder-profile-page" },
+        {
+          className: "sfm-folder-profile-page",
+          onClick: (e) => e.stopPropagation(),
+          onWheel: (e) => e.stopPropagation(),
+          onTouchStart: (e) => e.stopPropagation(),
+          onTouchMove: (e) => e.stopPropagation(),
+          onTouchEnd: (e) => e.stopPropagation(),
+        },
         // 1. Sticky Navigation Top Bar
         React.createElement(
           "div",
@@ -2521,12 +2528,25 @@
                   "div",
                   {
                     className: "sfm-reel-avatar-bar d-inline-flex align-items-center mb-2",
+                    role: "button",
+                    tabIndex: 0,
                     onClick: (e) => {
                       e.stopPropagation();
+                      e.preventDefault();
                       if (videoRef.current && !videoRef.current.paused) {
                         videoRef.current.pause();
                       }
                       setShowFolderProfile(true);
+                    },
+                    onKeyDown: (e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        if (videoRef.current && !videoRef.current.paused) {
+                          videoRef.current.pause();
+                        }
+                        setShowFolderProfile(true);
+                      }
                     },
                     title: `View Directory Profile & Video Wall for "${targetFolderPath || "Root"}"`,
                   },
@@ -6241,18 +6261,34 @@
                   React.createElement(
                     "span",
                     {
-                      className: `badge ${includeSubfolders ? "badge-info" : "badge-secondary"} sfm-badge-indicator ml-2 font-weight-normal sfm-pill-subfolders`,
+                      className: `sfm-stat-pill badge badge-dark sfm-badge-indicator ml-2 font-weight-normal sfm-pill-subfolders ${includeSubfolders ? "sfm-indicator-active" : "sfm-indicator-inactive"}`,
                       title: includeSubfolders ? "Sub-folders are included in scenes view" : "Sub-folders are excluded from scenes view",
                     },
+                    React.createElement(
+                      "span",
+                      {
+                        className: "sfm-indicator-dot mr-1 font-weight-bold",
+                        style: { color: includeSubfolders ? "#88c0d0" : "#6c7a96" },
+                      },
+                      includeSubfolders ? "●" : "○"
+                    ),
                     includeSubfolders ? "Sub-Folders Included" : "Sub-Folders Excluded"
                   ),
                   // Indicator 2 (always on)
                   React.createElement(
                     "span",
                     {
-                      className: `badge ${sortByFolderFirst ? "badge-info" : "badge-secondary"} sfm-badge-indicator ml-2 font-weight-normal sfm-pill-foldersort`,
+                      className: `sfm-stat-pill badge badge-dark sfm-badge-indicator ml-2 font-weight-normal sfm-pill-foldersort ${sortByFolderFirst ? "sfm-indicator-active" : "sfm-indicator-inactive"}`,
                       title: sortByFolderFirst ? "Scenes ordered by folder sort first, then sorted within each folder" : "Scenes sorted altogether across all folders flatly",
                     },
+                    React.createElement(
+                      "span",
+                      {
+                        className: "sfm-indicator-dot mr-1 font-weight-bold",
+                        style: { color: sortByFolderFirst ? "#88c0d0" : "#6c7a96" },
+                      },
+                      sortByFolderFirst ? "●" : "○"
+                    ),
                     sortByFolderFirst ? "Grouped by Folder" : "Sorted Altogether"
                   )
                 ),
