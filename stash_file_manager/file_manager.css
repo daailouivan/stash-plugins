@@ -2886,18 +2886,279 @@ button.badge.sfm-badge-btn:hover {
   font-weight: 600;
 }
 
-/* Instagram-Style Tab Bar */
+/* Instagram-Style Tab Bar & Dual-Tab Controls */
 .sfm-profile-wall-tab-bar {
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  padding: 0.65rem 0;
-  background: rgba(10, 14, 20, 0.6);
+  padding: 0;
+  background: rgba(10, 14, 20, 0.7);
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
 }
 
-.sfm-profile-tab-active {
+.sfm-profile-tab-btn {
+  background: transparent;
+  border: none;
+  outline: none !important;
+  color: #81a1c1;
+  padding: 0.8rem 1.25rem;
+  cursor: pointer;
+  position: relative;
+  transition: color 0.15s ease, background-color 0.15s ease;
+  user-select: none;
+  flex: 1;
+  max-width: 280px;
+}
+
+.sfm-profile-tab-btn:hover {
+  color: #eceff4;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.sfm-profile-tab-btn.sfm-profile-tab-active {
   color: #eceff4;
   border-bottom: 2px solid #88c0d0;
-  padding-bottom: 0.4rem;
-  margin-bottom: -0.65rem;
+  margin-bottom: -1px;
+}
+
+.sfm-profile-tab-btn.sfm-profile-tab-inactive {
+  opacity: 0.7;
+}
+
+.sfm-profile-tab-divider {
+  width: 1px;
+  height: 22px;
+  background: rgba(255, 255, 255, 0.08);
+  margin: auto 0;
+}
+
+.sfm-tab-count-badge {
+  background: #242933;
+  color: #88c0d0;
+  font-weight: 700;
+  font-size: 0.7rem;
+  padding: 2px 6px;
+  border-radius: 10px;
+}
+
+.sfm-tab-explore-badge {
+  background: #5e81ac;
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 0.65rem;
+  letter-spacing: 0.04em;
+  padding: 2px 6px;
+  border-radius: 10px;
+}
+
+/* Explore Subtoolbar & Refresh Button */
+.sfm-explore-toolbar {
+  background: #080b10;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.sfm-explore-refresh-btn {
+  border-radius: 14px;
+  font-size: 0.72rem;
+  transition: transform 0.1s ease;
+}
+
+.sfm-explore-refresh-btn:hover:not(:disabled) {
+  transform: scale(1.03);
+}
+
+/* ==========================================================================
+   Explore Page Mosaic Grid (Instagram Style 3-Column Mosaic with 2x2 Heroes)
+   ========================================================================== */
+
+.sfm-explore-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-auto-flow: dense;
+  gap: 1px;
+  background-color: #000000;
+  width: 100%;
+  flex-grow: 1;
+}
+
+.sfm-explore-tile {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  cursor: pointer;
+  background: #0d1117;
+  border: none;
+  margin: 0;
+  user-select: none;
+}
+
+.sfm-explore-tile-featured {
+  grid-column: span 2;
+  grid-row: span 2;
+}
+
+.sfm-explore-tile-active {
+  outline: 3px solid #88c0d0 !important;
+  outline-offset: -3px;
+  z-index: 5;
+}
+
+.sfm-explore-tile-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.sfm-explore-tile:hover .sfm-explore-tile-img {
+  transform: scale(1.05);
+}
+
+.sfm-explore-tile-featured-badge {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  background: linear-gradient(135deg, #88c0d0 0%, #5e81ac 100%);
+  color: #0c1017;
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  padding: 3px 8px;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.7);
+  z-index: 3;
+}
+
+.sfm-explore-tile-res {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: rgba(15, 20, 28, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #eceff4;
+  font-size: 0.62rem;
+  font-weight: 700;
+  padding: 1px 4px;
+  border-radius: 3px;
+  z-index: 3;
+}
+
+.sfm-explore-tile-views {
+  position: absolute;
+  bottom: 6px;
+  left: 6px;
+  color: #ffffff;
+  font-size: 0.72rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.95);
+  z-index: 3;
+  pointer-events: none;
+}
+
+.sfm-explore-tile-hover-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.15) 0%, rgba(0, 0, 0, 0.82) 100%);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 12px;
+  opacity: 0;
+  transition: opacity 0.18s ease;
+  z-index: 4;
+}
+
+.sfm-explore-tile:hover .sfm-explore-tile-hover-overlay {
+  opacity: 1;
+}
+
+.sfm-explore-tile-hover-center {
+  margin: auto;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: rgba(136, 192, 208, 0.9);
+  color: #0c1017;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  padding-left: 3px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.6);
+  transform: scale(0.9);
+  transition: transform 0.15s ease;
+}
+
+.sfm-explore-tile-featured .sfm-explore-tile-hover-center {
+  width: 54px;
+  height: 54px;
+  font-size: 1.4rem;
+  padding-left: 4px;
+}
+
+.sfm-explore-tile:hover .sfm-explore-tile-hover-center {
+  transform: scale(1.05);
+}
+
+.sfm-explore-tile-hover-studio {
+  color: #88c0d0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-bottom: 2px;
+}
+
+.sfm-explore-tile-hover-title {
+  color: #eceff4;
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.25;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.95);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.sfm-explore-tile-featured .sfm-explore-tile-hover-title {
+  font-size: 0.95rem;
+  -webkit-line-clamp: 3;
+}
+
+.sfm-tab-content-reels {
+  animation: sfmSlideInRight 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.sfm-tab-content-explore {
+  animation: sfmSlideInLeft 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes sfmSlideInLeft {
+  from {
+    opacity: 0.7;
+    transform: translateX(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes sfmSlideInRight {
+  from {
+    opacity: 0.7;
+    transform: translateX(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 /* Real Video Wall Grid (Zero border gaps between videos!) */
@@ -3080,14 +3341,50 @@ button.badge.sfm-badge-btn:hover {
     max-width: 100vw !important;
     border: none !important;
   }
-  .sfm-profile-wall-grid {
+  .sfm-profile-wall-grid,
+  .sfm-explore-grid {
     grid-template-columns: repeat(3, 1fr) !important;
     gap: 1px !important;
+  }
+  .sfm-profile-tab-btn {
+    padding: 0.65rem 0.5rem !important;
+  }
+  .sfm-profile-tab-btn .sfm-tab-text {
+    font-size: 0.72rem !important;
   }
   .sfm-reel-modal-dialog {
     max-width: 100vw !important;
     max-height: 100vh !important;
     border-radius: 0 !important;
+  }
+  .sfm-floating-actions-bar {
+    bottom: 14px !important;
+    padding: 4px 8px !important;
+    gap: 6px !important;
+    max-width: 96vw !important;
+  }
+}
+
+/* Extra Compact Scaling for Small Mobile Screens */
+.sfm-btn-label-mobile {
+  display: none;
+}
+
+@media (max-width: 576px) {
+  .sfm-profile-nav-bar {
+    padding: 0.5rem 0.75rem !important;
+  }
+  .sfm-profile-back-btn .sfm-btn-label-desktop,
+  .sfm-profile-mode-btn .sfm-btn-label-desktop,
+  .sfm-profile-fm-btn .sfm-btn-label-desktop {
+    display: none !important;
+  }
+  .sfm-btn-label-mobile {
+    display: inline !important;
+  }
+  .sfm-floating-actions-bar .btn {
+    font-size: 0.72rem !important;
+    padding: 0.2rem 0.45rem !important;
   }
 }
 

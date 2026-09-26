@@ -402,7 +402,27 @@
       );
     }
 
-    function IconWidth({ size = 12, color = "#81a1c1" }) {
+        function IconCompass({ size = 14, color = "currentColor", className = "", style = {} }) {
+      return React.createElement(
+        "svg",
+        {
+          viewBox: "0 0 24 24",
+          width: size,
+          height: size,
+          stroke: color,
+          strokeWidth: "2",
+          fill: "none",
+          strokeLinecap: "round",
+          strokeLinejoin: "round",
+          className: className,
+          style: { display: "inline-block", verticalAlign: "middle", ...style },
+        },
+        React.createElement("circle", { cx: "12", cy: "12", r: "10" }),
+        React.createElement("polygon", { points: "16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" })
+      );
+    }
+
+function IconWidth({ size = 12, color = "#81a1c1" }) {
       return React.createElement(
         "svg",
         {
@@ -839,7 +859,148 @@
       onNavigateToDirectory,
       onPlayAll,
       onShuffleAll,
+      onNavigateToFolder,
     }) {
+      const [activeTab, setActiveTab] = useState("reels"); // "reels" | "explore"
+      const [exploreScenes, setExploreScenes] = useState([]);
+      const [isExploreLoading, setIsExploreLoading] = useState(false);
+
+      // Touch gesture coordinates for horizontal swipe left/right
+      const touchStartXRef = useRef(0);
+      const touchStartYRef = useRef(0);
+      const touchStartTimeRef = useRef(0);
+
+      const handleTouchStart = (e) => {
+        e.stopPropagation();
+        if (!e.touches || e.touches.length === 0) return;
+        touchStartXRef.current = e.touches[0].clientX;
+        touchStartYRef.current = e.touches[0].clientY;
+        touchStartTimeRef.current = Date.now();
+      };
+
+      const handleTouchMove = (e) => {
+        e.stopPropagation();
+      };
+
+      const handleTouchEnd = (e) => {
+        e.stopPropagation();
+        if (!e.changedTouches || e.changedTouches.length === 0) return;
+        const touch = e.changedTouches[0];
+        const deltaX = touch.clientX - touchStartXRef.current;
+        const deltaY = touch.clientY - touchStartYRef.current;
+        const deltaTime = Date.now() - touchStartTimeRef.current;
+
+        // Verify valid horizontal swipe:
+        // 1. Horizontal movement > 40px
+        // 2. Clear horizontal orientation (Math.abs(deltaX) > Math.abs(deltaY) * 1.25)
+        // 3. Gesture completed within 600ms
+        if (Math.abs(deltaX) > 40 && Math.abs(deltaX) > Math.abs(deltaY) * 1.25 && deltaTime < 600) {
+          if (deltaX < 0 && activeTab === "reels") {
+            // Swipe Left -> switch to Explore page!
+            setActiveTab("explore");
+          } else if (deltaX > 0 && activeTab === "explore") {
+            // Swipe Right -> switch to Reels page!
+            setActiveTab("reels");
+          }
+        }
+      };
+
+      // Desktop keyboard navigation: ArrowLeft for Reels, ArrowRight for Explore
+      useEffect(() => {
+        const handleKeyDown = (e) => {
+          if (["input", "textarea"].includes(e.target.tagName?.toLowerCase())) return;
+          if (e.key === "ArrowLeft") {
+            setActiveTab("reels");
+          } else if (e.key === "ArrowRight") {
+            setActiveTab("explore");
+          }
+        };
+        window.addEventListener("keydown", handleKeyDown);
+        return () => window.removeEventListener("keydown", handleKeyDown);
+      }, []);
+
+      // Global Library Explore loader: draws a random selection from library cache or GraphQL
+      const loadExploreScenes = useCallback(async (count = 60) => {
+        setIsExploreLoading(true);
+        try {
+          // 1. Check in-memory global cache first (instant 0ms retrieval)
+          const cached = window.__SFM_GLOBAL_CACHE__?.scenes;
+          if (Array.isArray(cached) && cached.length > 0) {
+            const pool = [...cached];
+            for (let i = pool.length - 1; i > 0; i--) {
+              const j = Math.floor(Math.random() * (i + 1));
+              [pool[i], pool[j]] = [pool[j], pool[i]];
+            }
+            setExploreScenes(pool.slice(0, count));
+            setIsExploreLoading(false);
+            return;
+          }
+
+          // 2. Fetch random scenes from Stash GraphQL
+          const query = `
+            query GetRandomExploreScenes {
+              findScenes(filter: { sort: "random", direction: ASC, per_page: ${count} }) {
+                scenes {
+                  id
+                  title
+                  date
+                  rating100
+                  studio { id name }
+                  performers { id name }
+                  tags { id name }
+                  paths { screenshot preview stream }
+                  files { id path basename size duration height video_codec format }
+                }
+              }
+            }
+          `;
+          const data = await gqlFetch(query);
+          const fetched = data?.findScenes?.scenes || [];
+          if (fetched.length > 0) {
+            setExploreScenes(fetched);
+          } else if (scenes.length > 0) {
+            const pool = [...scenes];
+            for (let i = pool.length - 1; i > 0; i--) {
+              const j = Math.floor(Math.random() * (i + 1));
+              [pool[i], pool[j]] = [pool[j], pool[i]];
+            }
+            setExploreScenes(pool);
+          }
+        } catch (err) {
+          console.error("Explore fetch error:", err);
+          if (scenes.length > 0) {
+            const pool = [...scenes];
+            for (let i = pool.length - 1; i > 0; i--) {
+              const j = Math.floor(Math.random() * (i + 1));
+              [pool[i], pool[j]] = [pool[j], pool[i]];
+            }
+            setExploreScenes(pool);
+          }
+        } finally {
+          setIsExploreLoading(false);
+        }
+      }, [scenes]);
+
+      useEffect(() => {
+        loadExploreScenes(60);
+      }, [loadExploreScenes]);
+
+      // Selection handler for explore scene: plays scene and returns to standard player view
+      const handleSelectExploreScene = (s) => {
+        if (!s) return;
+        const sPath = s.files?.[0]?.path;
+        if (sPath && onNavigateToFolder) {
+          const parts = sPath.split("/").filter(Boolean);
+          parts.pop(); // remove file basename
+          const folder = parts.join("/");
+          if (folder && folder !== targetFolderPath) {
+            onNavigateToFolder(folder);
+          }
+        }
+        onSelectScene(s);
+        onCloseProfile();
+      };
+
       const stats = useMemo(() => {
         let totalSize = 0;
         let totalDuration = 0;
@@ -879,9 +1040,9 @@
           className: `sfm-folder-profile-page ${isForceMobile ? "sfm-profile-force-mobile" : ""}`,
           onClick: (e) => e.stopPropagation(),
           onWheel: (e) => e.stopPropagation(),
-          onTouchStart: (e) => e.stopPropagation(),
-          onTouchMove: (e) => e.stopPropagation(),
-          onTouchEnd: (e) => e.stopPropagation(),
+          onTouchStart: handleTouchStart,
+          onTouchMove: handleTouchMove,
+          onTouchEnd: handleTouchEnd,
         },
         // 1. Sticky Navigation Top Bar
         React.createElement(
@@ -896,7 +1057,8 @@
               title: "Back to Video Player (Esc)",
             },
             React.createElement(IconArrowLeft, { size: 14, className: "mr-1" }),
-            React.createElement("span", { className: "font-weight-bold" }, "Back to Video")
+            React.createElement("span", { className: "font-weight-bold sfm-btn-label-desktop" }, "Back to Video"),
+            React.createElement("span", { className: "font-weight-bold sfm-btn-label-mobile" }, "Back")
           ),
           React.createElement(
             "div",
@@ -917,18 +1079,20 @@
                 title: isForceMobile ? "Switch to Desktop Grid View" : "Force Mobile Phone View (Instagram/TikTok 3-Column Wall)",
               },
               React.createElement(IconSmartphone, { size: 14, className: "mr-1" }),
-              isForceMobile ? "Desktop Mode" : "Mobile View"
+              React.createElement("span", { className: "sfm-btn-label-desktop" }, isForceMobile ? "Desktop Mode" : "Mobile View"),
+              React.createElement("span", { className: "sfm-btn-label-mobile" }, isForceMobile ? "Desktop" : "Mobile")
             ),
             React.createElement(
               "button",
               {
                 type: "button",
-                className: "btn btn-sm btn-outline-secondary py-1 px-2 d-inline-flex align-items-center",
+                className: "btn btn-sm btn-outline-secondary py-1 px-2 d-inline-flex align-items-center sfm-profile-fm-btn",
                 onClick: onNavigateToDirectory,
                 title: `Open "${targetFolderPath || "Root"}" in File Manager`,
               },
               React.createElement(IconFolder, { size: 13, className: "mr-1" }),
-              "File Manager"
+              React.createElement("span", { className: "sfm-btn-label-desktop" }, "File Manager"),
+              React.createElement("span", { className: "sfm-btn-label-mobile" }, "Files")
             ),
             React.createElement(
               "button",
@@ -1055,89 +1219,228 @@
             )
           ),
 
-          // 3. Tab Bar Header: Reels / Video Wall (Clean line like IG profile)
+          // 3. Tab Bar Header: Dual-Tab (Reels & Videos vs Explore)
           React.createElement(
             "div",
-            { className: "sfm-profile-wall-tab-bar d-flex align-items-center justify-content-center" },
+            { className: "sfm-profile-wall-tab-bar" },
+            // Tab 1: Reels & Videos
             React.createElement(
-              "div",
-              { className: "sfm-profile-tab-active d-flex align-items-center" },
-              React.createElement("span", { className: "mr-2 font-weight-bold" }, "▦"),
-              React.createElement("span", { className: "font-weight-bold text-uppercase letter-spacing-1 small" }, "REELS & VIDEOS"),
-              React.createElement("span", { className: "badge badge-dark ml-2" }, scenes.length)
+              "button",
+              {
+                type: "button",
+                className: `sfm-profile-tab-btn ${activeTab === "reels" ? "sfm-profile-tab-active" : "sfm-profile-tab-inactive"} d-flex align-items-center justify-content-center`,
+                onClick: () => setActiveTab("reels"),
+                title: "Directory Video Wall (Swipe right)",
+              },
+              React.createElement("span", { className: "mr-1 mr-sm-2 font-weight-bold" }, "▦"),
+              React.createElement("span", { className: "font-weight-bold text-uppercase letter-spacing-1 small sfm-tab-text" }, "REELS & VIDEOS"),
+              React.createElement("span", { className: "badge badge-dark ml-2 sfm-tab-count-badge" }, scenes.length)
+            ),
+            // Divider
+            React.createElement("div", { className: "sfm-profile-tab-divider" }),
+            // Tab 2: Explore
+            React.createElement(
+              "button",
+              {
+                type: "button",
+                className: `sfm-profile-tab-btn ${activeTab === "explore" ? "sfm-profile-tab-active" : "sfm-profile-tab-inactive"} d-flex align-items-center justify-content-center`,
+                onClick: () => setActiveTab("explore"),
+                title: "Explore Library Mosaic (Swipe left)",
+              },
+              React.createElement(IconCompass, { size: 14, className: "mr-1 mr-sm-2" }),
+              React.createElement("span", { className: "font-weight-bold text-uppercase letter-spacing-1 small sfm-tab-text" }, "EXPLORE"),
+              React.createElement("span", { className: "badge badge-info ml-2 sfm-tab-explore-badge" }, "DISCOVER")
             )
           ),
 
-          // 4. Real Video Wall Grid (Zero border gaps between videos!)
-          React.createElement(
-            "div",
-            { className: "sfm-profile-wall-grid" },
-            scenes.map((s) => {
-              const isCurrent = s.id === currentScene?.id;
-              const sPoster = s.paths?.screenshot || `/scene/${s.id}/screenshot`;
-              const sTitle = s.title || s.files?.[0]?.basename || `Scene #${s.id}`;
-              const sDuration = formatDuration(s.files?.[0]?.duration);
-              const sHeight = s.files?.[0]?.height;
-              const sRes = sHeight >= 2160 ? "4K" : sHeight >= 1080 ? "1080p" : sHeight >= 720 ? "720p" : "";
+          // 4. Content Area: Either Reels Video Wall OR Explore Mosaic Grid
+          activeTab === "reels" ? (
+            React.createElement(
+              "div",
+              { className: "sfm-profile-wall-grid sfm-tab-content-reels" },
+              scenes.map((s) => {
+                const isCurrent = s.id === currentScene?.id;
+                const sPoster = s.paths?.screenshot || `/scene/${s.id}/screenshot`;
+                const sTitle = s.title || s.files?.[0]?.basename || `Scene #${s.id}`;
+                const sDuration = formatDuration(s.files?.[0]?.duration);
+                const sHeight = s.files?.[0]?.height;
+                const sRes = sHeight >= 2160 ? "4K" : sHeight >= 1080 ? "1080p" : sHeight >= 720 ? "720p" : "";
 
-              return React.createElement(
-                "div",
-                {
-                  key: s.id,
-                  className: `sfm-wall-tile ${isCurrent ? "sfm-wall-tile-active" : ""}`,
-                  onClick: () => onSelectScene(s),
-                  title: `Play: ${sTitle}`,
-                },
-                // Poster Image
-                React.createElement("img", {
-                  src: sPoster,
-                  className: "sfm-wall-tile-img",
-                  alt: sTitle,
-                  loading: "lazy",
-                }),
-                // Top-Left Playing Badge
-                isCurrent &&
-                  React.createElement(
-                    "div",
-                    { className: "sfm-wall-tile-playing" },
-                    "▶ PLAYING"
-                  ),
-                // Top-Right Resolution Badge
-                sRes &&
-                  React.createElement(
-                    "div",
-                    { className: "sfm-wall-tile-res" },
-                    sRes
-                  ),
-                // Bottom-Left Views / Duration (Instagram Reel style)
-                React.createElement(
+                return React.createElement(
                   "div",
-                  { className: "sfm-wall-tile-views" },
-                  React.createElement("span", { className: "mr-1", style: { fontSize: "0.65rem" } }, "▶"),
-                  React.createElement("span", null, sDuration)
-                ),
-                // Desktop Hover Overlay (Dark gradient, title, play icon)
-                React.createElement(
-                  "div",
-                  { className: "sfm-wall-tile-hover-overlay" },
+                  {
+                    key: s.id,
+                    className: `sfm-wall-tile ${isCurrent ? "sfm-wall-tile-active" : ""}`,
+                    onClick: () => {
+                      onSelectScene(s);
+                      onCloseProfile();
+                    },
+                    title: `Play: ${sTitle}`,
+                  },
+                  React.createElement("img", {
+                    src: sPoster,
+                    className: "sfm-wall-tile-img",
+                    alt: sTitle,
+                    loading: "lazy",
+                  }),
+                  isCurrent &&
+                    React.createElement(
+                      "div",
+                      { className: "sfm-wall-tile-playing" },
+                      "▶ PLAYING"
+                    ),
+                  sRes &&
+                    React.createElement(
+                      "div",
+                      { className: "sfm-wall-tile-res" },
+                      sRes
+                    ),
                   React.createElement(
                     "div",
-                    { className: "sfm-wall-tile-hover-center" },
-                    "▶"
+                    { className: "sfm-wall-tile-views" },
+                    React.createElement("span", { className: "mr-1", style: { fontSize: "0.65rem" } }, "▶"),
+                    React.createElement("span", null, sDuration)
                   ),
                   React.createElement(
                     "div",
-                    { className: "sfm-wall-tile-hover-title" },
-                    sTitle
+                    { className: "sfm-wall-tile-hover-overlay" },
+                    React.createElement(
+                      "div",
+                      { className: "sfm-wall-tile-hover-center" },
+                      "▶"
+                    ),
+                    React.createElement(
+                      "div",
+                      { className: "sfm-wall-tile-hover-title" },
+                      sTitle
+                    )
                   )
+                );
+              })
+            )
+          ) : (
+            React.createElement(
+              "div",
+              { className: "sfm-explore-container sfm-tab-content-explore d-flex flex-column flex-grow-1" },
+              React.createElement(
+                "div",
+                { className: "sfm-explore-toolbar d-flex align-items-center justify-content-between px-3 py-2" },
+                React.createElement(
+                  "div",
+                  { className: "d-flex align-items-center text-truncate mr-2" },
+                  React.createElement(IconCompass, { size: 14, color: "#88c0d0", className: "mr-2 flex-shrink-0" }),
+                  React.createElement("span", { className: "small font-weight-bold text-light text-truncate" }, "Randomized Library Mosaic"),
+                  React.createElement(
+                    "span",
+                    { className: "badge badge-dark ml-2 text-muted flex-shrink-0" },
+                    `${exploreScenes.length} scenes`
+                  )
+                ),
+                React.createElement(
+                  "button",
+                  {
+                    type: "button",
+                    className: "btn btn-sm btn-outline-info py-0 px-2 d-inline-flex align-items-center sfm-explore-refresh-btn font-weight-bold flex-shrink-0",
+                    onClick: () => loadExploreScenes(60),
+                    disabled: isExploreLoading,
+                    title: "Shuffle and roll a new set of random explore scenes",
+                  },
+                  React.createElement(IconShuffle, { size: 12, className: "mr-1" }),
+                  isExploreLoading ? "Shuffling..." : "Shuffle Feed"
                 )
-              );
-            })
+              ),
+              isExploreLoading && exploreScenes.length === 0 ? (
+                React.createElement(
+                  "div",
+                  { className: "text-center py-5 text-muted" },
+                  React.createElement("div", { className: "spinner-border spinner-border-sm text-info mr-2" }),
+                  "Loading Explore Feed..."
+                )
+              ) : (
+                React.createElement(
+                  "div",
+                  { className: "sfm-explore-grid" },
+                  exploreScenes.map((s, idx) => {
+                    const isFeatured = idx % 12 === 0 || idx % 12 === 7;
+                    const isCurrent = s.id === currentScene?.id;
+                    const sPoster = s.paths?.screenshot || s.paths?.preview || `/scene/${s.id}/screenshot`;
+                    const sTitle = s.title || s.files?.[0]?.basename || `Scene #${s.id}`;
+                    const sDuration = formatDuration(s.files?.[0]?.duration);
+                    const sHeight = s.files?.[0]?.height;
+                    const sRes = sHeight >= 2160 ? "4K" : sHeight >= 1080 ? "1080p" : sHeight >= 720 ? "720p" : "";
+                    const studioName = s.studio?.name;
+
+                    return React.createElement(
+                      "div",
+                      {
+                        key: `explore-${s.id}-${idx}`,
+                        className: `sfm-explore-tile ${isFeatured ? "sfm-explore-tile-featured" : ""} ${isCurrent ? "sfm-explore-tile-active" : ""}`,
+                        onClick: () => handleSelectExploreScene(s),
+                        title: `Play: ${sTitle}`,
+                      },
+                      React.createElement("img", {
+                        src: sPoster,
+                        className: "sfm-explore-tile-img",
+                        alt: sTitle,
+                        loading: "lazy",
+                      }),
+                      isFeatured &&
+                        React.createElement(
+                          "div",
+                          { className: "sfm-explore-tile-featured-badge" },
+                          "★ FEATURED"
+                        ),
+                      isCurrent &&
+                        React.createElement(
+                          "div",
+                          { className: "sfm-wall-tile-playing" },
+                          "▶ PLAYING"
+                        ),
+                      sRes &&
+                        React.createElement(
+                          "div",
+                          { className: "sfm-explore-tile-res" },
+                          sRes
+                        ),
+                      React.createElement(
+                        "div",
+                        { className: "sfm-explore-tile-views" },
+                        React.createElement("span", { className: "mr-1", style: { fontSize: "0.65rem" } }, "▶"),
+                        React.createElement("span", null, sDuration)
+                      ),
+                      React.createElement(
+                        "div",
+                        { className: "sfm-explore-tile-hover-overlay" },
+                        React.createElement(
+                          "div",
+                          { className: "sfm-explore-tile-hover-center" },
+                          "▶"
+                        ),
+                        React.createElement(
+                          "div",
+                          { className: "sfm-explore-tile-hover-bottom" },
+                          studioName &&
+                            React.createElement(
+                              "div",
+                              { className: "sfm-explore-tile-hover-studio" },
+                              studioName
+                            ),
+                          React.createElement(
+                            "div",
+                            { className: "sfm-explore-tile-hover-title" },
+                            sTitle
+                          )
+                        )
+                      )
+                    );
+                  })
+                )
+              )
+            )
           )
         )
       );
     }
-
     function BingeReelPlayerModal({ scene, scenes = [], onSelectScene, onClose, folderName, currentPath, onNavigateToFolder }) {
       const videoRef = useRef(null);
       const videoContainerRef = useRef(null);
@@ -2001,6 +2304,7 @@
                 setShowFolderProfile(false);
               }
             },
+            onNavigateToFolder: onNavigateToFolder,
           }),
 
         // When in PiP mode, show small non-intrusive floating dock pill

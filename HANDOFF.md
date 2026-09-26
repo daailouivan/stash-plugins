@@ -1,11 +1,11 @@
 # Project Handoff Document: Stash Path File Manager Plugin
 
-**Current Version:** `v2.9.1`  
+**Current Version:** `v2.9.2`  
 **Active Repository:** `https://github.com/daailouivan/stash-plugins.git` (`main` branch)  
-**Distribution Package:** `stash_file_manager.zip` (SHA256: `c9e120b6bf6cd0b4274e4732267049d8a9e1314d5f100febb8d0373827353db5`)  
-**Plugin Manifest:** `stash_file_manager/stash_file_manager.yml` (version `2.9.1`)  
-**Index Manifest:** `index.yml` (version `2.9.1`)  
-**Total Release Tags:** `31` (`v1.0.0` through `v2.9.1`)  
+**Distribution Package:** `stash_file_manager.zip` (SHA256: `7b720b38fc57b34c817cb212c3575f90acf2e507fc5d37caf107c2c6cdf8f15f`)  
+**Plugin Manifest:** `stash_file_manager/stash_file_manager.yml` (version `2.9.2`)  
+**Index Manifest:** `index.yml` (version `2.9.2`)  
+**Total Release Tags:** `32` (`v1.0.0` through `v2.9.2`)  
 
 ---
 
@@ -23,6 +23,8 @@ The **Stash Path File Manager (`stash_file_manager`)** is a community plugin for
    - **Folder Profile & Video Wall Page**: In-player directory profile view with social-media-style avatar, folder path, live metrics (video counts, size, duration, resolutions), and a responsive video wall grid.
    - **Instagram / TikTok Seamless Video Wall**: Flush 3-column video wall with zero border gaps, views/duration overlays, and Force Mobile View phone frame simulation.
    - **Elevated Button Surfaces & Persistent Indicators**: High-contrast button backgrounds (`#222938`) and indicators matching top total file counts pill style (`#242933` with `#4c566a` border and `#eceff4` white text).
+   - **Instagram-Style Explore Mosaic Page**: 3-column dense mosaic grid with alternating 2×2 featured video hero tiles (`★ FEATURED`) and 1×1 standard tiles, pulling randomized global library scenes.
+   - **Horizontal Swipe Left/Right Gesture Navigation**: Fluid mobile gestures (`onTouchStart`/`onTouchEnd`) and desktop arrow keys (`←`/`→`) to seamlessly glide between Reels Video Wall and Explore Mosaic feeds.
 2. **Backend Tasks (`stash_file_manager/sfm_tasks.py`)**:
    - Executed via Stash's native Python plugin runner.
    - Provides filesystem tree building, directory hierarchy caching, and regex-based filename metadata extraction.
@@ -67,7 +69,8 @@ The **Stash Path File Manager (`stash_file_manager`)** is a community plugin for
 | `v2.8.1` | `b82d6d0` | Selection-driven guided regex builder with multi-field tagging |
 | `v2.8.2` | `51342a6` | Floating toolbar button standardization, index.yml sync |
 | `v2.9.0` | `d6bb569` | Folder Profile Video Wall, Shuffle Queue, social avatar & path overlay |
-| `v2.9.1` | `HEAD` | Instagram/TikTok seamless video wall, Force Mobile View toggle, button contrast overhaul |
+| `v2.9.1` | `e41f9df` | Instagram/TikTok seamless video wall, Force Mobile View toggle, button contrast overhaul |
+| `v2.9.2` | `7656fd6` | Instagram-style Explore mosaic page, swipe left/right mobile gestures, dual-tab header, responsive audit |
 
 ---
 

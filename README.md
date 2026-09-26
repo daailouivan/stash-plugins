@@ -134,6 +134,13 @@ Eliminate wasted vertical space with compact folder layouts tailored to any libr
 
 ## 📋 Changelog & Development History
 
+### [v2.9.2] — 2026-09-26 12:23:05
+* **Instagram-Style Explore Mosaic Page:** Integrated an Explore discovery feed alongside the directory video wall featuring randomized global library scenes in a 3-column mosaic grid with alternating 2×2 featured video hero tiles (`★ FEATURED`) and 1×1 standard tiles with zero border gaps.
+* **Mobile Swipe Left/Right Gesture Navigation:** Implemented touch gesture tracking (`onTouchStart`/`onTouchEnd`) enabling users on mobile devices and inside Force Mobile View to swipe left to transition to Explore and swipe right to return to Reels & Videos, without interfering with vertical scroll.
+* **Dual-Tab Header & Keyboard Navigation:** Upgraded the profile tab bar with `▦ REELS & VIDEOS` and `🧭 EXPLORE` tabs, active cyan indicator underline, responsive badges, and desktop keyboard arrow navigation (`←` / `→`).
+* **Global Discovery Engine & Standard Player Return:** Powered by instant client-side cache and GraphQL randomized queries with inline "Shuffle Feed" re-rolls. Selecting any explore scene automatically opens and plays it in Binge Reel Player, synchronizing folder context and returning to standard queue playback.
+* **Responsive Scaling Audit:** Polished scaling across desktop (centered 980px container) and mobile view (440px phone frame / 100vw native mobile) with adaptive typography and safe bounds to prevent horizontal overflow.
+
 ### [v2.9.1] — 2026-09-26 08:59:47
 * **Instagram / TikTok Seamless Video Wall:** Re-architected Directory Profile into an authentic zero-border-gap 3-column video wall with edge-to-edge portrait tiles, views/duration overlay (`▶ 04:15`), resolution chips, and desktop hover card inspection.
 * **Force Mobile View & Responsive Layout:** Added an interactive mobile view toggle (`IconSmartphone`) allowing one-click switching between an Instagram/TikTok mobile phone frame (430px) and a web desktop view, with full scrolling reel player integration.
