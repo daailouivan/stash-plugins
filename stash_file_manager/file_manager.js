@@ -865,6 +865,22 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
       const [exploreScenes, setExploreScenes] = useState([]);
       const [isExploreLoading, setIsExploreLoading] = useState(false);
 
+      // Profile-specific Sort State (persisted in localStorage, applies strictly to profile page only)
+      const [profileSort, setProfileSort] = useState(() => {
+        try {
+          return window.localStorage.getItem("sfm_profile_wall_sort") || "default";
+        } catch (e) {
+          return "default";
+        }
+      });
+
+      const handleSortChange = (newSort) => {
+        setProfileSort(newSort);
+        try {
+          window.localStorage.setItem("sfm_profile_wall_sort", newSort);
+        } catch (e) {}
+      };
+
       // Touch gesture coordinates for horizontal swipe left/right
       const touchStartXRef = useRef(0);
       const touchStartYRef = useRef(0);
@@ -1000,6 +1016,47 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
         onSelectScene(s);
         onCloseProfile();
       };
+
+      const sortedScenes = useMemo(() => {
+        if (!scenes || scenes.length === 0) return [];
+        if (profileSort === "default") return scenes;
+
+        const copy = [...scenes];
+        if (profileSort === "random") {
+          for (let i = copy.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [copy[i], copy[j]] = [copy[j], copy[i]];
+          }
+          return copy;
+        }
+
+        copy.sort((a, b) => {
+          if (profileSort === "title_desc") {
+            return (b.title || b.files?.[0]?.basename || "").localeCompare(a.title || a.files?.[0]?.basename || "");
+          }
+          if (profileSort === "title_asc") {
+            return (a.title || a.files?.[0]?.basename || "").localeCompare(b.title || b.files?.[0]?.basename || "");
+          }
+          if (profileSort === "date_desc") {
+            return (b.date || "").localeCompare(a.date || "");
+          }
+          if (profileSort === "date_asc") {
+            return (a.date || "").localeCompare(b.date || "");
+          }
+          if (profileSort === "rating_desc") {
+            return (b.rating100 || 0) - (a.rating100 || 0);
+          }
+          if (profileSort === "duration_desc") {
+            return (b.files?.[0]?.duration || 0) - (a.files?.[0]?.duration || 0);
+          }
+          if (profileSort === "size_desc") {
+            return (b.files?.[0]?.size || 0) - (a.files?.[0]?.size || 0);
+          }
+          return (a.title || a.files?.[0]?.basename || "").localeCompare(b.title || b.files?.[0]?.basename || "");
+        });
+
+        return copy;
+      }, [scenes, profileSort]);
 
       const stats = useMemo(() => {
         let totalSize = 0;
@@ -1185,7 +1242,14 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                 {
                   type: "button",
                   className: "btn btn-sm btn-primary flex-grow-1 py-1 font-weight-bold d-inline-flex align-items-center justify-content-center",
-                  onClick: onPlayAll,
+                  onClick: () => {
+                    if (sortedScenes.length > 0) {
+                      onSelectScene(sortedScenes[0]);
+                      onCloseProfile();
+                    } else if (onPlayAll) {
+                      onPlayAll();
+                    }
+                  },
                   title: "Play all videos sequentially",
                 },
                 React.createElement("span", { className: "mr-1" }, "▶"),
@@ -1257,8 +1321,50 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
           activeTab === "reels" ? (
             React.createElement(
               "div",
-              { className: "sfm-profile-wall-grid sfm-tab-content-reels" },
-              scenes.map((s) => {
+              { className: "sfm-profile-reels-container sfm-tab-content-reels d-flex flex-column flex-grow-1" },
+              // Subtoolbar with Profile Sort Selector (applies ONLY to profile page)
+              React.createElement(
+                "div",
+                { className: "sfm-profile-reels-toolbar d-flex align-items-center justify-content-between px-3 py-2" },
+                React.createElement(
+                  "div",
+                  { className: "d-flex align-items-center text-truncate mr-2" },
+                  React.createElement("span", { className: "mr-2 font-weight-bold text-info" }, "▦"),
+                  React.createElement("span", { className: "small font-weight-bold text-light text-truncate" }, "Directory Reels"),
+                  React.createElement(
+                    "span",
+                    { className: "badge badge-dark ml-2 text-muted flex-shrink-0" },
+                    `${sortedScenes.length} scenes`
+                  )
+                ),
+                React.createElement(
+                  "div",
+                  { className: "d-flex align-items-center flex-shrink-0" },
+                  React.createElement("span", { className: "small text-muted mr-1 font-weight-bold sfm-sort-label-text" }, "Sort:"),
+                  React.createElement(
+                    "select",
+                    {
+                      className: "sfm-sort-select sfm-profile-sort-select",
+                      value: profileSort,
+                      onChange: (e) => handleSortChange(e.target.value),
+                      title: "Sort Profile Video Wall (Applies only to Profile Page)",
+                    },
+                    React.createElement("option", { value: "default" }, "Default (Folder)"),
+                    React.createElement("option", { value: "date_desc" }, "Date (Newest)"),
+                    React.createElement("option", { value: "date_asc" }, "Date (Oldest)"),
+                    React.createElement("option", { value: "title_asc" }, "Title (A-Z)"),
+                    React.createElement("option", { value: "title_desc" }, "Title (Z-A)"),
+                    React.createElement("option", { value: "rating_desc" }, "Rating (Highest)"),
+                    React.createElement("option", { value: "duration_desc" }, "Duration (Longest)"),
+                    React.createElement("option", { value: "size_desc" }, "Size (Largest)"),
+                    React.createElement("option", { value: "random" }, "Shuffle / Random")
+                  )
+                )
+              ),
+              React.createElement(
+                "div",
+                { className: "sfm-profile-wall-grid" },
+                sortedScenes.map((s) => {
                 const isCurrent = s.id === currentScene?.id;
                 const sPoster = s.paths?.screenshot || `/scene/${s.id}/screenshot`;
                 const sTitle = s.title || s.files?.[0]?.basename || `Scene #${s.id}`;
@@ -1317,6 +1423,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                   )
                 );
               })
+              )
             )
           ) : (
             React.createElement(

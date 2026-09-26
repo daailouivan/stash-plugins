@@ -134,6 +134,10 @@ Eliminate wasted vertical space with compact folder layouts tailored to any libr
 
 ## 📋 Changelog & Development History
 
+### [v2.9.3] — 2026-09-26 12:29:19
+* **Profile-Exclusive Video Wall Sorting:** Integrated an independent "Sort by" selector into the Directory Reels subtoolbar on the video wall profile page. Supports all standard sorting criteria (*Default Folder Order*, *Date Newest/Oldest*, *Title A-Z/Z-A*, *Rating Highest*, *Duration Longest*, *Size Largest*, and *Shuffle/Random*).
+* **Strict Profile Isolation:** Persisted under `sfm_profile_wall_sort` in `localStorage` to ensure sorting applies strictly to the video wall profile view without mutating or altering the primary file manager's `sceneSort` state.
+
 ### [v2.9.2] — 2026-09-26 12:23:05
 * **Instagram-Style Explore Mosaic Page:** Integrated an Explore discovery feed alongside the directory video wall featuring randomized global library scenes in a 3-column mosaic grid with alternating 2×2 featured video hero tiles (`★ FEATURED`) and 1×1 standard tiles with zero border gaps.
 * **Mobile Swipe Left/Right Gesture Navigation:** Implemented touch gesture tracking (`onTouchStart`/`onTouchEnd`) enabling users on mobile devices and inside Force Mobile View to swipe left to transition to Explore and swipe right to return to Reels & Videos, without interfering with vertical scroll.

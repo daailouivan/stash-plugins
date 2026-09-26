@@ -2951,6 +2951,31 @@ button.badge.sfm-badge-btn:hover {
   border-radius: 10px;
 }
 
+/* Reels Subtoolbar & Profile-Exclusive Sort Selector */
+.sfm-profile-reels-toolbar {
+  background: #080b10;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.sfm-profile-sort-select {
+  background-color: #1a202c !important;
+  color: #88c0d0 !important;
+  border: 1px solid #3b4252 !important;
+  border-radius: 6px !important;
+  padding: 2px 8px !important;
+  font-size: 0.74rem !important;
+  font-weight: 600 !important;
+  outline: none !important;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.sfm-profile-sort-select:hover,
+.sfm-profile-sort-select:focus {
+  border-color: #88c0d0 !important;
+  background-color: #242b3a !important;
+}
+
 /* Explore Subtoolbar & Refresh Button */
 .sfm-explore-toolbar {
   background: #080b10;
@@ -3371,6 +3396,17 @@ button.badge.sfm-badge-btn:hover {
 }
 
 @media (max-width: 576px) {
+  .sfm-profile-reels-toolbar {
+    padding: 0.35rem 0.65rem !important;
+  }
+  .sfm-profile-sort-select {
+    font-size: 0.7rem !important;
+    padding: 1px 4px !important;
+    max-width: 130px !important;
+  }
+  .sfm-sort-label-text {
+    display: none !important;
+  }
   .sfm-profile-nav-bar {
     padding: 0.5rem 0.75rem !important;
   }
