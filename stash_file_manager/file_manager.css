@@ -2575,3 +2575,26 @@ button.badge.sfm-badge-btn:hover {
   font-weight: 600;
   border-radius: 3px;
 }
+
+
+/* ==========================================================================
+   Player Shuffle Queue Toggle Button & Counter Badge
+   ========================================================================== */
+
+.sfm-reel-circle-btn.sfm-shuffle-active {
+  background: rgba(136, 192, 208, 0.28) !important;
+  border-color: #88c0d0 !important;
+  color: #88c0d0 !important;
+  box-shadow: 0 0 14px rgba(136, 192, 208, 0.5), 0 4px 12px rgba(0, 0, 0, 0.5) !important;
+}
+
+.sfm-reel-circle-btn.sfm-shuffle-active:hover:not(:disabled) {
+  background: rgba(136, 192, 208, 0.4) !important;
+  box-shadow: 0 0 18px rgba(136, 192, 208, 0.7), 0 4px 14px rgba(0, 0, 0, 0.6) !important;
+}
+
+.sfm-reel-counter-badge.sfm-counter-shuffled {
+  border-color: rgba(136, 192, 208, 0.5) !important;
+  color: #88c0d0 !important;
+  background: rgba(15, 24, 34, 0.95) !important;
+}

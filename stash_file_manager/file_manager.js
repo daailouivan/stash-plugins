@@ -26,7 +26,7 @@
     const IDB_NAME = "stash_file_manager_db";
     const IDB_VERSION = 1;
     const IDB_STORE = "library";
-    const CACHE_KEY = "scenes_index_v6";
+    const CACHE_KEY = "scenes_index_v7";
     const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
     function openIDB() {
@@ -358,6 +358,28 @@
         React.createElement("line", { x1: "21", y1: "21", x2: "16.65", y2: "16.65" }),
         React.createElement("line", { x1: "11", y1: "8", x2: "11", y2: "14" }),
         React.createElement("line", { x1: "8", y1: "11", x2: "14", y2: "11" })
+      );
+    }
+
+    function IconShuffle({ size = 16, color = "currentColor", style = {} }) {
+      return React.createElement(
+        "svg",
+        {
+          viewBox: "0 0 24 24",
+          width: size,
+          height: size,
+          stroke: color,
+          strokeWidth: "2.2",
+          fill: "none",
+          strokeLinecap: "round",
+          strokeLinejoin: "round",
+          style: { display: "inline-block", verticalAlign: "middle", ...style },
+        },
+        React.createElement("polyline", { points: "16 3 21 3 21 8" }),
+        React.createElement("line", { x1: "4", y1: "20", x2: "21", y2: "3" }),
+        React.createElement("polyline", { points: "21 16 21 21 16 21" }),
+        React.createElement("line", { x1: "15", y1: "15", x2: "21", y2: "21" }),
+        React.createElement("line", { x1: "4", y1: "4", x2: "9", y2: "9" })
       );
     }
 
@@ -767,6 +789,20 @@
     // - Refined right button stack: No divider under Close, PiP and Fullscreen spaced down
     // - Consolidated native Stash plugin configuration
     // ==========================================
+    // Helper: Fisher-Yates non-repeating shuffle queue for video player
+    function createShuffledQueue(allScenes, currentScene) {
+      if (!allScenes || allScenes.length <= 1) return allScenes ? [...allScenes] : [];
+      const currentId = currentScene?.id;
+      const others = allScenes.filter((s) => s.id !== currentId);
+      for (let i = others.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        const temp = others[i];
+        others[i] = others[j];
+        others[j] = temp;
+      }
+      return currentScene ? [currentScene, ...others] : others;
+    }
+
     function BingeReelPlayerModal({ scene, scenes = [], onSelectScene, onClose, folderName, currentPath }) {
       const videoRef = useRef(null);
       const videoContainerRef = useRef(null);
@@ -774,21 +810,60 @@
       const hideTimeoutRef = useRef(null);
       const [isVideoReady, setIsVideoReady] = useState(false);
 
-      // 1. Scene Navigation & Previews (Sliding Window ±2 for Multi-Video Swiping)
-      const currentIndex = useMemo(() => {
-        return scenes.findIndex((s) => s.id === scene?.id);
-      }, [scenes, scene?.id]);
+      // 1. Shuffle Queue State & Non-Repeating Active Queue
+      const [isShuffle, setIsShuffle] = useState(() => {
+        try {
+          return window.localStorage.getItem("sfm_player_shuffle") === "true";
+        } catch (e) {
+          return false;
+        }
+      });
 
-      const totalScenes = scenes.length;
+      const [shuffledQueue, setShuffledQueue] = useState(() => {
+        try {
+          const pref = window.localStorage.getItem("sfm_player_shuffle") === "true";
+          if (pref && scenes && scenes.length > 0) {
+            return createShuffledQueue(scenes, scene);
+          }
+        } catch (e) {}
+        return [];
+      });
+
+      useEffect(() => {
+        if (isShuffle && scenes && scenes.length > 0) {
+          setShuffledQueue((prev) => {
+            const sceneIds = new Set(scenes.map((s) => s.id));
+            const prevIds = new Set(prev.map((s) => s.id));
+            if (sceneIds.size !== prevIds.size || [...sceneIds].some((id) => !prevIds.has(id))) {
+              return createShuffledQueue(scenes, scene);
+            }
+            return prev;
+          });
+        }
+      }, [scenes, isShuffle, scene?.id]);
+
+      const activeScenes = useMemo(() => {
+        if (isShuffle && shuffledQueue.length === scenes.length && shuffledQueue.length > 0) {
+          return shuffledQueue;
+        }
+        return scenes;
+      }, [isShuffle, shuffledQueue, scenes]);
+
+      // 2. Scene Navigation & Previews (Sliding Window ±2 for Multi-Video Swiping across Active Queue)
+      const currentIndex = useMemo(() => {
+        return activeScenes.findIndex((s) => s.id === scene?.id);
+      }, [activeScenes, scene?.id]);
+
+      const totalScenes = activeScenes.length;
       const hasPrev = currentIndex > 0;
       const hasPrev2 = currentIndex > 1;
       const hasNext = currentIndex !== -1 && currentIndex < totalScenes - 1;
       const hasNext2 = currentIndex !== -1 && currentIndex < totalScenes - 2;
 
-      const prev2Scene = hasPrev2 ? scenes[currentIndex - 2] : null;
-      const prevScene = hasPrev ? scenes[currentIndex - 1] : null;
-      const nextScene = hasNext ? scenes[currentIndex + 1] : null;
-      const next2Scene = hasNext2 ? scenes[currentIndex + 2] : null;
+      const prev2Scene = hasPrev2 ? activeScenes[currentIndex - 2] : null;
+      const prevScene = hasPrev ? activeScenes[currentIndex - 1] : null;
+      const nextScene = hasNext ? activeScenes[currentIndex + 1] : null;
+      const next2Scene = hasNext2 ? activeScenes[currentIndex + 2] : null;
 
       // 2. Format & Codec Resolution (Proactive MPEG-4 vs H.264 Detection)
       const filePath = scene?.files?.[0]?.path || scene?.files?.[0]?.basename || "";
@@ -1263,6 +1338,26 @@
         }
       };
 
+      // Toggle Shuffle Queue (Randomize without repeats)
+      const handleToggleShuffle = useCallback(() => {
+        setIsShuffle((prev) => {
+          const next = !prev;
+          try {
+            window.localStorage.setItem("sfm_player_shuffle", next ? "true" : "false");
+          } catch (e) {}
+          if (next) {
+            const q = createShuffledQueue(scenes, scene);
+            setShuffledQueue(q);
+            setHudNotice("🔀 Shuffle: ON");
+          } else {
+            setShuffledQueue([]);
+            setHudNotice("➡️ Sequential");
+          }
+          setTimeout(() => setHudNotice(""), 1000);
+          return next;
+        });
+      }, [scenes, scene]);
+
       // Fullscreen Toggle
       const handleToggleFullscreen = () => {
         const el = videoContainerRef.current;
@@ -1485,12 +1580,15 @@
           } else if (e.key === "p" || e.key === "P") {
             e.preventDefault();
             handleTogglePip();
+          } else if (e.key === "s" || e.key === "S") {
+            e.preventDefault();
+            handleToggleShuffle();
           }
         };
 
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
-      }, [onClose, goToNext, goToPrev, handleTogglePlay, duration, isPipMode]);
+      }, [onClose, goToNext, goToPrev, handleTogglePlay, handleToggleShuffle, duration, isPipMode]);
 
       // Formatted duration helper
       const formatTime = (secs) => {
@@ -1662,6 +1760,11 @@
                       setIsVideoReady(true);
                     },
                     onPause: () => setIsPlaying(false),
+                    onEnded: () => {
+                      if (hasNext && !isTransitioningRef.current) {
+                        goToNext();
+                      }
+                    },
                   })
                 ),
 
@@ -1975,8 +2078,13 @@
                 // 7. Reel Counter Pill
                 React.createElement(
                   "div",
-                  { className: "sfm-reel-counter-badge", title: `Folder: ${folderName || "Current"}` },
-                  `${currentIndex + 1}/${totalScenes}`
+                  {
+                    className: `sfm-reel-counter-badge ${isShuffle ? "sfm-counter-shuffled" : ""}`,
+                    title: isShuffle
+                      ? `Shuffled Queue (${currentIndex + 1}/${totalScenes}) — Folder: ${folderName || "Current"}`
+                      : `Folder: ${folderName || "Current"}`,
+                  },
+                  isShuffle ? `🔀 ${currentIndex + 1}/${totalScenes}` : `${currentIndex + 1}/${totalScenes}`
                 ),
                 // 8. Next Video Button
                 React.createElement(
@@ -1985,13 +2093,29 @@
                     className: "sfm-reel-circle-btn",
                     onClick: goToNext,
                     disabled: !hasNext,
-                    title: hasNext ? `Next: ${nextScene?.title || `Scene #${nextScene?.id}`}` : "Last scene in folder",
+                    title: hasNext
+                      ? `Next: ${nextScene?.title || `Scene #${nextScene?.id}`}`
+                      : (isShuffle ? "End of shuffled queue" : "Last scene in folder"),
                   },
                   React.createElement(
                     "svg",
                     { viewBox: "0 0 24 24", width: 16, height: 16, stroke: "currentColor", strokeWidth: "2.5", fill: "none" },
                     React.createElement("polyline", { points: "6 9 12 15 18 9" })
                   )
+                ),
+                // 9. Shuffle Queue Toggle Button (Randomize without repeats)
+                React.createElement(
+                  "button",
+                  {
+                    type: "button",
+                    className: `sfm-reel-circle-btn sfm-btn-shuffle ${isShuffle ? "sfm-shuffle-active" : ""}`,
+                    onClick: handleToggleShuffle,
+                    disabled: totalScenes <= 1,
+                    title: isShuffle
+                      ? `Shuffle: ON (randomized without repeats) — Click to disable (S)`
+                      : `Shuffle: OFF (sequential folder order) — Click to randomize without repeats (S)`,
+                  },
+                  React.createElement(IconShuffle, { size: 16 })
                 ),
 
                 // Bottom actions group: Pushed down so Fullscreen is directly above the scrubbing line
