@@ -26,7 +26,7 @@
     const IDB_NAME = "stash_file_manager_db";
     const IDB_VERSION = 1;
     const IDB_STORE = "library";
-    const CACHE_KEY = "scenes_index_v4";
+    const CACHE_KEY = "scenes_index_v6";
     const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
     function openIDB() {
@@ -2219,33 +2219,68 @@
     // ==========================================
     // Modal: Folder-Scoped Filename Regex Parser with Guided Builder
     // ==========================================
-    function FilenameParserModal({ currentFolder, directScenes, onClose, onApplied }) {
+    // ==========================================
+    // Modal: Upgraded Folder-Scoped Filename Regex Parser (Interactive Blocks + Auto-Detect)
+    // ==========================================
+    // ==========================================
+    // Modal: Upgraded Folder-Scoped Filename Regex Parser (Interactive Blocks + Auto-Detect)
+    // ==========================================
+    // ==========================================
+    // Modal: Path-Clues & Stash-box Grounded Smart Metadata Resolver
+    // ==========================================
+    // ==========================================
+    // Modal: Fully Customizable Smart Filename & Path Resolver
+    // ==========================================
+    function FilenameParserModal({ currentFolder, currentPath = "", directScenes, onClose, onApplied }) {
       const PRESETS = [
-        { label: "Date & Title: ^(?<date>\\d{4}-\\d{2}-\\d{2})\\s+(?<title>.+)$", pattern: "^(?<date>\\d{4}-\\d{2}-\\d{2})\\s+(?<title>.+)$" },
-        { label: "Studio - Title: ^(?<studio>[^-]+)\\s*-\\s*(?<title>.+)$", pattern: "^(?<studio>[^-]+)\\s*-\\s*(?<title>.+)$" },
-        { label: "Studio - Date - Title: ^(?<studio>[^-]+)\\s*-\\s*(?<date>\\d{4}-\\d{2}-\\d{2})\\s*-\\s*(?<title>.+)$", pattern: "^(?<studio>[^-]+)\\s*-\\s*(?<date>\\d{4}-\\d{2}-\\d{2})\\s*-\\s*(?<title>.+)$" },
-        { label: "Studio - Performer - Title: ^(?<studio>[^-]+)\\s*-\\s*(?<performers>[^-]+)\\s*-\\s*(?<title>.+)$", pattern: "^(?<studio>[^-]+)\\s*-\\s*(?<performers>[^-]+)\\s*-\\s*(?<title>.+)$" },
-        { label: "Studio - Code - Title: ^(?<studio>[^-]+)\\s*-\\s*(?<code>[A-Za-z0-9_.-]+)\\s*-\\s*(?<title>.+)$", pattern: "^(?<studio>[^-]+)\\s*-\\s*(?<code>[A-Za-z0-9_.-]+)\\s*-\\s*(?<title>.+)$" },
+        { label: "✨ Auto-Detected / Interactive Pattern", pattern: "", caseInsensitive: true },
+        { label: "Code__PERFORMER_Title__hash (e.g. MM2821__BIANNA_ARSON_Shoot...)", pattern: "^(?<code>[A-Za-z0-9]+)__(?<performers>[A-Z]+(?:_[A-Z]+)*)_+(?<title>.+?)__(?:[a-zA-Z0-9]+)(?:\\.[^.]+)?$", caseInsensitive: false },
+        { label: "StudioCode__PERFORMER_Title (e.g. MM1566__KENDRA_COLE_Shoot...)", pattern: "^(?<code>[A-Za-z0-9]+)__(?<performers>[A-Z]+(?:_[A-Z]+)*)_+(?<title>.+?)(?:__[a-zA-Z0-9]{4,10})?(?:\\.[^.]+)?$", caseInsensitive: false },
+        { label: "Studio - Date - Title: ^(?<studio>[^-_]+)[-_\\s]+(?<date>\\d{4}[-._]\\d{2}[-._]\\d{2})[-_\\s]+(?<title>.+)$", pattern: "^(?<studio>[^-_]+)[-_\\s]+(?<date>\\d{4}[-._]\\d{2}[-._]\\d{2})[-_\\s]+(?<title>.+)$", caseInsensitive: true },
+        { label: "Studio - Code - Title: ^(?<studio>[^-_]+)[-_\\s]+(?<code>[A-Za-z0-9_.-]+)[-_\\s]+(?<title>.+)$", pattern: "^(?<studio>[^-_]+)[-_\\s]+(?<code>[A-Za-z0-9_.-]+)[-_\\s]+(?<title>.+)$", caseInsensitive: true },
+        { label: "Studio - Code - Performer - Title: ^(?<studio>[^-_]+)[-_\\s]+(?<code>[A-Za-z0-9_.-]+)[-_\\s]+(?<performers>[^-_]+)[-_\\s]+(?<title>.+)$", pattern: "^(?<studio>[^-_]+)[-_\\s]+(?<code>[A-Za-z0-9_.-]+)[-_\\s]+(?<performers>[^-_]+)[-_\\s]+(?<title>.+)$", caseInsensitive: true },
+        { label: "Date.Studio.Performer.Title: ^(?<date>\\d{4}[-._]\\d{2}[-._]\\d{2})[-_\\s.]+(?<studio>[^-_.]+)[-_\\s.]+(?<performers>[^-_.]+)[-_\\s.]+(?<title>.+)$", pattern: "^(?<date>\\d{4}[-._]\\d{2}[-._]\\d{2})[-_\\s.]+(?<studio>[^-_.]+)[-_\\s.]+(?<performers>[^-_.]+)[-_\\s.]+(?<title>.+)$", caseInsensitive: true },
+        { label: "Performer - Title (Date): ^(?<performers>[^-_]+)[-_\\s]+(?<title>[^()]+?)(?:\\s*\\((?<date>\\d{4}[-._]?\\d{2}[-._]?\\d{2}|\\d{4})\\))?$", pattern: "^(?<performers>[^-_]+)[-_\\s]+(?<title>[^()]+?)(?:\\s*\\((?<date>\\d{4}[-._]?\\d{2}[-._]?\\d{2}|\\d{4})\\))?$", caseInsensitive: true },
+        { label: "Code - Title: ^(?<code>[A-Za-z0-9_.-]+)[-_\\s]+(?<title>.+)$", pattern: "^(?<code>[A-Za-z0-9_.-]+)[-_\\s]+(?<title>.+)$", caseInsensitive: true },
       ];
 
       const FIELDS = [
-        { id: "title", label: "Title", group: "title", color: "#88c0d0" },
-        { id: "date", label: "Date", group: "date", color: "#a3be8c" },
-        { id: "code", label: "StudioCode", group: "code", color: "#ebcb8b" },
-        { id: "duration", label: "Duration", group: "duration", color: "#b48ead" },
-        { id: "studio", label: "Studio", group: "studio", color: "#81a1c1" },
-        { id: "performers", label: "Performers", group: "performers", color: "#d08770" },
-        { id: "ignore", label: "Ignore", group: "", color: "#4c566a" },
+        { id: "title", label: "Title", color: "#88c0d0" },
+        { id: "date", label: "Date", color: "#a3be8c" },
+        { id: "code", label: "StudioCode", color: "#ebcb8b" },
+        { id: "duration", label: "Duration", color: "#b48ead" },
+        { id: "studio", label: "Studio", color: "#81a1c1" },
+        { id: "performers", label: "Performers", color: "#d08770" },
+        { id: "ignore", label: "Ignore", color: "#4c566a" },
       ];
+
+      // Inspect first sample to determine if current folder is a double-underscore release
+      const initialSampleBasename = directScenes[0]?.files?.[0]?.basename || "";
+      const initialSampleNoExt = initialSampleBasename.replace(/\.[^/.]+$/, "");
+      const isInitialDunder = /^([A-Za-z0-9]{2,8})__([A-Z]+(?:_[A-Z]+)*)_+(.+?)(?:__[a-zA-Z0-9]{4,10})?$/.test(initialSampleNoExt);
+      const dunderPattern = "^(?<code>[A-Za-z0-9]+)__(?<performers>[A-Z]+(?:_[A-Z]+)*)_+(?<title>.+?)__(?:[a-zA-Z0-9]+)(?:\\.[^.]+)?$";
 
       const [builderMode, setBuilderMode] = useState("guided"); // "guided" | "raw"
       const [sampleIndex, setSampleIndex] = useState(0);
-      const [pattern, setPattern] = useState(PRESETS[0].pattern);
-      const [caseInsensitive, setCaseInsensitive] = useState(true);
-      const [assignedSegments, setAssignedSegments] = useState([]);
-      const [selectedRange, setSelectedRange] = useState(null);
+      const [pattern, setPattern] = useState(() => (isInitialDunder ? dunderPattern : PRESETS[1].pattern));
+      const [caseInsensitive, setCaseInsensitive] = useState(() => !isInitialDunder);
+      const [flexibleDelimiters, setFlexibleDelimiters] = useState(true);
+      const [cleanSpaces, setCleanSpaces] = useState(true);
+      const [titleCase, setTitleCase] = useState(true);
+      const [normalizeDate, setNormalizeDate] = useState(true);
+      const [previewFilter, setPreviewFilter] = useState("all"); // "all" | "matched" | "unmatched"
+      const [chunks, setChunks] = useState([]);
+      const [activeSplitChunkId, setActiveSplitChunkId] = useState(null); // Chunk ID currently being split
+      const [selectedSceneIds, setSelectedSceneIds] = useState(() => new Set());
       const [isExecuting, setIsExecuting] = useState(false);
       const [progressText, setProgressText] = useState("");
+
+      // --- PATH CLUES & STASH-BOX STATE ---
+      const [pathClues, setPathClues] = useState([]);
+      const [availableStashBoxes, setAvailableStashBoxes] = useState([]);
+      const [selectedStashBox, setSelectedStashBox] = useState("");
+      const [isCloudQuerying, setIsCloudQuerying] = useState(false);
+      const [cloudMatches, setCloudMatches] = useState({});
 
       const sampleScene = directScenes[sampleIndex] || directScenes[0];
       const sampleRawBasename = sampleScene?.files?.[0]?.basename || "";
@@ -2254,184 +2289,305 @@
       // Helper: escape regex literal
       const escapeRegex = (s) => s.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&");
 
-      // Calculate regex pattern from assigned segments
-      const computeRegexFromSegments = (segments, sampleText) => {
-        if (!segments || segments.length === 0) return;
-        const sorted = [...segments].sort((a, b) => a.start - b.start);
+      // Initialize Path Clues from directory hierarchy
+      useEffect(() => {
+        const fullSamplePath = sampleScene?.files?.[0]?.path || currentPath || "";
+        const normalized = fullSamplePath.replace(/\\/g, "/");
+        const dirParts = normalized.split("/").filter(Boolean);
+        if (dirParts.length > 0 && dirParts[dirParts.length - 1].includes(".")) {
+          dirParts.pop();
+        }
+
+        const relevantParts = dirParts.slice(-3);
+        const initialClues = relevantParts.map((part, idx) => {
+          const isParent = (idx === relevantParts.length - 1);
+          const isGrandparent = (idx === relevantParts.length - 2);
+          let role = "ignore";
+          if (isParent) role = "studio";
+          else if (isGrandparent && /^vr|4k|1080p|uhd$/i.test(part)) role = "tag";
+          return { name: part, role, verifiedStudioId: null };
+        });
+
+        setPathClues(initialClues);
+
+        if (initialClues.length > 0) {
+          const parentClue = initialClues[initialClues.length - 1];
+          gqlFetch(
+            `query CheckStudioClue($name: String!) {
+              findStudios(studio_filter: { name: { value: $name, modifier: EQUALS } }) {
+                studios { id name }
+              }
+            }`,
+            { name: parentClue.name }
+          )
+            .then((res) => {
+              const matchedStudio = res?.findStudios?.studios?.[0];
+              if (matchedStudio) {
+                setPathClues((prev) =>
+                  prev.map((c) => (c.name === parentClue.name ? { ...c, role: "studio", verifiedStudioId: matchedStudio.id } : c))
+                );
+              }
+            })
+            .catch(() => {});
+        }
+
+        gqlFetch(`query GetStashBoxesConfig {
+          configuration {
+            general {
+              stashBoxes {
+                name
+                endpoint
+                api_key
+              }
+            }
+          }
+        }`)
+          .then((res) => {
+            const boxes = res?.configuration?.general?.stashBoxes || [];
+            setAvailableStashBoxes(boxes);
+            if (boxes.length > 0) {
+              setSelectedStashBox(boxes[0].endpoint);
+            }
+          })
+          .catch(() => {});
+      }, [sampleIndex, currentPath]);
+
+      const handleSetPathClueRole = (segmentName, newRole) => {
+        setPathClues((prev) => prev.map((c) => (c.name === segmentName ? { ...c, role: newRole } : c)));
+      };
+
+      const activeStudioClue = useMemo(() => {
+        const clue = pathClues.find((c) => c.role === "studio");
+        return clue ? clue.name : "";
+      }, [pathClues]);
+
+      const activePerformerClue = useMemo(() => {
+        const clue = pathClues.find((c) => c.role === "performer");
+        return clue ? clue.name : "";
+      }, [pathClues]);
+
+      // Compile regex directly from visual chunks by inspecting actual separators in sampleWithoutExt
+      const compileRegexFromChunks = (currentChunks, sampleText) => {
+        if (!currentChunks || currentChunks.length === 0) return;
+
+        let cursor = 0;
         let regex = "^";
-        let lastEnd = 0;
+        let hasUppercaseOnlyGroup = false;
 
-        for (let i = 0; i < sorted.length; i++) {
-          const seg = sorted[i];
+        currentChunks.forEach((chunk, idx) => {
+          const isLast = (idx === currentChunks.length - 1);
+          const chunkText = chunk.text;
+          const pos = sampleText.indexOf(chunkText, cursor);
 
-          // Text between last segment and this segment is literal delimiter
-          if (seg.start > lastEnd) {
-            const sep = sampleText.substring(lastEnd, seg.start);
-            if (/^\\s*-\\s*$/.test(sep)) {
+          // If there is literal separator text between the previous chunk and this chunk
+          if (pos > cursor) {
+            const sepText = sampleText.substring(cursor, pos);
+            if (sepText === "__") {
+              regex += "__";
+            } else if (/^_+$/.test(sepText)) {
+              regex += "_+";
+            } else if (sepText.includes(" - ")) {
               regex += "\\s*-\\s*";
-            } else if (/^\\s*_\\s*$/.test(sep)) {
-              regex += "\\s*_\\s*";
-            } else if (/^\\s*\\.\\s*$/.test(sep)) {
-              regex += "\\s*\\.\\s*";
-            } else if (/^\\s+$/.test(sep)) {
+            } else if (/^\\s+$/.test(sepText)) {
               regex += "\\s+";
             } else {
-              regex += escapeRegex(sep);
+              regex += escapeRegex(sepText);
             }
           }
 
-          // Next separator character for non-greedy or character-class boundary
-          let nextSepChar = "";
-          if (i < sorted.length - 1) {
-            const nextLiteral = sampleText.substring(seg.end, sorted[i + 1].start);
-            const trimmedNext = nextLiteral.trim();
-            if (trimmedNext.length > 0) {
-              nextSepChar = trimmedNext[0];
-            }
-          }
-
-          const isLast = (i === sorted.length - 1);
-
-          if (seg.fieldId === "ignore") {
-            if (isLast) regex += "(?:.+)";
-            else if (nextSepChar) regex += `(?:[^${escapeRegex(nextSepChar)}]+)`;
-            else regex += "(?:.+?)";
-          } else if (seg.fieldId === "date") {
-            const trimmed = seg.text.trim();
-            if (/^\\d{4}[-._]\\d{2}[-._]\\d{2}$/.test(trimmed)) {
-              regex += "(?<date>\\d{4}[-._]\\d{2}[-._]\\d{2})";
-            } else if (/^\\d{6,8}$/.test(trimmed)) {
-              regex += "(?<date>\\d{6,8})";
+          // Build field pattern
+          if (chunk.fieldId === "ignore") {
+            regex += isLast ? "(?:.+)" : "(?:[a-zA-Z0-9]+)";
+          } else if (chunk.fieldId === "code") {
+            if (/^\\d+$/.test(chunkText)) {
+              regex += "(?<code>\\d+)";
             } else {
-              regex += "(?<date>\\d{2,4}[-._]\\d{1,2}[-._]\\d{1,2})";
+              // Code must NOT include underscores
+              regex += "(?<code>[A-Za-z0-9]+)";
             }
-          } else if (seg.fieldId === "duration") {
+          } else if (chunk.fieldId === "studio") {
+            if (/^[A-Za-z]+$/.test(chunkText)) {
+              regex += "(?<studio>[A-Za-z]+)";
+            } else {
+              regex += "(?<studio>[A-Za-z0-9]+)";
+            }
+          } else if (chunk.fieldId === "performers") {
+            if (/^[A-Z_]+$/.test(chunkText)) {
+              hasUppercaseOnlyGroup = true;
+              regex += "(?<performers>[A-Z]+(?:_[A-Z]+)*)";
+            } else {
+              regex += "(?<performers>[A-Za-z]+(?:[\\s_][A-Za-z]+)*)";
+            }
+          } else if (chunk.fieldId === "title") {
+            regex += isLast ? "(?<title>.+)" : "(?<title>.+?)";
+          } else if (chunk.fieldId === "date") {
+            regex += "(?<date>\\d{4}[-._]\\d{2}[-._]\\d{2}|\\d{6,8})";
+          } else if (chunk.fieldId === "duration") {
             regex += "(?<duration>\\d+(?:m|min|s|sec)?|\\d+:\\d+(?::\\d+)?)";
-          } else if (seg.fieldId === "code") {
-            if (isLast) regex += "(?<code>.+)";
-            else if (nextSepChar) regex += `(?<code>[^${escapeRegex(nextSepChar)}]+)`;
-            else regex += "(?<code>[A-Za-z0-9_.-]+)";
-          } else if (seg.fieldId === "title") {
-            if (isLast) regex += "(?<title>.+)";
-            else if (nextSepChar) regex += `(?<title>[^${escapeRegex(nextSepChar)}]+)`;
-            else regex += "(?<title>.+?)";
-          } else if (seg.fieldId === "studio") {
-            if (isLast) regex += "(?<studio>.+)";
-            else if (nextSepChar) regex += `(?<studio>[^${escapeRegex(nextSepChar)}]+)`;
-            else regex += "(?<studio>.+?)";
-          } else if (seg.fieldId === "performers") {
-            if (isLast) regex += "(?<performers>.+)";
-            else if (nextSepChar) regex += `(?<performers>[^${escapeRegex(nextSepChar)}]+)`;
-            else regex += "(?<performers>.+?)";
           }
 
-          lastEnd = seg.end;
+          cursor = pos >= 0 ? (pos + chunkText.length) : cursor;
+        });
+
+        // Trailing separator / hash
+        if (cursor < sampleText.length) {
+          const trailing = sampleText.substring(cursor);
+          if (trailing === "__") regex += "__";
+          else if (/^_+$/.test(trailing)) regex += "_+";
+          else regex += escapeRegex(trailing);
         }
 
-        // Trailing literal text
-        if (lastEnd < sampleText.length) {
-          const trailing = sampleText.substring(lastEnd);
-          regex += escapeRegex(trailing);
-        }
-
-        regex += "$";
+        regex += "(?:\\.[^.]+)?$";
         setPattern(regex);
-      };
 
-      // Handle text selection in the sample filename input
-      const handleSampleSelect = (e) => {
-        const input = e.target;
-        const start = input.selectionStart;
-        const end = input.selectionEnd;
-        if (start !== undefined && end !== undefined && start < end) {
-          const selectedText = sampleWithoutExt.substring(start, end);
-          setSelectedRange({ start, end, text: selectedText });
-        } else {
-          setSelectedRange(null);
+        // If the performer group relies on uppercase, automatically enforce case-sensitivity
+        if (hasUppercaseOnlyGroup) {
+          setCaseInsensitive(false);
         }
       };
 
-      // Assign highlighted selection to a field
-      const handleAssignField = (fieldId) => {
-        if (!selectedRange) return;
-        // Remove any overlapping segments
-        const filtered = assignedSegments.filter((s) => !(s.start < selectedRange.end && s.end > selectedRange.start));
-        const newSeg = {
-          id: Date.now() + Math.random(),
-          start: selectedRange.start,
-          end: selectedRange.end,
-          text: selectedRange.text,
-          fieldId,
-        };
-        const updated = [...filtered, newSeg].sort((a, b) => a.start - b.start);
-        setAssignedSegments(updated);
-        setSelectedRange(null);
-        computeRegexFromSegments(updated, sampleWithoutExt);
-      };
+      // Auto-detect chunks from filename
+      const autoDetectFromFilename = (filename, forcedDelimiter = null) => {
+        if (!filename) return;
 
-      // Remove a segment
-      const handleRemoveSegment = (segId) => {
-        const updated = assignedSegments.filter((s) => s.id !== segId);
-        setAssignedSegments(updated);
-        if (updated.length > 0) {
-          computeRegexFromSegments(updated, sampleWithoutExt);
+        // Pattern: MM2821__BIANNA_ARSON_Shoot_closeup_XXX__1q2wxz
+        const dunderFull = filename.match(/^([A-Za-z0-9]{2,8})__([A-Z]+(?:_[A-Z]+)*)_+(.+?)__(?:[a-zA-Z0-9]+)$/);
+        if (dunderFull && !forcedDelimiter) {
+          const detectedChunks = [
+            { id: 1, text: dunderFull[1], fieldId: "code" },
+            { id: 2, text: dunderFull[2], fieldId: "performers" },
+            { id: 3, text: dunderFull[3], fieldId: "title" },
+            { id: 4, text: filename.substring(filename.lastIndexOf("__") + 2), fieldId: "ignore" },
+          ];
+          setChunks(detectedChunks);
+          compileRegexFromChunks(detectedChunks, filename);
+          return;
         }
-      };
 
-      // Change role of an existing segment
-      const handleChangeSegmentField = (segId, newFieldId) => {
-        const updated = assignedSegments.map((s) => (s.id === segId ? { ...s, fieldId: newFieldId } : s));
-        setAssignedSegments(updated);
-        computeRegexFromSegments(updated, sampleWithoutExt);
-      };
+        let delimiter = forcedDelimiter;
+        if (!delimiter) {
+          if (filename.includes("__")) delimiter = "__";
+          else if (filename.includes(" - ")) delimiter = " - ";
+          else if (filename.includes("_")) delimiter = "_";
+          else if (filename.includes(".")) delimiter = ".";
+          else delimiter = " ";
+        }
 
-      // Quick Delimiter Split
-      const handleQuickSplit = (delimiter) => {
-        if (!sampleWithoutExt) return;
-        const parts = sampleWithoutExt.split(delimiter);
-        let cursor = 0;
-        const segments = [];
+        const rawParts = filename.split(delimiter).map((p) => p.trim()).filter(Boolean);
+        const detectedChunks = [];
 
-        parts.forEach((rawPart, idx) => {
-          if (!rawPart) return;
-          const pos = sampleWithoutExt.indexOf(rawPart, cursor);
-          const start = pos >= 0 ? pos : cursor;
-          const end = start + rawPart.length;
-          cursor = end;
-
-          const trimmed = rawPart.trim();
-          let guessedField = "title";
-          if (/^\\d{4}[-._]\\d{2}[-._]\\d{2}$/.test(trimmed) || /^\\d{6,8}$/.test(trimmed)) {
-            guessedField = "date";
-          } else if (/^\\d+[mhms]$/i.test(trimmed)) {
-            guessedField = "duration";
-          } else if (/^[A-Z0-9]+-[0-9]+$/i.test(trimmed) || /^[A-Z]{2,}\\d{2,}$/i.test(trimmed)) {
-            guessedField = "code";
-          } else if (idx === 0 && parts.length > 1) {
-            guessedField = "studio";
-          } else if (idx === parts.length - 1) {
-            guessedField = "title";
-          } else if (idx === 1 && parts.length > 2) {
-            guessedField = "performers";
+        rawParts.forEach((part, idx) => {
+          let fieldId = "title";
+          if (/^(1080p|2160p|4k|720p|480p|hevc|x264|x265|h264|h265|web-dl|aac|uhd|hd|sd|vr|60fps|3dh|sbs)$/i.test(part)) {
+            fieldId = "ignore";
+          } else if (idx === rawParts.length - 1 && /^[a-zA-Z0-9]{5,8}$/.test(part)) {
+            fieldId = "ignore";
+          } else if (/^\\d{4}[-._]\\d{2}[-._]\\d{2}$/.test(part) || /^\\d{6,8}$/.test(part)) {
+            fieldId = "date";
+          } else if (/^[A-Za-z0-9]{2,6}[-_]?[0-9]{2,5}$/i.test(part) || /^[A-Z]{2,}\\d{2,}$/i.test(part)) {
+            fieldId = "code";
+          } else if (/^\\d+[mhms]$/i.test(part) || /^\\d+:\\d+(?::\\d+)?$/.test(part)) {
+            fieldId = "duration";
+          } else if (idx === 0 && rawParts.length > 1) {
+            fieldId = "studio";
+          } else if (idx === rawParts.length - 1) {
+            fieldId = "title";
+          } else if (idx === 1 && rawParts.length > 2) {
+            fieldId = "performers";
           }
 
-          segments.push({
+          detectedChunks.push({
             id: Date.now() + idx,
-            start,
-            end,
-            text: rawPart,
-            fieldId: guessedField,
+            text: part,
+            fieldId,
           });
         });
 
-        setAssignedSegments(segments);
-        computeRegexFromSegments(segments, sampleWithoutExt);
+        setChunks(detectedChunks);
+        compileRegexFromChunks(detectedChunks, filename);
       };
 
-      // Reset all assignments
-      const handleResetSegments = () => {
-        setAssignedSegments([]);
-        setSelectedRange(null);
+      // Run initial auto-detection on mount or sample switch
+      useEffect(() => {
+        if (sampleWithoutExt) {
+          autoDetectFromFilename(sampleWithoutExt);
+        }
+      }, [sampleIndex]);
+
+      // Change field role of a chunk
+      const handleSetChunkField = (chunkId, newFieldId) => {
+        const updated = chunks.map((c) => (c.id === chunkId ? { ...c, fieldId: newFieldId } : c));
+        setChunks(updated);
+        compileRegexFromChunks(updated, sampleWithoutExt);
+      };
+
+      // Edit text of a chunk directly
+      const handleEditChunkText = (chunkId, newText) => {
+        const updated = chunks.map((c) => (c.id === chunkId ? { ...c, text: newText } : c));
+        setChunks(updated);
+        compileRegexFromChunks(updated, sampleWithoutExt);
+      };
+
+      // Delete a chunk
+      const handleDeleteChunk = (chunkId) => {
+        const updated = chunks.filter((c) => c.id !== chunkId);
+        setChunks(updated);
+        compileRegexFromChunks(updated, sampleWithoutExt);
+      };
+
+      // Split a chunk into two chunks at a specific position or split string
+      const handleSplitChunk = (chunkId, part1, part2, field1, field2) => {
+        const idx = chunks.findIndex((c) => c.id === chunkId);
+        if (idx === -1) return;
+
+        const newChunk1 = { id: Date.now(), text: part1, fieldId: field1 || chunks[idx].fieldId };
+        const newChunk2 = { id: Date.now() + 1, text: part2, fieldId: field2 || "title" };
+
+        const updated = [...chunks.slice(0, idx), newChunk1, newChunk2, ...chunks.slice(idx + 1)];
+        setChunks(updated);
+        setActiveSplitChunkId(null);
+        compileRegexFromChunks(updated, sampleWithoutExt);
+      };
+
+      // Merge chunk with next chunk
+      const handleMergeWithNext = (idx) => {
+        if (idx >= chunks.length - 1) return;
+        const current = chunks[idx];
+        const next = chunks[idx + 1];
+        const merged = {
+          ...current,
+          text: `${current.text} ${next.text}`,
+        };
+        const updated = [...chunks.slice(0, idx), merged, ...chunks.slice(idx + 2)];
+        setChunks(updated);
+        compileRegexFromChunks(updated, sampleWithoutExt);
+      };
+
+      // Helper to clean extracted text
+      const cleanExtracted = (fieldId, rawVal) => {
+        if (!rawVal) return "";
+        let val = rawVal.trim();
+        if (fieldId === "title") {
+          val = val.replace(/__+/g, " - ").replace(/[_.]+/g, " ").replace(/\\s+/g, " ").trim();
+          if (titleCase) {
+            val = val.replace(/\\w\\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());
+            val = val.replace(/\\bXxx\\b/g, "XXX");
+            val = val.replace(/\\b4k\\b/g, "4K");
+          }
+        } else if (fieldId === "studio" || fieldId === "performers") {
+          val = val.replace(/__+/g, ", ").replace(/[_.]+/g, " ").replace(/\\s+/g, " ").trim();
+          if (titleCase) {
+            val = val.replace(/\\w\\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());
+          }
+        } else if (fieldId === "date") {
+          if (normalizeDate) {
+            val = val.replace(/[._]/g, "-");
+            if (/^\\d{8}$/.test(val)) {
+              val = `${val.substring(0, 4)}-${val.substring(4, 6)}-${val.substring(6, 8)}`;
+            }
+          }
+        }
+        return val;
       };
 
       // Compute parsed matches in real-time
@@ -2446,7 +2602,7 @@
         const items = directScenes.map((scene) => {
           const rawBasename = scene.files?.[0]?.basename || "";
           const nameWithoutExt = rawBasename.replace(/\\.[^/.]+$/, "");
-          const match = re.exec(nameWithoutExt);
+          const match = re.exec(nameWithoutExt) || re.exec(rawBasename);
 
           if (!match || !match.groups) {
             return { scene, rawBasename, matched: false, groups: {} };
@@ -2457,47 +2613,134 @@
         return { error: null, items };
       }, [pattern, caseInsensitive, directScenes]);
 
+      // Query Stash-box for all matched scenes
+      const handleQueryStashBox = async () => {
+        if (!selectedStashBox) return;
+        setIsCloudQuerying(true);
+        setProgressText("Querying Stash-box for scene metadata...");
+
+        const newCloudMatches = { ...cloudMatches };
+        const matchedItems = parsedResults.items.filter((i) => i.matched);
+
+        for (let i = 0; i < matchedItems.length; i++) {
+          const item = matchedItems[i];
+          const queryCode = item.groups.code || item.groups.title || "";
+          if (!queryCode) continue;
+
+          setProgressText(`Querying Stash-box (${i + 1}/${matchedItems.length}): ${queryCode}...`);
+
+          try {
+            const sRes = await gqlFetch(
+              `query ScrapeSceneFromBox($source: ScraperSourceInput!, $input: ScrapeSingleSceneInput!) {
+                scrapeSingleScene(source: $source, input: $input) {
+                  title
+                  details
+                  url
+                  date
+                  code
+                  studio { name }
+                  performers { name }
+                  tags { name }
+                }
+              }`,
+              {
+                source: { stash_box_endpoint: selectedStashBox },
+                input: { query: queryCode.trim() },
+              }
+            );
+
+            const scraped = sRes?.scrapeSingleScene?.[0];
+            if (scraped) {
+              newCloudMatches[item.scene.id] = scraped;
+            }
+          } catch (err) {
+            console.warn(`Stash-box scrape error for ${queryCode}:`, err);
+          }
+        }
+
+        setCloudMatches(newCloudMatches);
+        setIsCloudQuerying(false);
+        setProgressText(`Completed Stash-box resolution. Found ${Object.keys(newCloudMatches).length} verified matches.`);
+      };
+
+      useEffect(() => {
+        const matchedIds = new Set(parsedResults.items.filter((i) => i.matched).map((i) => i.scene.id));
+        setSelectedSceneIds(matchedIds);
+      }, [parsedResults]);
+
       const matchedCount = parsedResults.items.filter((i) => i.matched).length;
+      const unmatchedCount = parsedResults.items.length - matchedCount;
+
+      const filteredItems = useMemo(() => {
+        if (previewFilter === "matched") return parsedResults.items.filter((i) => i.matched);
+        if (previewFilter === "unmatched") return parsedResults.items.filter((i) => !i.matched);
+        return parsedResults.items;
+      }, [parsedResults, previewFilter]);
+
+      const handleToggleSelectScene = (sceneId) => {
+        const next = new Set(selectedSceneIds);
+        if (next.has(sceneId)) next.delete(sceneId);
+        else next.add(sceneId);
+        setSelectedSceneIds(next);
+      };
+
+      const handleSelectAllMatched = () => {
+        if (selectedSceneIds.size === matchedCount) {
+          setSelectedSceneIds(new Set());
+        } else {
+          setSelectedSceneIds(new Set(parsedResults.items.filter((i) => i.matched).map((i) => i.scene.id)));
+        }
+      };
 
       const handleExecute = async () => {
-        if (matchedCount === 0) return;
+        const scenesToUpdate = parsedResults.items.filter((i) => i.matched && selectedSceneIds.has(i.scene.id));
+        if (scenesToUpdate.length === 0) return;
         setIsExecuting(true);
-        setProgressText(`Starting updates for ${matchedCount} scenes...`);
+        setProgressText(`Starting updates for ${scenesToUpdate.length} scenes...`);
 
         try {
-          const matchedItems = parsedResults.items.filter((i) => i.matched);
           let success = 0;
 
-          for (let i = 0; i < matchedItems.length; i++) {
-            const item = matchedItems[i];
-            setProgressText(`Updating scene ${i + 1}/${matchedItems.length}: ${item.rawBasename}...`);
+          for (let i = 0; i < scenesToUpdate.length; i++) {
+            const item = scenesToUpdate[i];
+            const cloud = cloudMatches[item.scene.id];
+            setProgressText(`Updating scene ${i + 1}/${scenesToUpdate.length}: ${item.rawBasename}...`);
 
             const updateInput = { id: item.scene.id };
-            const { title, date, code, duration, studio, performers } = item.groups;
+            const { title, date, code, studio, performers } = item.groups;
 
-            if (title && title.trim()) updateInput.title = title.trim();
-            if (date && /^\\d{4}[-._]\\d{2}[-._]\\d{2}$/.test(date.trim())) {
-              updateInput.date = date.trim().replace(/[._]/g, "-");
+            const finalTitle = cloud?.title || cleanExtracted("title", title);
+            const finalDate = cloud?.date || cleanExtracted("date", date);
+            const finalCode = cloud?.code || (code || "").trim();
+            const finalStudio = cloud?.studio?.name || cleanExtracted("studio", studio) || activeStudioClue;
+            const finalPerformers = cloud?.performers ? cloud.performers.map((p) => p.name).join(", ") : (cleanExtracted("performers", performers) || activePerformerClue);
+
+            if (finalTitle) updateInput.title = finalTitle;
+            if (finalDate && /^\\d{4}-\\d{2}-\\d{2}$/.test(finalDate)) {
+              updateInput.date = finalDate;
             }
-            if (code && code.trim()) {
-              updateInput.code = code.trim();
+            if (finalCode) {
+              updateInput.code = finalCode;
+            }
+            if (cloud?.details) {
+              updateInput.details = cloud.details;
             }
 
-            if (studio && studio.trim()) {
+            if (finalStudio) {
               const sRes = await gqlFetch(
                 `query FindStudio($name: String!) {
                   findStudios(studio_filter: { name: { value: $name, modifier: EQUALS } }) {
                     studios { id name }
                   }
                 }`,
-                { name: studio.trim() }
+                { name: finalStudio }
               );
               const found = sRes?.findStudios?.studios?.[0];
               if (found) updateInput.studio_id = found.id;
             }
 
-            if (performers && performers.trim()) {
-              const pNames = performers.split(/,|&|\\band\\b/i).map((s) => s.trim()).filter(Boolean);
+            if (finalPerformers) {
+              const pNames = finalPerformers.split(/,|&|\\band\\b/i).map((s) => s.trim()).filter(Boolean);
               const pIds = [];
               for (const pName of pNames) {
                 const pRes = await gqlFetch(
@@ -2523,7 +2766,7 @@
             success++;
           }
 
-          setProgressText(`Successfully updated ${success} scenes from filenames!`);
+          setProgressText(`Successfully updated ${success} scenes with verified metadata!`);
           setTimeout(() => {
             clearCachedScenes();
             onApplied();
@@ -2548,7 +2791,7 @@
             React.createElement(
               "div",
               { className: "d-flex align-items-center gap-3" },
-              React.createElement("h5", { className: "mb-0" }, "🔍 Filename Regex Parser"),
+              React.createElement("h5", { className: "mb-0" }, "🔍 Customizable Filename & Path Resolver"),
               React.createElement(
                 "div",
                 { className: "btn-group btn-group-sm sfm-builder-mode-tabs ml-3" },
@@ -2559,7 +2802,7 @@
                     className: `btn btn-sm ${builderMode === "guided" ? "btn-info font-weight-bold" : "btn-outline-secondary"} py-0 px-3`,
                     onClick: () => setBuilderMode("guided"),
                   },
-                  "🧭 Guided Builder"
+                  "✨ Interactive Blocks"
                 ),
                 React.createElement(
                   "button",
@@ -2577,18 +2820,101 @@
           React.createElement(
             "div",
             { className: "sfm-modal-body" },
+            // Section 1: Directory Path Clues
+            React.createElement(
+              "div",
+              { className: "sfm-path-clues-card p-2 px-3 mb-3 rounded bg-dark border border-secondary" },
+              React.createElement(
+                "div",
+                { className: "d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2" },
+                React.createElement(
+                  "div",
+                  { className: "d-flex align-items-center gap-2" },
+                  React.createElement("span", { className: "badge badge-info" }, "📁 Path Clues"),
+                  React.createElement("span", { className: "small text-muted" }, "Folder hierarchy context inferred from filesystem:")
+                ),
+                availableStashBoxes.length > 0 &&
+                  React.createElement(
+                    "div",
+                    { className: "d-flex align-items-center gap-2" },
+                    React.createElement("span", { className: "small text-light" }, "🌐 Stash-box:"),
+                    React.createElement(
+                      "select",
+                      {
+                        className: "form-control form-control-sm bg-dark text-info border-secondary py-0",
+                        style: { width: "auto", height: "24px", fontSize: "0.78rem" },
+                        value: selectedStashBox,
+                        onChange: (e) => setSelectedStashBox(e.target.value),
+                      },
+                      availableStashBoxes.map((box) =>
+                        React.createElement("option", { key: box.endpoint, value: box.endpoint }, `${box.name} (${box.endpoint})`)
+                      )
+                    ),
+                    React.createElement(
+                      "button",
+                      {
+                        type: "button",
+                        className: "btn btn-xs btn-primary font-weight-bold py-0 px-2",
+                        disabled: isCloudQuerying || matchedCount === 0,
+                        onClick: handleQueryStashBox,
+                        title: "Query Stash-box using Code and Path clues to fetch canonical metadata",
+                      },
+                      isCloudQuerying ? "Querying..." : "🌐 Query Stash-box"
+                    )
+                  )
+              ),
+              React.createElement(
+                "div",
+                { className: "d-flex align-items-center flex-wrap gap-2" },
+                pathClues.map((clue, idx) =>
+                  React.createElement(
+                    "div",
+                    {
+                      key: clue.name,
+                      className: "sfm-path-clue-pill d-inline-flex align-items-center p-1 px-2 rounded bg-black border border-secondary",
+                    },
+                    React.createElement("span", { className: "text-muted small mr-1" }, idx === pathClues.length - 1 ? "Parent:" : "Folder:"),
+                    React.createElement("span", { className: "font-weight-bold text-light mr-2", style: { fontFamily: "monospace" } }, clue.name),
+                    React.createElement(
+                      "select",
+                      {
+                        className: "form-control form-control-sm border-0 py-0 px-1 font-weight-bold",
+                        style: {
+                          width: "auto",
+                          height: "22px",
+                          fontSize: "0.75rem",
+                          backgroundColor: clue.role === "studio" ? "#81a1c1" : clue.role === "performer" ? "#d08770" : clue.role === "tag" ? "#ebcb8b" : "#4c566a",
+                          color: "#1e222a",
+                          borderRadius: "3px",
+                        },
+                        value: clue.role,
+                        onChange: (e) => handleSetPathClueRole(clue.name, e.target.value),
+                      },
+                      React.createElement("option", { value: "studio" }, "Studio Clue"),
+                      React.createElement("option", { value: "performer" }, "Performer Clue"),
+                      React.createElement("option", { value: "tag" }, "Tag Clue"),
+                      React.createElement("option", { value: "ignore" }, "Ignore")
+                    ),
+                    clue.verifiedStudioId &&
+                      React.createElement("span", { className: "badge badge-success ml-2 py-0 px-1", title: "Matched verified Studio in local Stash database" }, "✓ DB Studio")
+                  )
+                )
+              )
+            ),
+            // Section 2: Interactive Field Customization Blocks
             builderMode === "guided"
               ? React.createElement(
                   "div",
-                  { className: "sfm-guided-builder-section mb-3" },
-                  // Sample File Navigation Bar
+                  { className: "sfm-guided-card p-3 mb-3 rounded bg-dark border border-secondary" },
+                  // Sample File Toolbar
                   React.createElement(
                     "div",
-                    { className: "d-flex justify-content-between align-items-center mb-2" },
+                    { className: "d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2" },
                     React.createElement(
-                      "span",
-                      { className: "small font-weight-bold text-muted text-uppercase" },
-                      "1. Sample Filename from Current Folder"
+                      "div",
+                      { className: "d-flex align-items-center gap-2" },
+                      React.createElement("span", { className: "badge badge-secondary" }, "Sample File"),
+                      React.createElement("span", { className: "font-weight-bold text-light", style: { fontFamily: "monospace" } }, sampleWithoutExt)
                     ),
                     directScenes.length > 1 &&
                       React.createElement(
@@ -2600,12 +2926,7 @@
                             type: "button",
                             className: "btn btn-xs btn-outline-secondary py-0 px-2",
                             disabled: sampleIndex <= 0,
-                            onClick: () => {
-                              const newIdx = Math.max(0, sampleIndex - 1);
-                              setSampleIndex(newIdx);
-                              setAssignedSegments([]);
-                              setSelectedRange(null);
-                            },
+                            onClick: () => setSampleIndex(Math.max(0, sampleIndex - 1)),
                           },
                           "◀ Prev"
                         ),
@@ -2616,170 +2937,241 @@
                             type: "button",
                             className: "btn btn-xs btn-outline-secondary py-0 px-2",
                             disabled: sampleIndex >= directScenes.length - 1,
-                            onClick: () => {
-                              const newIdx = Math.min(directScenes.length - 1, sampleIndex + 1);
-                              setSampleIndex(newIdx);
-                              setAssignedSegments([]);
-                              setSelectedRange(null);
-                            },
+                            onClick: () => setSampleIndex(Math.min(directScenes.length - 1, sampleIndex + 1)),
                           },
                           "Next ▶"
                         )
                       )
                   ),
-                  // Selectable Sample Input Box
+                  // Word Chunks & Customization Action Bar
                   React.createElement(
                     "div",
-                    { className: "position-relative mb-2" },
-                    React.createElement("input", {
-                      type: "text",
-                      readOnly: true,
-                      className: "form-control form-control-lg sfm-interactive-sample-input",
-                      value: sampleWithoutExt,
-                      onSelect: handleSampleSelect,
-                      onMouseUp: handleSampleSelect,
-                      onKeyUp: handleSampleSelect,
-                      title: "Click and drag to highlight any text segment, then click a field chip below",
-                    })
-                  ),
-                  // Selection Tagging Bar
-                  React.createElement(
-                    "div",
-                    { className: "sfm-selection-chip-bar p-2 rounded mb-3 bg-dark border border-secondary" },
-                    selectedRange
-                      ? React.createElement(
-                          "div",
-                          { className: "d-flex align-items-center flex-wrap gap-2" },
-                          React.createElement(
-                            "span",
-                            { className: "small text-light font-weight-bold mr-2" },
-                            `Selected "${selectedRange.text}":`
-                          ),
-                          FIELDS.map((f) =>
-                            React.createElement(
-                              "button",
-                              {
-                                key: f.id,
-                                type: "button",
-                                className: "btn btn-sm py-1 px-2 font-weight-bold sfm-field-btn",
-                                style: { backgroundColor: f.color, color: "#1e222a", border: "none" },
-                                onClick: () => handleAssignField(f.id),
-                              },
-                              `+ ${f.label}`
-                            )
-                          )
-                        )
-                      : React.createElement(
-                          "div",
-                          { className: "d-flex justify-content-between align-items-center flex-wrap gap-2" },
-                          React.createElement(
-                            "span",
-                            { className: "small text-muted" },
-                            "💡 Tip: Click & drag to highlight any part of the filename above, then assign it to a field."
-                          ),
-                          React.createElement(
-                            "div",
-                            { className: "d-flex align-items-center gap-1" },
-                            React.createElement("span", { className: "small text-muted mr-1" }, "Quick Split:"),
-                            React.createElement(
-                              "button",
-                              {
-                                type: "button",
-                                className: "btn btn-xs btn-outline-info py-0 px-2",
-                                onClick: () => handleQuickSplit(" - "),
-                              },
-                              'Dash " - "'
-                            ),
-                            React.createElement(
-                              "button",
-                              {
-                                type: "button",
-                                className: "btn btn-xs btn-outline-info py-0 px-2",
-                                onClick: () => handleQuickSplit("_"),
-                              },
-                              'Underscore "_"'
-                            ),
-                            React.createElement(
-                              "button",
-                              {
-                                type: "button",
-                                className: "btn btn-xs btn-outline-info py-0 px-2",
-                                onClick: () => handleQuickSplit("."),
-                              },
-                              'Dot "."'
-                            ),
-                            React.createElement(
-                              "button",
-                              {
-                                type: "button",
-                                className: "btn btn-xs btn-outline-info py-0 px-2",
-                                onClick: () => handleQuickSplit(" "),
-                              },
-                              'Space " "'
-                            )
-                          )
-                        )
-                  ),
-                  // Assigned Segments Visual Flow
-                  assignedSegments.length > 0 &&
+                    { className: "mb-3" },
                     React.createElement(
                       "div",
-                      { className: "sfm-assigned-segments-box mb-3 p-2 rounded bg-dark border border-secondary" },
+                      { className: "d-flex justify-content-between align-items-center mb-1" },
+                      React.createElement("label", { className: "small font-weight-bold text-muted mb-0" }, "CUSTOMIZE & ADJUST FIELDS:"),
                       React.createElement(
                         "div",
-                        { className: "d-flex justify-content-between align-items-center mb-2" },
-                        React.createElement("span", { className: "small font-weight-bold text-muted" }, "ASSIGNED FIELD MAPPINGS:"),
+                        { className: "d-flex align-items-center gap-1" },
+                        React.createElement("span", { className: "small text-muted mr-1" }, "Auto:"),
                         React.createElement(
                           "button",
                           {
                             type: "button",
-                            className: "btn btn-xs btn-outline-danger py-0 px-2",
-                            onClick: handleResetSegments,
+                            className: "btn btn-xs btn-info font-weight-bold py-0 px-2 mr-1",
+                            onClick: () => autoDetectFromFilename(sampleWithoutExt),
+                            title: "Auto-detect fields using smart heuristics",
                           },
-                          "Clear All"
+                          "✨ Auto-Detect"
+                        ),
+                        React.createElement(
+                          "button",
+                          {
+                            type: "button",
+                            className: "btn btn-xs btn-outline-secondary py-0 px-1",
+                            onClick: () => autoDetectFromFilename(sampleWithoutExt, "__"),
+                          },
+                          '"__"'
+                        ),
+                        React.createElement(
+                          "button",
+                          {
+                            type: "button",
+                            className: "btn btn-xs btn-outline-secondary py-0 px-1",
+                            onClick: () => autoDetectFromFilename(sampleWithoutExt, " - "),
+                          },
+                          '" - "'
+                        ),
+                        React.createElement(
+                          "button",
+                          {
+                            type: "button",
+                            className: "btn btn-xs btn-outline-secondary py-0 px-1",
+                            onClick: () => autoDetectFromFilename(sampleWithoutExt, "_"),
+                          },
+                          '"_"'
                         )
-                      ),
-                      React.createElement(
-                        "div",
-                        { className: "d-flex align-items-center flex-wrap gap-2" },
-                        assignedSegments.map((seg, idx) => {
-                          const fObj = FIELDS.find((f) => f.id === seg.fieldId) || FIELDS[0];
-                          return React.createElement(
+                      )
+                    ),
+                    // Word block items with Split, Edit, Merge, and Role Dropdown
+                    React.createElement(
+                      "div",
+                      { className: "d-flex align-items-center flex-wrap gap-2 p-2 rounded bg-black border border-secondary" },
+                      chunks.map((chunk, idx) => {
+                        const fObj = FIELDS.find((f) => f.id === chunk.fieldId) || FIELDS[0];
+                        const isSplitting = activeSplitChunkId === chunk.id;
+
+                        // Calculate split suggestions (letters/digits, underscores, dashes)
+                        const splitSuggestions = [];
+                        const text = chunk.text;
+                        const ldMatch = text.match(/^([A-Za-z]+)(\\d+)$/);
+                        if (ldMatch) {
+                          splitSuggestions.push({ p1: ldMatch[1], p2: ldMatch[2], f1: "studio", f2: "code", label: `"${ldMatch[1]}" (Studio) + "${ldMatch[2]}" (Code)` });
+                        }
+                        if (text.includes("_")) {
+                          const parts = text.split("_");
+                          if (parts.length > 1) {
+                            splitSuggestions.push({ p1: parts[0], p2: parts.slice(1).join("_"), f1: chunk.fieldId, f2: "title", label: `"${parts[0]}" + "${parts.slice(1).join("_")}"` });
+                            splitSuggestions.push({ p1: parts.slice(0, -1).join("_"), p2: parts[parts.length - 1], f1: chunk.fieldId, f2: "ignore", label: `"${parts.slice(0, -1).join("_")}" + "${parts[parts.length - 1]}"` });
+                          }
+                        }
+
+                        return React.createElement(
+                          "div",
+                          {
+                            key: chunk.id,
+                            className: "sfm-chunk-box d-inline-flex flex-column rounded p-1 mr-1 mb-1 position-relative",
+                            style: { border: `1px solid ${fObj.color}`, backgroundColor: "#1a1f2c" },
+                          },
+                          React.createElement(
                             "div",
-                            {
-                              key: seg.id,
-                              className: "sfm-segment-pill d-inline-flex align-items-center px-2 py-1 rounded",
-                              style: { backgroundColor: `${fObj.color}22`, border: `1px solid ${fObj.color}` },
-                            },
+                            { className: "d-flex align-items-center" },
                             React.createElement(
                               "span",
-                              { className: "font-weight-bold mr-2", style: { color: fObj.color } },
-                              `"${seg.text}"`
+                              {
+                                className: "font-weight-bold px-2 py-0",
+                                style: { fontFamily: "monospace", fontSize: "0.88rem", color: "#eceff4" },
+                                title: "Click ✂️ to split this field or change its assignment",
+                              },
+                              chunk.text
                             ),
                             React.createElement(
                               "select",
                               {
-                                className: "form-control form-control-sm bg-dark text-light border-0 py-0 px-1 mr-1",
-                                style: { width: "auto", height: "22px", fontSize: "0.75rem" },
-                                value: seg.fieldId,
-                                onChange: (e) => handleChangeSegmentField(seg.id, e.target.value),
+                                className: "form-control form-control-sm border-0 py-0 px-1 font-weight-bold mr-1",
+                                style: {
+                                  width: "auto",
+                                  height: "22px",
+                                  fontSize: "0.76rem",
+                                  backgroundColor: fObj.color,
+                                  color: "#1e222a",
+                                  borderRadius: "3px",
+                                  cursor: "pointer",
+                                },
+                                value: chunk.fieldId,
+                                onChange: (e) => handleSetChunkField(chunk.id, e.target.value),
                               },
                               FIELDS.map((f) => React.createElement("option", { key: f.id, value: f.id }, f.label))
                             ),
+                            // ✂️ Split Button
                             React.createElement(
                               "button",
                               {
                                 type: "button",
-                                className: "btn btn-xs text-muted p-0 ml-1",
-                                onClick: () => handleRemoveSegment(seg.id),
-                                title: "Remove this field mapping",
+                                className: `btn btn-xs ${isSplitting ? "btn-warning" : "btn-outline-secondary"} py-0 px-1 mr-1`,
+                                onClick: () => setActiveSplitChunkId(isSplitting ? null : chunk.id),
+                                title: "Break / Split this field into two separate fields",
+                              },
+                              "✂️"
+                            ),
+                            // ▶ Merge with next button
+                            idx < chunks.length - 1 &&
+                              React.createElement(
+                                "button",
+                                {
+                                  type: "button",
+                                  className: "btn btn-xs btn-link text-muted p-0 mr-1",
+                                  onClick: () => handleMergeWithNext(idx),
+                                  title: "Merge with next field",
+                                },
+                                "▶"
+                              ),
+                            // ✕ Delete chunk button
+                            React.createElement(
+                              "button",
+                              {
+                                type: "button",
+                                className: "btn btn-xs text-muted p-0 px-1",
+                                onClick: () => handleDeleteChunk(chunk.id),
+                                title: "Remove field",
                               },
                               "×"
                             )
-                          );
-                        })
-                      )
+                          ),
+                          // Interactive Split Popover Bar
+                          isSplitting &&
+                            React.createElement(
+                              "div",
+                              {
+                                className: "p-2 mt-1 rounded bg-black border border-warning shadow",
+                                style: { minWidth: "220px", zIndex: 10 },
+                              },
+                              React.createElement("div", { className: "small font-weight-bold text-warning mb-1" }, `✂️ Break apart "${chunk.text}":`),
+                              splitSuggestions.map((sug, sIdx) =>
+                                React.createElement(
+                                  "button",
+                                  {
+                                    key: sIdx,
+                                    type: "button",
+                                    className: "btn btn-xs btn-outline-info text-left d-block w-100 mb-1 py-1 px-2 font-weight-bold",
+                                    style: { fontSize: "0.75rem" },
+                                    onClick: () => handleSplitChunk(chunk.id, sug.p1, sug.p2, sug.f1, sug.f2),
+                                  },
+                                  `Break into: ${sug.label}`
+                                )
+                              ),
+                              // Halfway custom split fallback
+                              splitSuggestions.length === 0 &&
+                                React.createElement(
+                                  "div",
+                                  { className: "d-flex align-items-center gap-1" },
+                                  React.createElement(
+                                    "button",
+                                    {
+                                      type: "button",
+                                      className: "btn btn-xs btn-info py-0 px-2",
+                                      onClick: () => {
+                                        const half = Math.floor(chunk.text.length / 2);
+                                        handleSplitChunk(chunk.id, chunk.text.substring(0, half), chunk.text.substring(half), chunk.fieldId, "title");
+                                      },
+                                    },
+                                    "Split in half"
+                                  )
+                                )
+                            )
+                        );
+                      })
                     )
+                  ),
+                  // Cleaner & Delimiter Settings
+                  React.createElement(
+                    "div",
+                    { className: "d-flex align-items-center flex-wrap gap-3 small text-muted pt-2 border-top border-secondary" },
+                    React.createElement(
+                      "div",
+                      { className: "d-flex align-items-center gap-1 cursor-pointer" },
+                      React.createElement("input", {
+                        type: "checkbox",
+                        id: "sfm-clean-spaces",
+                        checked: cleanSpaces,
+                        onChange: (e) => setCleanSpaces(e.target.checked),
+                      }),
+                      React.createElement("label", { htmlFor: "sfm-clean-spaces", className: "mb-0 ml-1 text-light cursor-pointer" }, "Replace _ and . with spaces")
+                    ),
+                    React.createElement(
+                      "div",
+                      { className: "d-flex align-items-center gap-1 cursor-pointer" },
+                      React.createElement("input", {
+                        type: "checkbox",
+                        id: "sfm-clean-titlecase",
+                        checked: titleCase,
+                        onChange: (e) => setTitleCase(e.target.checked),
+                      }),
+                      React.createElement("label", { htmlFor: "sfm-clean-titlecase", className: "mb-0 ml-1 text-light cursor-pointer" }, "Title Case")
+                    ),
+                    React.createElement(
+                      "div",
+                      { className: "d-flex align-items-center gap-1 cursor-pointer" },
+                      React.createElement("input", {
+                        type: "checkbox",
+                        id: "sfm-clean-normdate",
+                        checked: normalizeDate,
+                        onChange: (e) => setNormalizeDate(e.target.checked),
+                      }),
+                      React.createElement("label", { htmlFor: "sfm-clean-normdate", className: "mb-0 ml-1 text-light cursor-pointer" }, "Normalize Date (YYYY-MM-DD)")
+                    )
+                  )
                 )
               : React.createElement(
                   "div",
@@ -2792,9 +3184,15 @@
                       "select",
                       {
                         className: "form-control form-control-sm bg-dark text-light border-secondary",
-                        onChange: (e) => setPattern(e.target.value),
+                        onChange: (e) => {
+                          const chosen = PRESETS.find((p) => p.pattern === e.target.value);
+                          setPattern(e.target.value);
+                          if (chosen && chosen.caseInsensitive !== undefined) {
+                            setCaseInsensitive(chosen.caseInsensitive);
+                          }
+                        },
                       },
-                      PRESETS.map((p) => React.createElement("option", { key: p.pattern, value: p.pattern }, p.label))
+                      PRESETS.map((p) => React.createElement("option", { key: p.label, value: p.pattern }, p.label))
                     )
                   )
                 ),
@@ -2805,7 +3203,7 @@
               React.createElement(
                 "div",
                 { className: "d-flex justify-content-between align-items-center mb-1" },
-                React.createElement("label", { className: "small font-weight-bold mb-0" }, "Compiled Regular Expression"),
+                React.createElement("label", { className: "small font-weight-bold mb-0" }, "Active Regular Expression"),
                 React.createElement(
                   "div",
                   { className: "d-flex align-items-center gap-2 small text-muted" },
@@ -2829,13 +3227,57 @@
             ),
             parsedResults.error &&
               React.createElement("div", { className: "alert alert-danger py-2 px-3 small" }, `Regex Error: ${parsedResults.error}`),
-            // Live Match Preview Table
+            // Preview Filter Tabs & Count Header
             React.createElement(
               "div",
-              { className: "d-flex justify-content-between align-items-center mb-2" },
-              React.createElement("h6", { className: "small font-weight-bold text-muted mb-0" }, "LIVE MATCH PREVIEW"),
-              React.createElement("span", { className: "badge badge-info" }, `${matchedCount} of ${directScenes.length} files matched`)
+              { className: "d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2" },
+              React.createElement(
+                "div",
+                { className: "btn-group btn-group-sm" },
+                React.createElement(
+                  "button",
+                  {
+                    type: "button",
+                    className: `btn btn-sm ${previewFilter === "all" ? "btn-secondary font-weight-bold" : "btn-outline-secondary"} py-0 px-2`,
+                    onClick: () => setPreviewFilter("all"),
+                  },
+                  `All (${parsedResults.items.length})`
+                ),
+                React.createElement(
+                  "button",
+                  {
+                    type: "button",
+                    className: `btn btn-sm ${previewFilter === "matched" ? "btn-success font-weight-bold" : "btn-outline-secondary"} py-0 px-2`,
+                    onClick: () => setPreviewFilter("matched"),
+                  },
+                  `Matched (${matchedCount})`
+                ),
+                React.createElement(
+                  "button",
+                  {
+                    type: "button",
+                    className: `btn btn-sm ${previewFilter === "unmatched" ? "btn-warning font-weight-bold" : "btn-outline-secondary"} py-0 px-2`,
+                    onClick: () => setPreviewFilter("unmatched"),
+                  },
+                  `Unmatched (${unmatchedCount})`
+                )
+              ),
+              React.createElement(
+                "div",
+                { className: "d-flex align-items-center gap-2" },
+                React.createElement(
+                  "button",
+                  {
+                    type: "button",
+                    className: "btn btn-xs btn-outline-info py-0 px-2",
+                    onClick: handleSelectAllMatched,
+                  },
+                  selectedSceneIds.size === matchedCount && matchedCount > 0 ? "Deselect All Matched" : "Select All Matched"
+                ),
+                React.createElement("span", { className: "badge badge-info" }, `${selectedSceneIds.size} of ${matchedCount} matched selected for update`)
+              )
             ),
+            // Live Preview Table
             React.createElement(
               "div",
               { className: "sfm-parser-table-wrap mb-3" },
@@ -2848,39 +3290,93 @@
                   React.createElement(
                     "tr",
                     null,
+                    React.createElement(
+                      "th",
+                      { style: { width: "36px", textAlign: "center" } },
+                      React.createElement("input", {
+                        type: "checkbox",
+                        checked: matchedCount > 0 && selectedSceneIds.size === matchedCount,
+                        onChange: handleSelectAllMatched,
+                      })
+                    ),
                     React.createElement("th", null, "Filename"),
                     React.createElement("th", null, "Title"),
                     React.createElement("th", null, "Date"),
                     React.createElement("th", null, "StudioCode"),
-                    React.createElement("th", null, "Duration"),
                     React.createElement("th", null, "Studio"),
                     React.createElement("th", null, "Performers"),
-                    React.createElement("th", null, "Status")
+                    React.createElement("th", { style: { width: "95px", textAlign: "center" } }, "Source"),
+                    React.createElement("th", { style: { width: "80px", textAlign: "center" } }, "Status")
                   )
                 ),
                 React.createElement(
                   "tbody",
                   null,
-                  parsedResults.items.map((item) =>
-                    React.createElement(
+                  filteredItems.map((item) => {
+                    const isSelected = selectedSceneIds.has(item.scene.id);
+                    const cloud = cloudMatches[item.scene.id];
+
+                    const displayTitle = cloud?.title || cleanExtracted("title", item.groups.title);
+                    const displayDate = cloud?.date || cleanExtracted("date", item.groups.date);
+                    const displayCode = cloud?.code || item.groups.code || "—";
+                    const displayStudio = cloud?.studio?.name || cleanExtracted("studio", item.groups.studio) || activeStudioClue || "—";
+                    const displayPerformers = cloud?.performers ? cloud.performers.map((p) => p.name).join(", ") : (cleanExtracted("performers", item.groups.performers) || activePerformerClue || "—");
+
+                    const isFromPathStudio = !cloud && !item.groups.studio && activeStudioClue;
+
+                    return React.createElement(
                       "tr",
-                      { key: item.scene.id },
-                      React.createElement("td", { className: "text-truncate", style: { maxWidth: "200px" }, title: item.rawBasename }, item.rawBasename),
-                      React.createElement("td", { className: "text-info font-weight-bold" }, item.groups.title || "—"),
-                      React.createElement("td", null, item.groups.date || "—"),
-                      React.createElement("td", null, item.groups.code || "—"),
-                      React.createElement("td", null, item.groups.duration || "—"),
-                      React.createElement("td", null, item.groups.studio || "—"),
-                      React.createElement("td", null, item.groups.performers || "—"),
+                      {
+                        key: item.scene.id,
+                        style: { cursor: item.matched ? "pointer" : "default", opacity: item.matched ? 1 : 0.65 },
+                        onClick: () => item.matched && handleToggleSelectScene(item.scene.id),
+                      },
+                      React.createElement(
+                        "td",
+                        { style: { textAlign: "center" } },
+                        item.matched &&
+                          React.createElement("input", {
+                            type: "checkbox",
+                            checked: isSelected,
+                            onChange: () => handleToggleSelectScene(item.scene.id),
+                            onClick: (e) => e.stopPropagation(),
+                          })
+                      ),
+                      React.createElement("td", { className: "text-truncate", style: { maxWidth: "180px" }, title: item.rawBasename }, item.rawBasename),
+                      React.createElement("td", { className: "text-info font-weight-bold" }, displayTitle || "—"),
+                      React.createElement("td", null, displayDate || "—"),
+                      React.createElement("td", null, displayCode),
                       React.createElement(
                         "td",
                         null,
+                        displayStudio !== "—"
+                          ? React.createElement(
+                              "span",
+                              null,
+                              displayStudio,
+                              isFromPathStudio && React.createElement("span", { className: "badge badge-dark text-info ml-1 py-0", title: "Resolved from Directory Path Clue" }, "📁 Path")
+                            )
+                          : "—"
+                      ),
+                      React.createElement("td", null, displayPerformers),
+                      React.createElement(
+                        "td",
+                        { style: { textAlign: "center" } },
+                        cloud
+                          ? React.createElement("span", { className: "badge badge-primary py-0 px-1" }, "🌐 Stash-box")
+                          : item.matched
+                          ? React.createElement("span", { className: "badge badge-dark text-muted py-0 px-1" }, "📁 Path+Token")
+                          : "—"
+                      ),
+                      React.createElement(
+                        "td",
+                        { style: { textAlign: "center" } },
                         item.matched
                           ? React.createElement("span", { className: "badge badge-success" }, "Matched")
                           : React.createElement("span", { className: "badge badge-secondary" }, "No Match")
                       )
-                    )
-                  )
+                    );
+                  })
                 )
               )
             ),
@@ -2894,10 +3390,10 @@
               "button",
               {
                 className: "btn btn-primary btn-sm font-weight-bold",
-                disabled: isExecuting || matchedCount === 0,
+                disabled: isExecuting || selectedSceneIds.size === 0,
                 onClick: handleExecute,
               },
-              isExecuting ? "Executing Updates..." : `Apply to ${matchedCount} Matched Scenes`
+              isExecuting ? "Executing Updates..." : `Apply to ${selectedSceneIds.size} Selected Scenes`
             )
           )
         )
@@ -4742,11 +5238,13 @@
                   "span",
                   { className: "sfm-stat-pill ml-2 badge badge-dark font-weight-normal" },
                   React.createElement("strong", { style: { color: "#88c0d0" } }, currentNode ? currentNode.directScenes.length : 0),
-                  " direct · ",
+                  React.createElement("span", { className: "sfm-stat-label" }, "direct"),
+                  React.createElement("span", { className: "sfm-stat-dot" }, "·"),
                   React.createElement("strong", { style: { color: "#81a1c1" } }, allDescendantIds.length),
-                  " in tree (",
+                  React.createElement("span", { className: "sfm-stat-label" }, "in tree"),
+                  React.createElement("span", { className: "sfm-stat-paren" }, "("),
                   React.createElement("strong", { style: { color: "#a3be8c" } }, formatBytes(currentNode?.totalSize)),
-                  ")"
+                  React.createElement("span", { className: "sfm-stat-paren" }, ")")
                 ),
                 // Scan and Grid (Icons only, hover tooltip, grouped 2 as 1)
                 React.createElement(
@@ -4838,7 +5336,7 @@
               // Center: [the search box (stretch till fit)]
               React.createElement(
                 "div",
-                { className: "sfm-search-wrap sfm-search-stretch flex-grow-1" },
+                { className: "sfm-search-wrap sfm-search-stretch flex-grow-1 mx-3" },
                 React.createElement(
                   "span",
                   { className: "sfm-search-icon" },
@@ -4920,8 +5418,8 @@
                       { className: "sfm-collapse-chevron mr-2 text-info font-weight-bold" },
                       isSubfoldersCollapsed ? "▶" : "▼"
                     ),
-                    React.createElement("span", null, "Subfolders"),
-                    React.createElement("span", { className: "badge badge-dark ml-2 font-weight-normal" }, filteredAndSortedSubfolders.length),
+                    React.createElement("span", { className: "sfm-section-title-label" }, "Subfolders"),
+                    React.createElement("span", { className: "badge badge-dark sfm-section-count-badge font-weight-normal" }, filteredAndSortedSubfolders.length),
                     isSubfoldersCollapsed &&
                       React.createElement("span", { className: "text-muted small ml-2 font-italic" }, "(collapsed)")
                   ),
@@ -4939,7 +5437,7 @@
                         ? "Click to exclude sub-folders (show direct folder files only)"
                         : "Click to recursively include scenes from all sub-folders",
                     },
-                    "Include Sub-Folder"
+                    "Include Sub-Folders"
                   ),
                   // Toggle 2: Group by Folder
                   React.createElement(
@@ -4962,7 +5460,7 @@
                     "button",
                     {
                       type: "button",
-                      className: `badge ${hideEmpty ? "badge-info" : "badge-secondary"} sfm-badge-btn ml-2 font-weight-normal`,
+                      className: `badge ${hideEmpty ? "badge-info" : "badge-secondary"} sfm-badge-btn ml-2 font-weight-normal sfm-pill-hideempty`,
                       onClick: (e) => {
                         e.stopPropagation();
                         handleToggleHideEmpty(!hideEmpty);
@@ -5220,8 +5718,8 @@
                       { className: "sfm-collapse-chevron mr-2 text-info font-weight-bold" },
                       isFilesCollapsed ? "▶" : "▼"
                     ),
-                    React.createElement("span", null, "Files / Scenes"),
-                    React.createElement("span", { className: "badge badge-dark ml-2 font-weight-normal" }, filteredAndSortedScenes.length),
+                    React.createElement("span", { className: "sfm-section-title-label" }, "Files / Scenes"),
+                    React.createElement("span", { className: "badge badge-dark sfm-section-count-badge font-weight-normal" }, filteredAndSortedScenes.length),
                     isFilesCollapsed &&
                       React.createElement("span", { className: "text-muted small ml-2 font-italic" }, "(collapsed)")
                   ),
@@ -5232,7 +5730,7 @@
                       className: `badge ${includeSubfolders ? "badge-info" : "badge-secondary"} sfm-badge-indicator ml-2 font-weight-normal sfm-pill-subfolders`,
                       title: includeSubfolders ? "Sub-folders are included in scenes view" : "Sub-folders are excluded from scenes view",
                     },
-                    includeSubfolders ? "Sub-Folder Included" : "Sub-Folder Excluded"
+                    includeSubfolders ? "Sub-Folders Included" : "Sub-Folders Excluded"
                   ),
                   // Indicator 2 (always on)
                   React.createElement(
@@ -5394,7 +5892,8 @@
                   React.createElement(
                     "button",
                     {
-                      className: "btn btn-sm btn-primary",
+                      type: "button",
+                      className: "btn btn-sm btn-outline-secondary py-1 px-2",
                       onClick: () => setShowBatchModal(true),
                       title: "Batch edit selected scenes",
                     },
@@ -5404,7 +5903,8 @@
                   React.createElement(
                     "button",
                     {
-                      className: "btn btn-sm btn-outline-warning",
+                      type: "button",
+                      className: "btn btn-sm btn-outline-secondary py-1 px-2",
                       onClick: () => setShowParserModal(true),
                       title: "Regex parse selected scenes",
                     },
@@ -5414,7 +5914,8 @@
                   React.createElement(
                     "button",
                     {
-                      className: "btn btn-sm btn-outline-info",
+                      type: "button",
+                      className: "btn btn-sm btn-outline-secondary py-1 px-2 d-inline-flex align-items-center justify-content-center",
                       onClick: () => {
                         const ids = Array.from(selectedSceneIds);
                         const filterCriterion = {
@@ -5424,15 +5925,15 @@
                         };
                         window.open(`/scenes?c=${encodeURIComponent(JSON.stringify(filterCriterion))}`, "_blank");
                       },
-                      title: "Open selected in Stash native grid",
+                      title: "Open selected scenes in Stash native grid (new tab)",
                     },
-                    React.createElement(IconGrid, { size: 13, className: "mr-1" }),
-                    "Stash Grid"
+                    React.createElement(IconGrid, { size: 14 })
                   ),
                   React.createElement(
                     "button",
                     {
-                      className: "btn btn-sm btn-outline-light",
+                      type: "button",
+                      className: "btn btn-sm btn-outline-secondary py-1 px-2",
                       onClick: handleClearSelection,
                       title: "Clear selection (Esc)",
                     },
@@ -5457,6 +5958,7 @@
           showParserModal &&
             React.createElement(FilenameParserModal, {
               currentFolder: selectedSceneIds.size > 0 ? `${selectedSceneIds.size} selected scenes` : currentFolderName,
+              currentPath: currentPath || "",
               directScenes: selectedSceneIds.size > 0
                 ? (includeSubfolders
                     ? getAllDescendantScenes(currentNode).filter((s) => selectedSceneIds.has(s.id))

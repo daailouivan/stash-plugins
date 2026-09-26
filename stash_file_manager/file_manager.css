@@ -2189,6 +2189,7 @@
   max-width: none;
   min-width: 160px;
   flex: 1 1 auto;
+  margin: 0 1rem;
 }
 
 .sfm-search-wrap.sfm-search-stretch .sfm-search-input {
@@ -2196,8 +2197,36 @@
 }
 
 /* ==========================================================================
-   Harmonized Field Count Badges
+   Harmonized Field Count Badges & Stat Pills
    ========================================================================== */
+
+.sfm-stat-pill {
+  font-size: 0.78rem;
+  color: #81a1c1;
+  background-color: #242933;
+  border: 1px solid #3b4252;
+  padding: 0.22rem 0.65rem;
+  border-radius: 12px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.sfm-stat-pill .sfm-stat-label {
+  color: #d8dee9;
+}
+
+.sfm-stat-pill .sfm-stat-dot {
+  color: #4c566a;
+  margin: 0 0.1rem;
+}
+
+.sfm-stat-pill .sfm-stat-paren {
+  color: #4c566a;
+}
 
 .sfm-section-header .badge-dark,
 .sfm-stat-pill.badge-dark {
@@ -2211,22 +2240,28 @@
   vertical-align: middle;
 }
 
-
 /* ==========================================================================
-   Header Toggle Buttons Matching Badge Size
+   Header Toggle Buttons & Persistent Indicators (Aligned & Sized)
    ========================================================================== */
 
 button.badge.sfm-badge-btn {
-  border: 1px solid transparent;
-  outline: none;
-  cursor: pointer;
-  user-select: none;
+  height: 24px;
+  line-height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
   font-family: inherit;
-  font-size: 75%;
-  line-height: 1;
-  padding: 0.25em 0.4em;
-  vertical-align: baseline;
-  display: inline-block;
+  font-size: 0.76rem;
+  font-weight: 500;
+  border-radius: 12px;
+  padding: 0 0.55rem;
+  vertical-align: middle;
+  white-space: nowrap;
+  border: 1px solid transparent;
+  cursor: pointer;
+  outline: none;
+  user-select: none;
   transition: opacity 0.15s ease, background-color 0.15s ease;
 }
 
@@ -2234,6 +2269,24 @@ button.badge.sfm-badge-btn:hover {
   opacity: 0.85;
 }
 
+.sfm-badge-indicator {
+  height: 24px;
+  line-height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  font-family: inherit;
+  font-size: 0.76rem;
+  font-weight: 500;
+  border-radius: 12px;
+  padding: 0 0.55rem;
+  vertical-align: middle;
+  white-space: nowrap;
+  border: 1px solid transparent;
+  user-select: none;
+  opacity: 0.95;
+}
 
 /* ==========================================================================
    Header Centered Search Wrap
@@ -2263,19 +2316,57 @@ button.badge.sfm-badge-btn:hover {
 }
 
 /* ==========================================================================
-   Aligned Section Headers, Badges & Indicators
+   Aligned Section Headers, Count Badges & Fixed-Width Pills
    ========================================================================== */
 
 .sfm-section-title-box {
-  min-width: 155px;
+  width: 172px;
+  min-width: 172px;
+  max-width: 172px;
   display: inline-flex;
   align-items: center;
   flex-shrink: 0;
+  box-sizing: border-box;
+}
+
+.sfm-section-title-box .sfm-collapse-chevron {
+  width: 14px;
+  display: inline-block;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.sfm-section-title-label {
+  display: inline-block;
+  width: 104px;
+  min-width: 104px;
+  max-width: 104px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 0;
+}
+
+.sfm-section-count-badge {
+  min-width: 36px;
+  height: 22px;
+  padding: 0 0.4rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.76rem;
+  line-height: 1;
+  border-radius: 11px;
+  box-sizing: border-box;
+  text-align: center;
+  flex-shrink: 0;
+  margin-left: 0.35rem !important;
 }
 
 .sfm-pill-subfolders {
-  width: 160px;
-  min-width: 160px;
+  width: 142px;
+  min-width: 142px;
+  max-width: 142px;
   text-align: center;
   display: inline-flex;
   align-items: center;
@@ -2285,8 +2376,9 @@ button.badge.sfm-badge-btn:hover {
 }
 
 .sfm-pill-foldersort {
-  width: 150px;
-  min-width: 150px;
+  width: 126px;
+  min-width: 126px;
+  max-width: 126px;
   text-align: center;
   display: inline-flex;
   align-items: center;
@@ -2295,17 +2387,16 @@ button.badge.sfm-badge-btn:hover {
   white-space: nowrap;
 }
 
-.sfm-badge-indicator {
-  border: 1px solid transparent;
-  outline: none;
-  user-select: none;
-  font-family: inherit;
-  font-size: 75%;
-  line-height: 1;
-  padding: 0.25em 0.4em;
-  vertical-align: baseline;
-  display: inline-block;
-  opacity: 0.9;
+.sfm-pill-hideempty {
+  width: 96px;
+  min-width: 96px;
+  max-width: 96px;
+  text-align: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  white-space: nowrap;
 }
 
 .sfm-view-toggle-group {
@@ -2434,5 +2525,53 @@ button.badge.sfm-badge-btn:hover {
   font-weight: 500;
   background-color: #1e222d !important;
   border: 1px solid #3b4252 !important;
+  border-radius: 3px;
+}
+
+/* ==========================================================================
+   Smart Filename Parser Word Chunks & Cleaner Controls
+   ========================================================================== */
+
+.sfm-guided-card {
+  background-color: #161922 !important;
+  border: 1px solid #2b3242 !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+.sfm-chunk-box {
+  display: inline-flex;
+  align-items: center;
+  background-color: #1a1f2c;
+  border-radius: 4px;
+  transition: transform 0.1s ease, box-shadow 0.15s ease;
+}
+
+.sfm-chunk-box:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+.sfm-chunk-box select {
+  border-radius: 3px;
+  font-weight: 600;
+}
+
+/* ==========================================================================
+   Directory Path Clues & Stash-box Resolver Bar
+   ========================================================================== */
+
+.sfm-path-clues-card {
+  background-color: #171b24 !important;
+  border: 1px solid #2e3544 !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.sfm-path-clue-pill {
+  font-size: 0.8rem;
+  border-radius: 4px;
+}
+
+.sfm-path-clue-pill select {
+  font-weight: 600;
   border-radius: 3px;
 }
