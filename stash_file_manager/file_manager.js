@@ -803,12 +803,320 @@
       return currentScene ? [currentScene, ...others] : others;
     }
 
+    // ==========================================
+    // Folder Profile & Video Wall Component (Social Media Profile Simulation)
+    // ==========================================
+    function FolderProfileView({
+      folderName,
+      targetFolderPath,
+      displayFolderPath,
+      scenes = [],
+      currentScene,
+      posterUrl,
+      onSelectScene,
+      onCloseProfile,
+      onNavigateToDirectory,
+      onPlayAll,
+      onShuffleAll,
+    }) {
+      const stats = useMemo(() => {
+        let totalSize = 0;
+        let totalDuration = 0;
+        const resCounts = {};
+
+        for (const s of scenes) {
+          const f = s.files?.[0];
+          if (f) {
+            if (f.size) totalSize += f.size;
+            if (f.duration) totalDuration += f.duration;
+            const h = f.height;
+            if (h >= 2160) resCounts["4K"] = (resCounts["4K"] || 0) + 1;
+            else if (h >= 1440) resCounts["1440p"] = (resCounts["1440p"] || 0) + 1;
+            else if (h >= 1080) resCounts["1080p"] = (resCounts["1080p"] || 0) + 1;
+            else if (h >= 720) resCounts["720p"] = (resCounts["720p"] || 0) + 1;
+            else if (h) resCounts["SD"] = (resCounts["SD"] || 0) + 1;
+          }
+        }
+
+        const totalHours = Math.floor(totalDuration / 3600);
+        const remainingMins = Math.floor((totalDuration % 3600) / 60);
+        const durationStr = totalHours > 0 ? `${totalHours}h ${remainingMins}m` : `${remainingMins}m`;
+
+        return {
+          count: scenes.length,
+          formattedSize: formatBytes(totalSize),
+          formattedDuration: durationStr,
+          resCounts,
+        };
+      }, [scenes]);
+
+      const displayName = folderName || (targetFolderPath ? targetFolderPath.split("/").pop() : "Root");
+
+      return React.createElement(
+        "div",
+        { className: "sfm-folder-profile-page" },
+        // 1. Sticky Navigation Top Bar
+        React.createElement(
+          "div",
+          { className: "sfm-profile-nav-bar d-flex align-items-center justify-content-between" },
+          React.createElement(
+            "button",
+            {
+              type: "button",
+              className: "btn btn-sm btn-outline-info py-1 px-3 d-inline-flex align-items-center sfm-profile-back-btn",
+              onClick: onCloseProfile,
+              title: "Back to Video Player (Esc)",
+            },
+            React.createElement(IconArrowLeft, { size: 14, className: "mr-1" }),
+            React.createElement("span", { className: "font-weight-bold" }, "Back to Video")
+          ),
+          React.createElement(
+            "div",
+            { className: "sfm-profile-nav-title d-flex align-items-center text-truncate mx-2" },
+            React.createElement(IconFolder, { size: 16, color: "#88c0d0", className: "mr-2 flex-shrink-0" }),
+            React.createElement("span", { className: "font-weight-bold text-light text-truncate" }, displayFolderPath)
+          ),
+          React.createElement(
+            "div",
+            { className: "d-flex align-items-center gap-2 flex-shrink-0" },
+            React.createElement(
+              "button",
+              {
+                type: "button",
+                className: "btn btn-sm btn-outline-secondary py-1 px-2 d-inline-flex align-items-center",
+                onClick: onNavigateToDirectory,
+                title: `Open "${targetFolderPath || "Root"}" in File Manager`,
+              },
+              React.createElement(IconFolder, { size: 13, className: "mr-1" }),
+              "File Manager"
+            ),
+            React.createElement(
+              "button",
+              {
+                type: "button",
+                className: "btn btn-sm btn-outline-secondary py-1 px-2",
+                onClick: onCloseProfile,
+                title: "Close Profile",
+              },
+              React.createElement(IconX, { size: 14 })
+            )
+          )
+        ),
+
+        // 2. Profile Header Section (Creator Profile Simulation)
+        React.createElement(
+          "div",
+          { className: "sfm-profile-header-container" },
+          React.createElement(
+            "div",
+            { className: "sfm-profile-header-content d-flex align-items-center flex-wrap" },
+            // Large Avatar Box
+            React.createElement(
+              "div",
+              { className: "sfm-profile-avatar-large mr-4 position-relative" },
+              React.createElement("img", {
+                src: posterUrl,
+                className: "sfm-profile-avatar-large-img",
+                alt: displayName,
+              }),
+              React.createElement(
+                "div",
+                { className: "sfm-profile-avatar-large-badge" },
+                React.createElement(IconFolder, { size: 14, color: "#ffffff" })
+              )
+            ),
+            // Folder Name, Path, Stats & Action Triggers
+            React.createElement(
+              "div",
+              { className: "sfm-profile-info-box flex-grow-1" },
+              React.createElement(
+                "div",
+                { className: "d-flex align-items-center flex-wrap gap-2 mb-1" },
+                React.createElement("h2", { className: "sfm-profile-title mb-0 font-weight-bold text-light" }, displayName),
+                React.createElement("span", { className: "badge badge-dark sfm-profile-path-badge" }, displayFolderPath)
+              ),
+              // Metrics Pills Row
+              React.createElement(
+                "div",
+                { className: "sfm-profile-stats-row d-flex align-items-center flex-wrap gap-2 my-2" },
+                React.createElement(
+                  "span",
+                  { className: "sfm-stat-pill badge badge-dark" },
+                  React.createElement("strong", { style: { color: "#88c0d0" } }, stats.count),
+                  React.createElement("span", { className: "ml-1" }, stats.count === 1 ? "Video" : "Videos")
+                ),
+                React.createElement(
+                  "span",
+                  { className: "sfm-stat-pill badge badge-dark" },
+                  React.createElement("strong", { style: { color: "#a3be8c" } }, stats.formattedSize),
+                  React.createElement("span", { className: "ml-1" }, "Total Size")
+                ),
+                React.createElement(
+                  "span",
+                  { className: "sfm-stat-pill badge badge-dark" },
+                  React.createElement("strong", { style: { color: "#ebcb8b" } }, stats.formattedDuration),
+                  React.createElement("span", { className: "ml-1" }, "Total Duration")
+                ),
+                Object.entries(stats.resCounts).map(([res, count]) =>
+                  React.createElement(
+                    "span",
+                    { key: res, className: "badge badge-info font-weight-normal py-1 px-2" },
+                    `${res}: ${count}`
+                  )
+                )
+              ),
+              // Action Buttons
+              React.createElement(
+                "div",
+                { className: "d-flex align-items-center flex-wrap gap-2 mt-3" },
+                React.createElement(
+                  "button",
+                  {
+                    type: "button",
+                    className: "btn btn-sm btn-primary px-3 py-1 font-weight-bold d-inline-flex align-items-center",
+                    onClick: onPlayAll,
+                    title: "Play all videos sequentially from the beginning",
+                  },
+                  React.createElement("span", { className: "mr-1" }, "▶"),
+                  "Play All"
+                ),
+                React.createElement(
+                  "button",
+                  {
+                    type: "button",
+                    className: "btn btn-sm btn-outline-info px-3 py-1 d-inline-flex align-items-center",
+                    onClick: onShuffleAll,
+                    title: "Play all videos in random order without repeats",
+                  },
+                  React.createElement(IconShuffle, { size: 14, className: "mr-1" }),
+                  "Shuffle Play"
+                ),
+                React.createElement(
+                  "button",
+                  {
+                    type: "button",
+                    className: "btn btn-sm btn-outline-secondary px-3 py-1 d-inline-flex align-items-center",
+                    onClick: () => {
+                      const filter = { type: "path", value: targetFolderPath, modifier: "MATCHES_REGEX" };
+                      window.open(`/scenes?c=${encodeURIComponent(JSON.stringify(filter))}`, "_blank");
+                    },
+                    title: "Open this directory in Stash native scene grid (new tab)",
+                  },
+                  React.createElement(IconGrid, { size: 13, className: "mr-1" }),
+                  "Stash Grid"
+                )
+              )
+            )
+          )
+        ),
+
+        // 3. Section Title: Video Wall
+        React.createElement(
+          "div",
+          { className: "sfm-profile-wall-header d-flex align-items-center justify-content-between px-4 pt-3 pb-2" },
+          React.createElement(
+            "div",
+            { className: "d-flex align-items-center" },
+            React.createElement("span", { className: "font-weight-bold text-uppercase text-muted small letter-spacing-1" }, "Video Wall"),
+            React.createElement("span", { className: "badge badge-dark ml-2" }, scenes.length)
+          ),
+          React.createElement(
+            "span",
+            { className: "text-muted small" },
+            "Click any video to play"
+          )
+        ),
+
+        // 4. Video Wall Grid
+        React.createElement(
+          "div",
+          { className: "sfm-profile-wall-grid px-4 pb-5" },
+          scenes.map((s) => {
+            const isCurrent = s.id === currentScene?.id;
+            const sPoster = s.paths?.screenshot || `/scene/${s.id}/screenshot`;
+            const sTitle = s.title || s.files?.[0]?.basename || `Scene #${s.id}`;
+            const sDuration = formatDuration(s.files?.[0]?.duration);
+            const sHeight = s.files?.[0]?.height;
+            const sRes = sHeight >= 2160 ? "4K" : sHeight >= 1080 ? "1080p" : sHeight >= 720 ? "720p" : "";
+            const sSize = formatBytes(s.files?.[0]?.size);
+
+            return React.createElement(
+              "div",
+              {
+                key: s.id,
+                className: `sfm-wall-card ${isCurrent ? "sfm-wall-card-active" : ""}`,
+                onClick: () => onSelectScene(s),
+                title: `Play: ${sTitle}`,
+              },
+              // Poster Container
+              React.createElement(
+                "div",
+                { className: "sfm-wall-card-thumb-wrap" },
+                React.createElement("img", {
+                  src: sPoster,
+                  className: "sfm-wall-card-thumb",
+                  alt: sTitle,
+                  loading: "lazy",
+                }),
+                // Badges
+                isCurrent &&
+                  React.createElement(
+                    "span",
+                    { className: "sfm-wall-badge-playing" },
+                    "▶ NOW PLAYING"
+                  ),
+                sRes &&
+                  React.createElement(
+                    "span",
+                    { className: "sfm-wall-badge-res" },
+                    sRes
+                  ),
+                sDuration &&
+                  React.createElement(
+                    "span",
+                    { className: "sfm-wall-badge-duration" },
+                    sDuration
+                  ),
+                // Play overlay on hover
+                React.createElement(
+                  "div",
+                  { className: "sfm-wall-play-overlay" },
+                  React.createElement(
+                    "div",
+                    { className: "sfm-wall-play-circle" },
+                    "▶"
+                  )
+                )
+              ),
+              // Metadata below poster
+              React.createElement(
+                "div",
+                { className: "sfm-wall-card-body" },
+                React.createElement(
+                  "div",
+                  { className: "sfm-wall-card-title text-truncate", title: sTitle },
+                  sTitle
+                ),
+                React.createElement(
+                  "div",
+                  { className: "sfm-wall-card-sub text-muted small d-flex align-items-center justify-content-between mt-1" },
+                  React.createElement("span", null, s.studio?.name || (s.files?.[0]?.format || "").toUpperCase()),
+                  React.createElement("span", null, sSize)
+                )
+              )
+            );
+          })
+        )
+      );
+    }
+
     function BingeReelPlayerModal({ scene, scenes = [], onSelectScene, onClose, folderName, currentPath, onNavigateToFolder }) {
       const videoRef = useRef(null);
       const videoContainerRef = useRef(null);
       const hlsInstanceRef = useRef(null);
       const hideTimeoutRef = useRef(null);
       const [isVideoReady, setIsVideoReady] = useState(false);
+      const [showFolderProfile, setShowFolderProfile] = useState(false);
 
       // 1. Shuffle Queue State & Non-Repeating Active Queue
       const [isShuffle, setIsShuffle] = useState(() => {
@@ -1550,6 +1858,10 @@
         const handleKeyDown = (e) => {
           if (["input", "textarea", "select"].includes(e.target.tagName?.toLowerCase())) return;
           if (e.key === "Escape") {
+            if (showFolderProfile) {
+              setShowFolderProfile(false);
+              return;
+            }
             if (isPipMode && document.pictureInPictureElement) {
               document.exitPictureInPicture().catch(() => {});
             }
@@ -1591,7 +1903,7 @@
 
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
-      }, [onClose, goToNext, goToPrev, handleTogglePlay, handleToggleShuffle, duration, isPipMode]);
+      }, [onClose, goToNext, goToPrev, handleTogglePlay, handleToggleShuffle, duration, isPipMode, showFolderProfile]);
 
       // Formatted duration helper
       const formatTime = (secs) => {
@@ -1605,6 +1917,43 @@
       return React.createElement(
         React.Fragment,
         null,
+        // Folder Profile Video Wall Overlay
+        showFolderProfile &&
+          React.createElement(FolderProfileView, {
+            folderName: folderName,
+            targetFolderPath: targetFolderPath,
+            displayFolderPath: displayFolderPath,
+            scenes: scenes,
+            currentScene: scene,
+            posterUrl: posterUrl,
+            onSelectScene: (s) => {
+              onSelectScene(s);
+              setShowFolderProfile(false);
+            },
+            onCloseProfile: () => setShowFolderProfile(false),
+            onNavigateToDirectory: () => {
+              if (onNavigateToFolder) {
+                onNavigateToFolder(targetFolderPath);
+              }
+              onClose();
+            },
+            onPlayAll: () => {
+              if (scenes.length > 0) {
+                onSelectScene(scenes[0]);
+                setShowFolderProfile(false);
+              }
+            },
+            onShuffleAll: () => {
+              if (scenes.length > 0) {
+                const q = createShuffledQueue(scenes, scenes[0]);
+                setShuffledQueue(q);
+                setIsShuffle(true);
+                onSelectScene(q[0]);
+                setShowFolderProfile(false);
+              }
+            },
+          }),
+
         // When in PiP mode, show small non-intrusive floating dock pill
         isPipMode &&
           React.createElement(
@@ -2167,19 +2516,19 @@
               React.createElement(
                 "div",
                 { className: `sfm-reel-description-overlay ${isControlsVisible ? "sfm-visible" : "sfm-hidden"}` },
-                // Social Media Avatar & Folder Path (Direct navigation on click)
+                // Social Media Avatar & Folder Path (Opens Folder Profile Video Wall)
                 React.createElement(
                   "div",
                   {
                     className: "sfm-reel-avatar-bar d-inline-flex align-items-center mb-2",
                     onClick: (e) => {
                       e.stopPropagation();
-                      if (onNavigateToFolder) {
-                        onNavigateToFolder(targetFolderPath);
+                      if (videoRef.current && !videoRef.current.paused) {
+                        videoRef.current.pause();
                       }
-                      onClose();
+                      setShowFolderProfile(true);
                     },
-                    title: `Navigate to folder "${targetFolderPath || "Root"}" in File Manager`,
+                    title: `View Directory Profile & Video Wall for "${targetFolderPath || "Root"}"`,
                   },
                   React.createElement(
                     "div",

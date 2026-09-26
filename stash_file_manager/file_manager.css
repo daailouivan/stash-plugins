@@ -2683,3 +2683,270 @@ button.badge.sfm-badge-btn:hover {
 .sfm-reel-avatar-bar:hover .sfm-reel-path-label {
   color: #88c0d0;
 }
+
+
+/* ==========================================================================
+   Folder Profile & Video Wall Overlay (Social Media Creator Profile Style)
+   ========================================================================== */
+
+.sfm-folder-profile-page {
+  position: fixed;
+  inset: 0;
+  z-index: 1060;
+  background: #0c1017;
+  color: #eceff4;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: sfmFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.sfm-profile-nav-bar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: rgba(12, 16, 23, 0.94);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 0.75rem 1.75rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+.sfm-profile-back-btn {
+  border-radius: 20px;
+  font-size: 0.82rem;
+  transition: transform 0.1s ease, background-color 0.15s ease;
+}
+
+.sfm-profile-back-btn:hover {
+  transform: translateX(-2px);
+}
+
+.sfm-profile-header-container {
+  background: linear-gradient(180deg, rgba(20, 28, 44, 0.85) 0%, rgba(12, 16, 23, 0.95) 100%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 2.25rem 2rem 1.75rem;
+}
+
+.sfm-profile-header-content {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.sfm-profile-avatar-large {
+  width: 76px;
+  height: 76px;
+  min-width: 76px;
+  border-radius: 50%;
+  border: 3px solid #88c0d0;
+  box-shadow: 0 6px 20px rgba(136, 192, 208, 0.35);
+  background: #141822;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.sfm-profile-avatar-large-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+}
+
+.sfm-profile-avatar-large-badge {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 22px;
+  height: 22px;
+  background: #5e81ac;
+  border: 2px solid #0c1017;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+}
+
+.sfm-profile-info-box {
+  min-width: 280px;
+}
+
+.sfm-profile-title {
+  font-size: 1.55rem;
+  letter-spacing: -0.01em;
+}
+
+.sfm-profile-path-badge {
+  background-color: #242933;
+  border: 1px solid #3b4252;
+  color: #88c0d0;
+  font-size: 0.82rem;
+  padding: 0.25rem 0.65rem;
+  border-radius: 12px;
+  font-family: monospace;
+}
+
+.sfm-profile-stats-row .sfm-stat-pill {
+  padding: 0.25rem 0.75rem;
+  font-size: 0.82rem;
+}
+
+.sfm-profile-wall-header {
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.sfm-profile-wall-grid {
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.sfm-wall-card {
+  background: #151922;
+  border: 1px solid #282e3d;
+  border-radius: 10px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.sfm-wall-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(136, 192, 208, 0.6);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+
+.sfm-wall-card-active {
+  border-color: #88c0d0 !important;
+  box-shadow: 0 0 16px rgba(136, 192, 208, 0.35) !important;
+}
+
+.sfm-wall-card-thumb-wrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #000;
+  overflow: hidden;
+}
+
+.sfm-wall-card-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.sfm-wall-card:hover .sfm-wall-card-thumb {
+  transform: scale(1.06);
+}
+
+.sfm-wall-badge-playing {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  background: #88c0d0;
+  color: #0c1017;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+  z-index: 2;
+}
+
+.sfm-wall-badge-res {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(20, 24, 34, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #eceff4;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 0.12rem 0.4rem;
+  border-radius: 4px;
+  z-index: 2;
+}
+
+.sfm-wall-badge-duration {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  background: rgba(0, 0, 0, 0.82);
+  color: #eceff4;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.12rem 0.4rem;
+  border-radius: 4px;
+  z-index: 2;
+}
+
+.sfm-wall-play-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  z-index: 3;
+}
+
+.sfm-wall-card:hover .sfm-wall-play-overlay {
+  opacity: 1;
+}
+
+.sfm-wall-play-circle {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(136, 192, 208, 0.9);
+  color: #0c1017;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  padding-left: 3px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+  transform: scale(0.9);
+  transition: transform 0.15s ease;
+}
+
+.sfm-wall-card:hover .sfm-wall-play-circle {
+  transform: scale(1.05);
+}
+
+.sfm-wall-card-body {
+  padding: 0.75rem 0.85rem 0.85rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  flex-grow: 1;
+}
+
+.sfm-wall-card-title {
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: #eceff4;
+  line-height: 1.35;
+}
+
+.sfm-wall-card:hover .sfm-wall-card-title {
+  color: #88c0d0;
+}
+
+.sfm-wall-card-sub {
+  font-size: 0.76rem;
+}
