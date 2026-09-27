@@ -2396,17 +2396,16 @@ button.badge.sfm-badge-btn:hover {
 }
 
 /* ==========================================================================
-   Aligned Section Headers, Count Badges & Fixed-Width Pills
+   Aligned Section Headers, Count Badges & Responsive Fluid Pills
    ========================================================================== */
 
 .sfm-section-title-box {
-  width: 172px;
-  min-width: 172px;
-  max-width: 172px;
   display: inline-flex;
   align-items: center;
+  gap: 0.35rem;
   flex-shrink: 0;
-  box-sizing: border-box;
+  cursor: pointer;
+  user-select: none;
 }
 
 .sfm-section-title-box .sfm-collapse-chevron {
@@ -2418,89 +2417,81 @@ button.badge.sfm-badge-btn:hover {
 
 .sfm-section-title-label {
   display: inline-block;
-  width: 104px;
-  min-width: 104px;
-  max-width: 104px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #eceff4;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  flex-shrink: 0;
 }
 
 .sfm-section-count-badge {
-  min-width: 36px;
-  height: 22px;
-  padding: 0 0.4rem;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  padding: 0.2rem 0.55rem;
   font-size: 0.76rem;
   line-height: 1;
-  border-radius: 11px;
-  box-sizing: border-box;
-  text-align: center;
-  flex-shrink: 0;
+  border-radius: 12px;
+  background-color: #242933;
+  border: 1px solid #3b4252;
+  color: #88c0d0;
+  font-weight: 700;
   margin-left: 0.35rem !important;
 }
 
-.sfm-pill-subfolders {
-  width: 142px;
-  min-width: 142px;
-  max-width: 142px;
-  text-align: center;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  box-sizing: border-box;
-  white-space: nowrap;
-}
-
-.sfm-pill-foldersort {
-  width: 126px;
-  min-width: 126px;
-  max-width: 126px;
-  text-align: center;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  box-sizing: border-box;
-  white-space: nowrap;
-}
-
-.sfm-pill-hideempty {
-  width: 82px;
-  min-width: 82px;
-  max-width: 82px;
-  text-align: center;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  box-sizing: border-box;
-  white-space: nowrap;
+.sfm-pill-subfolders,
+.sfm-pill-foldersort,
+.sfm-pill-hideempty,
+.sfm-badge-indicator,
+.sfm-state-pill,
+button.badge.sfm-badge-btn {
+  padding: 0.35rem 0.75rem !important;
+  font-size: 0.78rem !important;
+  border-radius: 6px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  box-sizing: border-box !important;
+  white-space: nowrap !important;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  line-height: 1.2 !important;
 }
 
 .sfm-view-toggle-group {
-  width: 204px;
-  min-width: 204px;
   display: inline-flex;
+  gap: 2px;
+  width: auto;
+  min-width: 0;
+  background: #141822;
+  padding: 2px;
+  border-radius: 6px;
+  border: 1px solid #282e3d;
   flex-shrink: 0;
 }
 
 .sfm-view-toggle-group .btn {
-  flex: 1 1 0;
-  text-align: center;
-  padding-left: 0.25rem !important;
-  padding-right: 0.25rem !important;
+  padding: 0.25rem 0.65rem !important;
+  font-size: 0.76rem !important;
+  border-radius: 4px !important;
+  border: none !important;
+  color: #81a1c1;
+  background: transparent;
   white-space: nowrap;
 }
 
+.sfm-view-toggle-group .btn.active,
+.sfm-view-toggle-group .btn.btn-info {
+  background: #2b3345 !important;
+  color: #88c0d0 !important;
+  font-weight: 700;
+}
+
 .sfm-size-slider-wrap {
-  width: 140px;
-  min-width: 140px;
   display: flex;
   align-items: center;
   gap: 0.4rem;
   flex-shrink: 0;
+  width: 140px;
 }
 
 .sfm-size-slider-wrap .sfm-size-slider {
@@ -2778,19 +2769,20 @@ button.badge.sfm-badge-btn:hover {
    ========================================================================== */
 
 .sfm-folder-profile-page {
-  position: fixed;
-  inset: 0;
-  z-index: 10050 !important;
-  background: #000000;
-  color: #eceff4;
-  overflow: hidden !important;
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 10080 !important;
+  background: #05070a !important;
+  color: #eceff4 !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  -webkit-overflow-scrolling: touch !important;
   overscroll-behavior: contain !important;
   overscroll-behavior-y: contain !important;
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  height: 100dvh;
-  max-height: 100dvh;
+  display: flex !important;
+  flex-direction: column !important;
+  height: 100vh !important;
+  height: 100dvh !important;
   animation: sfmFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -3519,49 +3511,28 @@ button.badge.sfm-badge-btn:hover {
 
 /* Responsive Scaling for Real Mobile Screens */
 @media (max-width: 768px) {
-  /* ========================================================================
-     COMPLETE MOBILE REDESIGN FOR THE MAIN INTERFACE (Zero Scaling Warp)
-     ======================================================================== */
-
-  /* 0. Viewport & Body Zero-Overflow Enforcement */
+  /* Zero Horizontal Overflow Enforcement */
   html, body {
     max-width: 100% !important;
     overflow-x: hidden !important;
   }
 
-  #sfm-workspace-root {
+  #sfm-workspace-root,
+  .sfm-workspace-overlay {
     width: 100% !important;
     max-width: 100vw !important;
     overflow-x: hidden !important;
     box-sizing: border-box !important;
   }
 
-  .sfm-workspace-overlay {
-    width: 100% !important;
-    max-width: 100% !important;
-    box-sizing: border-box !important;
-    overflow-x: hidden !important;
-  }
-
   .sfm-workspace-header {
     padding: 0.5rem 0.75rem !important;
     width: 100% !important;
-    max-width: 100% !important;
     box-sizing: border-box !important;
-    gap: 0.5rem !important;
-  }
-
-  .sfm-workspace-title {
-    font-size: 0.95rem !important;
-  }
-
-  .sfm-workspace-close {
-    padding: 0.25rem 0.6rem !important;
-    font-size: 0.82rem !important;
   }
 
   .sfm-workspace-content {
-    padding: 0.5rem 0.5rem 6rem !important;
+    padding: 0.5rem 0.5rem 5rem !important;
     width: 100% !important;
     max-width: 100% !important;
     box-sizing: border-box !important;
@@ -3569,22 +3540,21 @@ button.badge.sfm-badge-btn:hover {
     overscroll-behavior: contain !important;
   }
 
-  /* 1. Line 1: Navigation & Path Line on Mobile - Redesigned Structured Flow */
+  /* Navigation Line 1: Controls & Breadcrumbs on Mobile */
   .sfm-nav-control-line {
     padding: 0.5rem 0.65rem !important;
     margin-bottom: 0.65rem !important;
     width: 100% !important;
-    max-width: 100% !important;
     box-sizing: border-box !important;
   }
 
   .sfm-nav-line-path {
     display: flex !important;
-    flex-direction: column !important;
-    align-items: stretch !important;
-    gap: 8px !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 6px !important;
     width: 100% !important;
-    max-width: 100% !important;
     box-sizing: border-box !important;
   }
 
@@ -3595,15 +3565,21 @@ button.badge.sfm-badge-btn:hover {
     gap: 6px !important;
     row-gap: 6px !important;
     width: 100% !important;
-    max-width: 100% !important;
     box-sizing: border-box !important;
   }
 
-  .sfm-nav-history-group {
-    display: inline-flex !important;
-    gap: 6px !important;
-    margin-right: 4px !important;
-    flex-shrink: 0 !important;
+  .sfm-breadcrumbs-track {
+    display: flex !important;
+    align-items: center !important;
+    overflow-x: auto !important;
+    white-space: nowrap !important;
+    scrollbar-width: none !important;
+    max-width: 100% !important;
+    padding: 2px 0 !important;
+  }
+
+  .sfm-breadcrumbs-track::-webkit-scrollbar {
+    display: none !important;
   }
 
   .sfm-nav-history-group .btn,
@@ -3616,12 +3592,6 @@ button.badge.sfm-badge-btn:hover {
     align-items: center !important;
     justify-content: center !important;
     border-radius: 6px !important;
-    margin: 0 !important;
-    flex-shrink: 0 !important;
-  }
-
-  .sfm-workspace-settings-btn {
-    margin-left: auto !important;
   }
 
   .sfm-workspace-settings-btn span.sfm-btn-label-desktop {
@@ -3641,39 +3611,21 @@ button.badge.sfm-badge-btn:hover {
     flex-shrink: 0 !important;
   }
 
-  .sfm-crumb-separator {
-    margin: 0 2px !important;
-    color: #4c566a !important;
-    flex-shrink: 0 !important;
-  }
-
   .sfm-stat-pill {
     padding: 0.28rem 0.65rem !important;
     font-size: 0.74rem !important;
-    margin: 2px 4px !important;
-    gap: 0.35rem !important;
     border-radius: 6px !important;
-    display: inline-flex !important;
-    flex: 0 1 auto !important;
     white-space: nowrap !important;
   }
 
-  .sfm-nav-actions-group {
-    display: inline-flex !important;
-    gap: 6px !important;
-    margin-left: 4px !important;
-    flex-shrink: 0 !important;
-  }
-
-  /* 2. Line 2: Controls Line on Mobile - Search 100%, Dual Sorts 50/50, Dual Tools 50/50 */
+  /* Navigation Line 2: Search, Sorts & Tools on Mobile */
   .sfm-nav-line-controls {
     display: flex !important;
     flex-direction: column !important;
     align-items: stretch !important;
-    gap: 8px !important;
+    gap: 6px !important;
     margin-top: 6px !important;
     width: 100% !important;
-    max-width: 100% !important;
     box-sizing: border-box !important;
   }
 
@@ -3682,17 +3634,13 @@ button.badge.sfm-badge-btn:hover {
     order: 1 !important;
     width: 100% !important;
     max-width: 100% !important;
-    min-width: 0 !important;
     margin: 0 !important;
-    flex: 1 1 100% !important;
-    box-sizing: border-box !important;
   }
 
   .sfm-search-input {
     width: 100% !important;
     font-size: 0.82rem !important;
     padding: 0.42rem 1.8rem 0.42rem 2rem !important;
-    box-sizing: border-box !important;
     border-radius: 6px !important;
   }
 
@@ -3701,44 +3649,25 @@ button.badge.sfm-badge-btn:hover {
     display: flex !important;
     align-items: center !important;
     width: 100% !important;
-    max-width: 100% !important;
-    gap: 8px !important;
-    margin: 0 !important;
-    box-sizing: border-box !important;
+    gap: 6px !important;
   }
 
   .sfm-sort-item {
-    flex: 1 1 calc(50% - 4px) !important;
+    flex: 1 1 50% !important;
     min-width: 0 !important;
-    display: flex !important;
-    align-items: center !important;
-    box-sizing: border-box !important;
-  }
-
-  .sfm-sort-label {
-    font-size: 0.72rem !important;
-    flex-shrink: 0 !important;
-    margin-right: 4px !important;
   }
 
   .sfm-sort-select {
     width: 100% !important;
-    flex: 1 1 auto !important;
-    min-width: 0 !important;
     font-size: 0.76rem !important;
     padding: 4px 6px !important;
-    border-radius: 6px !important;
-    box-sizing: border-box !important;
   }
 
   .sfm-tools-group {
     order: 3 !important;
     width: 100% !important;
-    max-width: 100% !important;
     display: flex !important;
-    gap: 8px !important;
-    margin: 0 !important;
-    box-sizing: border-box !important;
+    gap: 6px !important;
   }
 
   .sfm-tools-group .btn {
@@ -3746,28 +3675,21 @@ button.badge.sfm-badge-btn:hover {
     font-size: 0.78rem !important;
     padding: 0.38rem 0.75rem !important;
     text-align: center !important;
-    border-radius: 6px !important;
-    margin: 0 !important;
-    box-sizing: border-box !important;
   }
 
-  /* 3. Redesigned Section Headers (Subfolders & Files/Scenes) on Mobile */
+  /* Section Headers on Mobile */
   .sfm-section-header-wrap {
     margin-bottom: 0.65rem !important;
     width: 100% !important;
-    max-width: 100% !important;
-    box-sizing: border-box !important;
   }
 
-  .sfm-section-header-row,
-  .sfm-section-header.d-flex {
+  .sfm-section-header-row {
     display: flex !important;
-    flex-direction: column !important;
-    align-items: stretch !important;
-    gap: 8px !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 6px !important;
     width: 100% !important;
-    max-width: 100% !important;
-    box-sizing: border-box !important;
   }
 
   .sfm-section-header-left {
@@ -3775,152 +3697,44 @@ button.badge.sfm-badge-btn:hover {
     align-items: center !important;
     flex-wrap: wrap !important;
     gap: 6px !important;
-    row-gap: 6px !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    box-sizing: border-box !important;
   }
 
   .sfm-section-header-right {
     display: flex !important;
     align-items: center !important;
-    justify-content: flex-end !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    box-sizing: border-box !important;
+    gap: 4px !important;
+    margin-left: auto !important;
   }
 
-  /* RESET ALL FIXED DESKTOP PIXEL WIDTHS THAT CAUSED SCALING WARP */
-  .sfm-section-title-box {
-    width: auto !important;
-    min-width: 0 !important;
-    max-width: none !important;
-    flex: 0 0 auto !important;
-    margin-right: 6px !important;
-    box-sizing: border-box !important;
-  }
-
-  .sfm-section-title-label {
-    width: auto !important;
-    min-width: 0 !important;
-    max-width: none !important;
-    font-size: 0.88rem !important;
-  }
-
-  .sfm-section-count-badge {
-    min-width: 28px !important;
-    height: 20px !important;
-    font-size: 0.72rem !important;
-    padding: 0 0.35rem !important;
-    margin-left: 0.25rem !important;
-  }
-
-  .sfm-pill-subfolders,
-  .sfm-pill-foldersort,
-  .sfm-pill-hideempty,
-  .sfm-badge-indicator,
-  .sfm-state-pill,
-  button.badge.sfm-badge-btn {
-    width: auto !important;
-    min-width: 0 !important;
-    max-width: none !important;
-    padding: 0.32rem 0.65rem !important;
-    margin: 2px 3px !important;
-    font-size: 0.74rem !important;
-    border-radius: 6px !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    box-sizing: border-box !important;
-    white-space: nowrap !important;
-    line-height: 1.2 !important;
-  }
-
-  /* Centered Full-Width Select All Action Button on Mobile */
-  .sfm-selectall-container,
-  .sfm-section-header-row > div.mx-3 {
+  .sfm-selectall-container {
     width: 100% !important;
     margin: 4px 0 !important;
-    display: flex !important;
-    justify-content: center !important;
-    box-sizing: border-box !important;
-    flex-grow: 1 !important;
   }
 
   .sfm-pill-selectall {
     width: 100% !important;
-    margin: 0 !important;
-    padding: 0.45rem 1rem !important;
+    padding: 0.4rem 1rem !important;
     font-size: 0.82rem !important;
-    border-radius: 6px !important;
+    font-weight: 700 !important;
     text-align: center !important;
     display: block !important;
-    font-weight: 700 !important;
-    box-sizing: border-box !important;
-  }
-
-  .sfm-view-toggle-group {
-    width: 100% !important;
-    min-width: 0 !important;
-    display: flex !important;
-    gap: 4px !important;
-    box-sizing: border-box !important;
-  }
-
-  .sfm-view-toggle-group .btn {
-    flex: 1 1 0 !important;
-    padding: 0.32rem 0.4rem !important;
-    font-size: 0.76rem !important;
-    border-radius: 6px !important;
-    margin: 0 !important;
-    text-align: center !important;
-    box-sizing: border-box !important;
   }
 
   .sfm-size-slider-wrap {
     display: none !important;
   }
 
-  /* 4. Perfect 2-Column Responsive Card Grids (Zero Overflow, Zero Warp) */
-  .sfm-folder-cards-grid {
-    display: grid !important;
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-    gap: 8px !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    box-sizing: border-box !important;
-  }
-
-  .sfm-folder-card-compact {
-    width: 100% !important;
-    min-width: 0 !important;
-    box-sizing: border-box !important;
-    padding: 0.5rem !important;
-  }
-
-  .sfm-folder-card-compact .sfm-folder-name {
-    font-size: 0.78rem !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-    white-space: nowrap !important;
-  }
-
-  .sfm-folder-list-grid {
-    grid-template-columns: 1fr !important;
-    gap: 6px !important;
-    width: 100% !important;
-    box-sizing: border-box !important;
-  }
-
+  /* Responsive 2-Column Card Grids */
+  .sfm-folder-cards-grid,
   .sfm-scene-cards-grid {
     display: grid !important;
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     gap: 8px !important;
     width: 100% !important;
-    max-width: 100% !important;
     box-sizing: border-box !important;
   }
 
+  .sfm-folder-card-compact,
   .sfm-scene-card {
     width: 100% !important;
     min-width: 0 !important;
@@ -3932,32 +3746,16 @@ button.badge.sfm-badge-btn:hover {
     aspect-ratio: 16/9 !important;
   }
 
-  .sfm-scene-card .sfm-scene-card-title {
-    font-size: 0.74rem !important;
-    line-height: 1.25 !important;
-    word-break: break-word !important;
-  }
-
-  /* 5. Video Wall & Explore Profile Overlay on Mobile with Safe Area Clearance */
+  /* Profile Overlay on Mobile with Safe Area Clearance */
   .sfm-profile-nav-bar {
     padding-top: max(50px, calc(env(safe-area-inset-top, 44px) + 8px)) !important;
     padding-bottom: 0.75rem !important;
-    padding-left: max(0.85rem, env(safe-area-inset-left, 0px)) !important;
-    padding-right: max(0.85rem, env(safe-area-inset-right, 0px)) !important;
     min-height: 84px !important;
   }
 
   .sfm-profile-main-container,
   .sfm-discovery-main-container {
     max-width: 100vw !important;
-    border: none !important;
-  }
-
-  .sfm-float-shuffle-btn {
-    bottom: 18px !important;
-    right: 18px !important;
-    padding: 8px 16px !important;
-    font-size: 0.78rem !important;
   }
 
   .sfm-profile-wall-grid,
@@ -3965,76 +3763,11 @@ button.badge.sfm-badge-btn:hover {
     grid-template-columns: repeat(3, 1fr) !important;
     gap: 1px !important;
   }
-
-  .sfm-profile-tab-btn {
-    padding: 0.65rem 0.5rem !important;
-  }
-
-  .sfm-profile-tab-btn .sfm-tab-text {
-    font-size: 0.72rem !important;
-  }
-
-  .sfm-reel-modal-dialog {
-    max-width: 100vw !important;
-    max-height: 100vh !important;
-    max-height: 100dvh !important;
-    border-radius: 0 !important;
-  }
-
-  /* 6. Floating Action Bar on Mobile */
-  .sfm-floating-actions-bar {
-    bottom: 12px !important;
-    padding: 4px 8px !important;
-    gap: 5px !important;
-    max-width: 96vw !important;
-  }
-
-  .sfm-floating-actions-bar .btn {
-    font-size: 0.72rem !important;
-    padding: 0.2rem 0.45rem !important;
-  }
-}
-
-/* Extra Compact Scaling for Small Mobile Screens (≤ 576px) */
-.sfm-btn-label-mobile {
-  display: none;
 }
 
 @media (max-width: 576px) {
   .sfm-profile-nav-bar {
     padding-top: max(54px, calc(env(safe-area-inset-top, 47px) + 10px)) !important;
-    padding-bottom: 0.75rem !important;
-    padding-left: max(0.75rem, env(safe-area-inset-left, 0px)) !important;
-    padding-right: max(0.75rem, env(safe-area-inset-right, 0px)) !important;
     min-height: 88px !important;
-  }
-
-  .sfm-profile-reels-toolbar {
-    padding: 0.35rem 0.65rem !important;
-  }
-
-  .sfm-profile-sort-select {
-    font-size: 0.72rem !important;
-    padding: 2px 6px !important;
-    max-width: 135px !important;
-  }
-
-  .sfm-sort-label-text {
-    display: none !important;
-  }
-
-  .sfm-profile-back-btn .sfm-btn-label-desktop,
-  .sfm-profile-mode-btn .sfm-btn-label-desktop,
-  .sfm-profile-fm-btn .sfm-btn-label-desktop {
-    display: none !important;
-  }
-
-  .sfm-btn-label-mobile {
-    display: inline !important;
-  }
-
-  .sfm-floating-actions-bar .btn {
-    font-size: 0.72rem !important;
-    padding: 0.2rem 0.45rem !important;
   }
 }
