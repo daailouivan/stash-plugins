@@ -146,7 +146,7 @@ Eliminate wasted vertical space with compact folder layouts tailored to any libr
 - [x] **Circular Vector Search Clear Button:** Tactile circular hover button with vector cross icon. *(v2.7.3 — 2026-09-24)*
 - [x] **Directory Keyboard Navigation Shortcuts:** Global single-key hotkeys for `/` (search), `Backspace`/`Alt+Left` (go up), `Ctrl+A` (select all), and `Esc` (clear/dismiss). *(v2.7.3 — 2026-09-24)*
 
-### 📍 Phase 3: Fast Inspection, Folder Profile & Autonomous Discovery Feed (Completed — v2.8.0 to v2.9.9)
+### 📍 Phase 3: Fast Inspection, Folder Profile & Autonomous Discovery Feed (Completed — v2.8.0 to v2.9.10)
 - [x] **Fast Filename Inspector View (`Names` Table):** Ultra-fast, text-only table view designed for instant scanning, regex evaluation, direct scene opening, and one-click clipboard copying. *(v2.8.0 — 2026-09-24)*
 - [x] **Browser History & URL Deep Linking:** Full browser history integration (`popstate`, hash routing `#file-manager?path=...`) with seamless Back/Forward navigation, `Alt+Left`, and `Backspace` folder level traversals. *(v2.8.0 — 2026-09-24)*
 - [x] **Folder Profile & Directory Video Wall (`FolderProfileView`):** Dedicated in-player directory profile view featuring folder avatar with gradient ring, 3 live metric columns (direct scenes, total tree scenes, total size), directory bio, and quick-action triggers (`Play All`, `Shuffle`, `Stash Grid`). *(v2.9.0 — 2026-09-26)*
@@ -174,6 +174,12 @@ Eliminate wasted vertical space with compact folder layouts tailored to any libr
 ---
 
 ## 📋 Changelog & Development History
+
+### [v2.9.10] — 2026-09-26 20:34:00
+* **Hotfix: Resolved Missing Reference (`profileWallSort`) & Verified Automated AST/Runtime Test Suite:**
+  * **Fixed Runtime Video Player Error:** Removed undeclared `profileWallSort` from `FolderProfileView`'s `useEffect` dependency array (now correctly watching `[targetFolderPath, scenes]`), eliminating the `ReferenceError: profileWallSort is not defined` crash when opening the directory video wall from the in-player reel avatar.
+  * **Restored `clearCachedScenes` Global Handler:** Re-instantiated the top-level `clearCachedScenes` cache clearing helper across the IndexedDB and singleton in-memory cache stores for `RegexBatchModal` and `BatchEditModal`.
+  * **Automated Component Verification:** Added automated Node.js AST static analysis (`eslint --rule 'no-undef: error'`, `acorn-globals`) and mocked DOM component execution testing covering all 8 major views and modals to ensure zero undefined references.
 
 ### [v2.9.9] — 2026-09-26 18:15:00
 * **Progressive Feed Windowing, In-Player Video Wall Launch & Profile Scrolling Overhaul:**

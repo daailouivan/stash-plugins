@@ -96,6 +96,19 @@
       });
     }
 
+    async function clearCachedScenes() {
+      try {
+        if (window.__SFM_GLOBAL_CACHE__) {
+          window.__SFM_GLOBAL_CACHE__.trie = null;
+          window.__SFM_GLOBAL_CACHE__.scenes = null;
+          window.__SFM_GLOBAL_CACHE__.timestamp = 0;
+        }
+        await idbClear();
+      } catch (e) {
+        console.warn("[PathFileManager] clearCachedScenes error:", e);
+      }
+    }
+
     // GraphQL Query Helper
     async function gqlFetch(query, variables = {}) {
       const res = await window.fetch("/graphql", {
@@ -868,7 +881,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
 
       useEffect(() => {
         setVisibleWallCount(36);
-      }, [targetFolderPath, profileWallSort]);
+      }, [targetFolderPath, scenes]);
 
       useEffect(() => {
         if (typeof IntersectionObserver === "undefined") return;
