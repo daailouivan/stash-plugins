@@ -146,7 +146,7 @@ Eliminate wasted vertical space with compact folder layouts tailored to any libr
 - [x] **Circular Vector Search Clear Button:** Tactile circular hover button with vector cross icon. *(v2.7.3 — 2026-09-24)*
 - [x] **Directory Keyboard Navigation Shortcuts:** Global single-key hotkeys for `/` (search), `Backspace`/`Alt+Left` (go up), `Ctrl+A` (select all), and `Esc` (clear/dismiss). *(v2.7.3 — 2026-09-24)*
 
-### 📍 Phase 3: Fast Inspection, Folder Profile & Autonomous Discovery Feed (Completed — v2.8.0 to v2.9.10)
+### 📍 Phase 3: Fast Inspection, Folder Profile & Autonomous Discovery Feed (Completed — v2.8.0 to v2.9.11)
 - [x] **Fast Filename Inspector View (`Names` Table):** Ultra-fast, text-only table view designed for instant scanning, regex evaluation, direct scene opening, and one-click clipboard copying. *(v2.8.0 — 2026-09-24)*
 - [x] **Browser History & URL Deep Linking:** Full browser history integration (`popstate`, hash routing `#file-manager?path=...`) with seamless Back/Forward navigation, `Alt+Left`, and `Backspace` folder level traversals. *(v2.8.0 — 2026-09-24)*
 - [x] **Folder Profile & Directory Video Wall (`FolderProfileView`):** Dedicated in-player directory profile view featuring folder avatar with gradient ring, 3 live metric columns (direct scenes, total tree scenes, total size), directory bio, and quick-action triggers (`Play All`, `Shuffle`, `Stash Grid`). *(v2.9.0 — 2026-09-26)*
@@ -174,6 +174,13 @@ Eliminate wasted vertical space with compact folder layouts tailored to any libr
 ---
 
 ## 📋 Changelog & Development History
+
+### [v2.9.11] — 2026-09-27 04:30:00
+* **Fix Video Player Stacking Context & Profile/Explore Queue Handoff:**
+  * **Corrected Modal Stacking Context & Z-Index Inversion:** Resolved the issue where clicking videos on the Folder Profile video wall or the Explore/Discover mosaic started playback audio in the background without making the video player visible. Elevated `.sfm-reel-modal-backdrop` to `z-index: 10100 !important;` and lowered base `.sfm-folder-profile-page` to `z-index: 10050 !important;`, ensuring the active video player modal renders on top of the profile and explore views.
+  * **In-Player Video Wall Isolation:** Added `.sfm-folder-profile-in-player` with `z-index: 10150 !important;` so that when the directory video wall is opened from within the video player reel (via the folder avatar), it mounts cleanly above the paused player.
+  * **Preserved Profile/Explore State on Video Launch:** Removed extraneous `onCloseProfile()` invocations on scene tile clicks that were triggering `window.history.back()` race conditions against `handlePlayScene()`'s `pushState`. The profile and explore views now stay mounted in the background so that closing the video player returns the user to their exact scroll position.
+  * **Dynamic Queue Handoff for Explore Feed:** Passed active scene lists (`exploreScenes` vs directory `scenes`) through `handlePlayScene(s, queue)` to `BingeReelPlayerModal`, allowing continuous vertical swipe navigation through the randomized 60-scene explore mosaic.
 
 ### [v2.9.10] — 2026-09-26 20:34:00
 * **Hotfix: Resolved Missing Reference (`profileWallSort`) & Verified Automated AST/Runtime Test Suite:**

@@ -1,7 +1,7 @@
 - id: stash_file_manager
   name: Path File Manager
   description: Hierarchical directory file-manager navigation for Stash with customizable folder views, Binge-style reel player, draggable PIP player, regex metadata parser, and native tasks.
-  version: 2.9.10
-  date: "2026-09-27 03:34:00"
+  version: 2.9.11
+  date: "2026-09-27 11:30:00"
   path: stash_file_manager.zip
-  sha256: 1482ffba90f692996d37a8161c1dc65f0d79fed91cd01158d5c03cce0a2dcc01
+  sha256: 7f79644f20eed20588e4839c29617f69b67bccfc994edcdd3380579cbc3574aa

@@ -1,11 +1,11 @@
 # Project Handoff Document: Stash Path File Manager Plugin
 
-**Current Version:** `v2.9.10`  
+**Current Version:** `v2.9.11`  
 **Active Repository:** `https://github.com/daailouivan/stash-plugins.git` (`main` branch)  
-**Distribution Package:** `stash_file_manager.zip` (SHA256: `1482ffba90f692996d37a8161c1dc65f0d79fed91cd01158d5c03cce0a2dcc01`)  
-**Plugin Manifest:** `stash_file_manager/stash_file_manager.yml` (version `2.9.10`)  
-**Index Manifest:** `index.yml` (version `2.9.10`)  
-**Total Release Tags:** `38` (`v1.0.0` through `v2.9.10`)  
+**Distribution Package:** `stash_file_manager.zip` (SHA256: `7f79644f20eed20588e4839c29617f69b67bccfc994edcdd3380579cbc3574aa`)  
+**Plugin Manifest:** `stash_file_manager/stash_file_manager.yml` (version `2.9.11`)  
+**Index Manifest:** `index.yml` (version `2.9.11`)  
+**Total Release Tags:** `38` (`v1.0.0` through `v2.9.11`)  
 
 ---
 
@@ -76,7 +76,7 @@ The **Stash Path File Manager (`stash_file_manager`)** is a community plugin for
 
 ## 3. Instructions for Force Pushing to GitHub
 
-To force push the repository branch and all 35 release tags to GitHub (`https://github.com/daailouivan/stash-plugins.git`):
+To force push the repository branch and all 36 release tags to GitHub (`https://github.com/daailouivan/stash-plugins.git`):
 
 ```bash
 # 1. Pull / update to the latest bundle commit
@@ -85,8 +85,9 @@ git pull <path-to-bundle> main
 # 2. Force push the main branch to origin
 git push -u origin main --force
 
-# 3. Force push all 35 release tags to origin
+# 3. Force push all 36 release tags to origin
 git push origin --tags --force
 ```
-| `v2.9.10` | `e23c020` | Progressive feed windowing (social media optimization), in-player video wall launch & scroll fix |
-| `v2.9.10` | `20f0e4e` | Hotfix: resolved undeclared profileWallSort & clearCachedScenes with verified automated testing |
+| `v2.9.11` | `e23c020` | Progressive feed windowing (social media optimization), in-player video wall launch & scroll fix |
+| `v2.9.11` | `20f0e4e` | Hotfix: resolved undeclared profileWallSort & clearCachedScenes with verified automated testing |
+| `v2.9.11` | `9dffc83` | Fix video player z-index stacking & explore feed queue handoff |

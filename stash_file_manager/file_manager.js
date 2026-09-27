@@ -866,6 +866,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
       currentScene,
       posterUrl,
       isForceMobile,
+      isInsidePlayer = false,
       onToggleForceMobile,
       onSelectScene,
       onCloseProfile,
@@ -873,6 +874,8 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
       onPlayAll,
       onShuffleAll,
       onNavigateToFolder,
+      initialPage = 0,
+      onPageChange,
     }) {
       const [activeTab, setActiveTab] = useState("reels"); // "reels" | "explore"
       const [exploreScenes, setExploreScenes] = useState([]);
@@ -1023,20 +1026,10 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
         loadExploreScenes(60);
       }, [loadExploreScenes]);
 
-      // Selection handler for explore scene: plays scene and returns to standard player view
+      // Selection handler for explore scene: plays scene in player
       const handleSelectExploreScene = (s) => {
         if (!s) return;
-        const sPath = s.files?.[0]?.path;
-        if (sPath && onNavigateToFolder) {
-          const parts = sPath.split("/").filter(Boolean);
-          parts.pop(); // remove file basename
-          const folder = parts.join("/");
-          if (folder && folder !== targetFolderPath) {
-            onNavigateToFolder(folder);
-          }
-        }
-        onSelectScene(s);
-        onCloseProfile();
+        onSelectScene(s, exploreScenes);
       };
 
       const stats = useMemo(() => {
@@ -1075,7 +1068,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
       return React.createElement(
         "div",
         {
-          className: `sfm-folder-profile-page ${isForceMobile ? "sfm-profile-force-mobile" : ""}`,
+          className: `sfm-folder-profile-page ${isInsidePlayer ? "sfm-folder-profile-in-player" : ""} ${isForceMobile ? "sfm-profile-force-mobile" : ""}`,
           onClick: (e) => e.stopPropagation(),
           onTouchStart: handleTouchStart,
           onTouchEnd: handleTouchEnd,
@@ -1221,7 +1214,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                 {
                   type: "button",
                   className: "btn btn-sm btn-primary flex-grow-1 py-1 font-weight-bold d-inline-flex align-items-center justify-content-center",
-                  onClick: onPlayAll,
+                  onClick: () => onPlayAll && onPlayAll(scenes),
                   title: "Play all videos sequentially",
                 },
                 React.createElement("span", { className: "mr-1" }, "▶"),
@@ -1308,8 +1301,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                     key: s.id,
                     className: `sfm-wall-tile ${isCurrent ? "sfm-wall-tile-active" : ""}`,
                     onClick: () => {
-                      onSelectScene(s);
-                      onCloseProfile();
+                      onSelectScene(s, scenes);
                     },
                     title: `Play: ${sTitle}`,
                   },
@@ -2313,6 +2305,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
             currentScene: scene,
             posterUrl: posterUrl,
             isForceMobile: isForceMobile,
+            isInsidePlayer: true,
             onToggleForceMobile: handleToggleForceMobile,
             onSelectScene: (s) => {
               onSelectScene(s);
@@ -5544,8 +5537,11 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
         }
       }, [currentPath]);
 
-      const handlePlayScene = useCallback((s) => {
+      const [customPlayerScenes, setCustomPlayerScenes] = useState(null);
+
+      const handlePlayScene = useCallback((s, queue = null) => {
         setPlayingScene(s);
+        setCustomPlayerScenes(Array.isArray(queue) && queue.length > 0 ? queue : null);
         const currentView = showFolderProfile ? (currentProfilePage === 1 ? "discover" : "profile") : null;
         const targetHash = buildHashForPath(currentPath, currentView, s.id);
         if (window.location.hash !== targetHash) {
@@ -5555,6 +5551,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
 
       const handleClosePlayer = useCallback(() => {
         setPlayingScene(null);
+        setCustomPlayerScenes(null);
         if (window.location.hash.includes("scene=")) {
           window.history.back();
         } else {
@@ -7178,18 +7175,21 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                   window.history.replaceState({ sfmPath: currentPath, sfmView: viewName, sfmScene: playingScene?.id }, "", targetHash);
                 }
               },
-              onSelectScene: (s) => handlePlayScene(s),
+              isInsidePlayer: false,
+              onSelectScene: (s, q) => handlePlayScene(s, q),
               onCloseProfile: handleCloseFolderProfile,
               onNavigateToDirectory: () => handleCloseFolderProfile(),
-              onPlayAll: () => {
-                if (filteredAndSortedScenes.length > 0) {
-                  handlePlayScene(filteredAndSortedScenes[0]);
+              onPlayAll: (q) => {
+                const list = Array.isArray(q) && q.length > 0 ? q : filteredAndSortedScenes;
+                if (list.length > 0) {
+                  handlePlayScene(list[0], list);
                 }
               },
-              onShuffleAll: () => {
-                if (filteredAndSortedScenes.length > 0) {
-                  const randIdx = Math.floor(Math.random() * filteredAndSortedScenes.length);
-                  handlePlayScene(filteredAndSortedScenes[randIdx]);
+              onShuffleAll: (q) => {
+                const list = Array.isArray(q) && q.length > 0 ? q : filteredAndSortedScenes;
+                if (list.length > 0) {
+                  const randIdx = Math.floor(Math.random() * list.length);
+                  handlePlayScene(list[randIdx], list);
                 }
               },
               onNavigateToFolder: (p) => {
@@ -7203,8 +7203,8 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
               { onReset: handleClosePlayer },
               React.createElement(BingeReelPlayerModal, {
                 scene: playingScene,
-                scenes: filteredAndSortedScenes,
-                onSelectScene: (s) => handlePlayScene(s),
+                scenes: customPlayerScenes || filteredAndSortedScenes,
+                onSelectScene: (s) => handlePlayScene(s, customPlayerScenes),
                 onClose: handleClosePlayer,
                 folderName: currentFolderName,
                 currentPath: currentPath,
