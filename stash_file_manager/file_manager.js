@@ -917,13 +917,44 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
           onPageChange(tab === "explore" ? 1 : 0);
         }
       }, [onPageChange]);
+      // Include Sub-Folders toggle state for Folder Profile & Discover pages
+      const [includeSubfolders, setIncludeSubfolders] = useState(() => {
+        try {
+          return window.localStorage.getItem("sfm_profile_include_subfolders") === "true";
+        } catch (e) {
+          return false;
+        }
+      });
+
+      const handleToggleSubfolders = useCallback(() => {
+        setIncludeSubfolders((prev) => {
+          const next = !prev;
+          try {
+            window.localStorage.setItem("sfm_profile_include_subfolders", String(next));
+          } catch (e) {}
+          return next;
+        });
+      }, []);
+
+      // Resolve effective scenes for this folder profile (direct vs recursive subfolders)
+      const effectiveScenes = useMemo(() => {
+        const trie = window.__SFM_GLOBAL_CACHE__?.trie;
+        if (trie && targetFolderPath !== undefined) {
+          const node = trie.getNode(targetFolderPath);
+          if (node) {
+            return includeSubfolders ? getAllDescendantScenes(node) : (node.directScenes || []);
+          }
+        }
+        return scenes;
+      }, [targetFolderPath, includeSubfolders, scenes]);
+
       const [exploreScenes, setExploreScenes] = useState([]);
       const [visibleWallCount, setVisibleWallCount] = useState(36);
       const wallSentinelRef = useRef(null);
 
       useEffect(() => {
         setVisibleWallCount(36);
-      }, [targetFolderPath, scenes]);
+      }, [targetFolderPath, effectiveScenes]);
 
       useEffect(() => {
         if (typeof IntersectionObserver === "undefined") return;
@@ -933,8 +964,8 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
         const observer = new IntersectionObserver(
           (entries) => {
             const first = entries[0];
-            if (first.isIntersecting && visibleWallCount < scenes.length) {
-              setVisibleWallCount((prev) => Math.min(prev + 36, scenes.length));
+            if (first.isIntersecting && visibleWallCount < effectiveScenes.length) {
+              setVisibleWallCount((prev) => Math.min(prev + 36, effectiveScenes.length));
             }
           },
           { root: null, rootMargin: "300px 0px", threshold: 0.05 }
@@ -942,7 +973,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
 
         observer.observe(sentinel);
         return () => observer.disconnect();
-      }, [visibleWallCount, scenes.length]);
+      }, [visibleWallCount, effectiveScenes.length]);
       const [isExploreLoading, setIsExploreLoading] = useState(false);
 
       // Touch gesture coordinates for horizontal swipe left/right
@@ -1004,71 +1035,23 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
         return () => window.removeEventListener("keydown", handleKeyDown);
       }, [handleTabChange, onCloseProfile]);
 
-      // Global Library Explore loader: draws a random selection from library cache or GraphQL
-      const loadExploreScenes = useCallback(async (count = 60) => {
-        setIsExploreLoading(true);
-        try {
-          // 1. Check in-memory global cache first (instant 0ms retrieval)
-          const cached = window.__SFM_GLOBAL_CACHE__?.scenes;
-          if (Array.isArray(cached) && cached.length > 0) {
-            const pool = [...cached];
-            for (let i = pool.length - 1; i > 0; i--) {
-              const j = Math.floor(Math.random() * (i + 1));
-              [pool[i], pool[j]] = [pool[j], pool[i]];
-            }
-            setExploreScenes(pool.slice(0, count));
-            setIsExploreLoading(false);
-            return;
-          }
-
-          // 2. Fetch random scenes from Stash GraphQL
-          const query = `
-            query GetRandomExploreScenes {
-              findScenes(filter: { sort: "random", direction: ASC, per_page: ${count} }) {
-                scenes {
-                  id
-                  title
-                  date
-                  rating100
-                  studio { id name }
-                  performers { id name }
-                  tags { id name }
-                  paths { screenshot preview stream }
-                  files { id path basename size duration height video_codec format }
-                }
-              }
-            }
-          `;
-          const data = await gqlFetch(query);
-          const fetched = data?.findScenes?.scenes || [];
-          if (fetched.length > 0) {
-            setExploreScenes(fetched);
-          } else if (scenes.length > 0) {
-            const pool = [...scenes];
-            for (let i = pool.length - 1; i > 0; i--) {
-              const j = Math.floor(Math.random() * (i + 1));
-              [pool[i], pool[j]] = [pool[j], pool[i]];
-            }
-            setExploreScenes(pool);
-          }
-        } catch (err) {
-          console.error("Explore fetch error:", err);
-          if (scenes.length > 0) {
-            const pool = [...scenes];
-            for (let i = pool.length - 1; i > 0; i--) {
-              const j = Math.floor(Math.random() * (i + 1));
-              [pool[i], pool[j]] = [pool[j], pool[i]];
-            }
-            setExploreScenes(pool);
-          }
-        } finally {
-          setIsExploreLoading(false);
+      // Discover Scene loader: displays the profile scenes in a randomized mosaic (matching profile scenes)
+      const loadExploreScenes = useCallback((pool = effectiveScenes) => {
+        if (!Array.isArray(pool) || pool.length === 0) {
+          setExploreScenes([]);
+          return;
         }
-      }, [scenes]);
+        const shuffled = [...pool];
+        for (let i = shuffled.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+        setExploreScenes(shuffled);
+      }, [effectiveScenes]);
 
       useEffect(() => {
-        loadExploreScenes(60);
-      }, [loadExploreScenes]);
+        loadExploreScenes(effectiveScenes);
+      }, [effectiveScenes, loadExploreScenes]);
 
       // Selection handler for explore scene: plays scene in player
       const handleSelectExploreScene = (s) => {
@@ -1081,7 +1064,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
         let totalDuration = 0;
         const resCounts = {};
 
-        for (const s of scenes) {
+        for (const s of effectiveScenes) {
           const f = s.files?.[0];
           if (f) {
             if (f.size) totalSize += f.size;
@@ -1100,12 +1083,12 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
         const durationStr = totalHours > 0 ? `${totalHours}h ${remainingMins}m` : `${remainingMins}m`;
 
         return {
-          count: scenes.length,
+          count: effectiveScenes.length,
           formattedSize: formatBytes(totalSize),
           formattedDuration: durationStr,
           resCounts,
         };
-      }, [scenes]);
+      }, [effectiveScenes]);
 
       const displayName = folderName || (targetFolderPath ? targetFolderPath.split("/").pop() : "Root");
 
@@ -1142,6 +1125,21 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
           React.createElement(
             "div",
             { className: "d-flex align-items-center gap-2 flex-shrink-0" },
+            // Include Sub-Folders Toggle Button
+            React.createElement(
+              "button",
+              {
+                type: "button",
+                className: `btn btn-sm ${includeSubfolders ? "btn-info font-weight-bold" : "btn-outline-secondary"} py-1 px-2 d-inline-flex align-items-center sfm-profile-subfolders-btn`,
+                onClick: handleToggleSubfolders,
+                title: includeSubfolders
+                  ? "Include Sub-Folders: ON — Showing all scenes in folder hierarchy"
+                  : "Include Sub-Folders: OFF — Showing direct scenes in folder only",
+              },
+              React.createElement("span", { className: "mr-1 font-weight-bold" }, includeSubfolders ? "✓" : "○"),
+              React.createElement("span", { className: "sfm-btn-label-desktop" }, "Sub-Folders"),
+              React.createElement("span", { className: "sfm-btn-label-mobile" }, "Subs")
+            ),
             // Force Mobile View Toggle Button
             React.createElement(
               "button",
@@ -1231,7 +1229,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                 )
               )
             ),
-            // Folder Bio: Title, Path Chip, Resolution Tags
+            // Folder Bio: Title, Path Chip, Resolution Tags, Subfolders Toggle
             React.createElement(
               "div",
               { className: "sfm-profile-bio-box mb-3" },
@@ -1240,6 +1238,19 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                 "div",
                 { className: "d-flex align-items-center flex-wrap gap-1 mb-2" },
                 React.createElement("span", { className: "badge badge-dark sfm-profile-path-badge" }, displayFolderPath),
+                React.createElement(
+                  "button",
+                  {
+                    type: "button",
+                    className: `badge sfm-badge-btn ${includeSubfolders ? "sfm-state-active" : "sfm-state-inactive"} cursor-pointer`,
+                    onClick: handleToggleSubfolders,
+                    title: includeSubfolders
+                      ? "Include Sub-Folders: ON — Click to show direct scenes only"
+                      : "Include Sub-Folders: OFF — Click to include all sub-folders",
+                  },
+                  React.createElement("span", { className: "mr-1 font-weight-bold" }, includeSubfolders ? "✓" : "○"),
+                  "Sub-Folders"
+                ),
                 Object.entries(stats.resCounts).map(([res, count]) =>
                   React.createElement(
                     "span",
@@ -1258,7 +1269,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                 {
                   type: "button",
                   className: "btn btn-sm btn-primary flex-grow-1 py-1 font-weight-bold d-inline-flex align-items-center justify-content-center",
-                  onClick: () => onPlayAll && onPlayAll(scenes),
+                  onClick: () => onPlayAll && onPlayAll(effectiveScenes),
                   title: "Play all videos sequentially",
                 },
                 React.createElement("span", { className: "mr-1" }, "▶"),
@@ -1307,7 +1318,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
               },
               React.createElement("span", { className: "mr-1 mr-sm-2 font-weight-bold" }, "▦"),
               React.createElement("span", { className: "font-weight-bold text-uppercase letter-spacing-1 small sfm-tab-text" }, "REELS & VIDEOS"),
-              React.createElement("span", { className: "badge badge-dark ml-2 sfm-tab-count-badge" }, scenes.length)
+              React.createElement("span", { className: "badge badge-dark ml-2 sfm-tab-count-badge" }, effectiveScenes.length)
             ),
             // Divider
             React.createElement("div", { className: "sfm-profile-tab-divider" }),
@@ -1322,7 +1333,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
               },
               React.createElement(IconCompass, { size: 14, className: "mr-1 mr-sm-2" }),
               React.createElement("span", { className: "font-weight-bold text-uppercase letter-spacing-1 small sfm-tab-text" }, "EXPLORE"),
-              React.createElement("span", { className: "badge badge-info ml-2 sfm-tab-explore-badge" }, "DISCOVER")
+              React.createElement("span", { className: "badge badge-info ml-2 sfm-tab-explore-badge" }, effectiveScenes.length)
             )
           ),
 
@@ -1331,7 +1342,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
             React.createElement(
               "div",
               { className: "sfm-profile-wall-grid sfm-tab-content-reels" },
-              scenes.slice(0, visibleWallCount).map((s) => {
+              effectiveScenes.slice(0, visibleWallCount).map((s) => {
                 const isCurrent = s.id === currentScene?.id;
                 const sPoster = s.paths?.screenshot || `/scene/${s.id}/screenshot`;
                 const sTitle = s.title || s.files?.[0]?.basename || `Scene #${s.id}`;
@@ -1345,7 +1356,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                     key: s.id,
                     className: `sfm-wall-tile ${isCurrent ? "sfm-wall-tile-active" : ""}`,
                     onClick: () => {
-                      onSelectScene(s, scenes);
+                      onSelectScene(s, effectiveScenes);
                     },
                     title: `Play: ${sTitle}`,
                   },
@@ -1401,7 +1412,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                   "div",
                   { className: "d-flex align-items-center text-truncate mr-2" },
                   React.createElement(IconCompass, { size: 14, color: "#88c0d0", className: "mr-2 flex-shrink-0" }),
-                  React.createElement("span", { className: "small font-weight-bold text-light text-truncate" }, "Randomized Library Mosaic"),
+                  React.createElement("span", { className: "small font-weight-bold text-light text-truncate" }, `Discovery Mosaic: ${displayName}`),
                   React.createElement(
                     "span",
                     { className: "badge badge-dark ml-2 text-muted flex-shrink-0" },
@@ -1413,9 +1424,9 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                   {
                     type: "button",
                     className: "btn btn-sm btn-outline-info py-0 px-2 d-inline-flex align-items-center sfm-explore-refresh-btn font-weight-bold flex-shrink-0",
-                    onClick: () => loadExploreScenes(60),
+                    onClick: () => loadExploreScenes(effectiveScenes),
                     disabled: isExploreLoading,
-                    title: "Shuffle and roll a new set of random explore scenes",
+                    title: "Shuffle and re-arrange discovery scenes",
                   },
                   React.createElement(IconShuffle, { size: 12, className: "mr-1" }),
                   isExploreLoading ? "Shuffling..." : "Shuffle Feed"
@@ -1632,6 +1643,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
       const isNativeDirect = ["mp4", "m4v", "webm"].includes(fileExt) && !isUnsupportedCodec;
 
       const targetFolderPath = scene?._folderPath !== undefined ? scene._folderPath : (currentPath || "");
+      const subfolderName = targetFolderPath ? targetFolderPath.split("/").filter(Boolean).pop() : (folderName || "Folder");
       const displayFolderPath = targetFolderPath ? `/${targetFolderPath}` : "/Stash";
 
       const extLabel = fileExt ? `.${fileExt.toUpperCase()}` : "VIDEO";
@@ -2347,7 +2359,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
         // Folder Profile Video Wall Overlay
         showFolderProfile &&
           React.createElement(FolderProfileView, {
-            folderName: folderName,
+            folderName: subfolderName,
             targetFolderPath: targetFolderPath,
             displayFolderPath: displayFolderPath,
             scenes: scenes,
@@ -7213,45 +7225,56 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
             })
         ),
         showFolderProfile &&
-            React.createElement(FolderProfileView, {
-              folderName: currentFolderName,
-              targetFolderPath: currentPath,
-              displayFolderPath: currentPath || "Stash",
-              scenes: filteredAndSortedScenes,
-              currentScene: playingScene || filteredAndSortedScenes[0],
-              posterUrl: filteredAndSortedScenes[0]?.paths?.screenshot || "",
-              isForceMobile: false,
-              initialPage: currentProfilePage,
-              onPageChange: (newPage) => {
-                setCurrentProfilePage(newPage);
-                const viewName = newPage === 1 ? "discover" : "profile";
-                const targetHash = buildHashForPath(currentPath, viewName, playingScene ? playingScene.id : null);
-                if (window.location.hash !== targetHash) {
-                  window.history.replaceState({ sfmPath: currentPath, sfmView: viewName, sfmScene: playingScene?.id }, "", targetHash);
-                }
-              },
-              isInsidePlayer: false,
-              onSelectScene: (s, q) => handlePlayScene(s, q),
-              onCloseProfile: handleCloseFolderProfile,
-              onNavigateToDirectory: () => handleCloseFolderProfile(),
-              onPlayAll: (q) => {
-                const list = Array.isArray(q) && q.length > 0 ? q : filteredAndSortedScenes;
-                if (list.length > 0) {
-                  handlePlayScene(list[0], list);
-                }
-              },
-              onShuffleAll: (q) => {
-                const list = Array.isArray(q) && q.length > 0 ? q : filteredAndSortedScenes;
-                if (list.length > 0) {
-                  const randIdx = Math.floor(Math.random() * list.length);
-                  handlePlayScene(list[randIdx], list);
-                }
-              },
-              onNavigateToFolder: (p) => {
-                handleCloseFolderProfile();
-                navigateToFolder(p);
-              },
-            }),
+            (() => {
+              const activeProfilePath = playingScene?._folderPath !== undefined ? playingScene._folderPath : currentPath;
+              const activeProfileName = activeProfilePath ? activeProfilePath.split("/").filter(Boolean).pop() : currentFolderName;
+              const activeDisplayPath = activeProfilePath ? `/${activeProfilePath}` : (currentPath || "Stash");
+
+              return React.createElement(FolderProfileView, {
+                folderName: activeProfileName,
+                targetFolderPath: activeProfilePath,
+                displayFolderPath: activeDisplayPath,
+                scenes: filteredAndSortedScenes,
+                currentScene: playingScene || filteredAndSortedScenes[0],
+                posterUrl: (playingScene?.paths?.screenshot || filteredAndSortedScenes[0]?.paths?.screenshot) || "",
+                isForceMobile: false,
+                initialPage: currentProfilePage,
+                onPageChange: (newPage) => {
+                  setCurrentProfilePage(newPage);
+                  const viewName = newPage === 1 ? "discover" : "profile";
+                  const targetHash = buildHashForPath(activeProfilePath, viewName, playingScene ? playingScene.id : null);
+                  if (window.location.hash !== targetHash) {
+                    window.history.replaceState({ sfmPath: activeProfilePath, sfmView: viewName, sfmScene: playingScene?.id }, "", targetHash);
+                  }
+                },
+                isInsidePlayer: false,
+                onSelectScene: (s, q) => handlePlayScene(s, q),
+                onCloseProfile: handleCloseFolderProfile,
+                onNavigateToDirectory: () => {
+                  handleCloseFolderProfile();
+                  if (activeProfilePath && activeProfilePath !== currentPath) {
+                    navigateToFolder(activeProfilePath);
+                  }
+                },
+                onPlayAll: (q) => {
+                  const list = Array.isArray(q) && q.length > 0 ? q : filteredAndSortedScenes;
+                  if (list.length > 0) {
+                    handlePlayScene(list[0], list);
+                  }
+                },
+                onShuffleAll: (q) => {
+                  const list = Array.isArray(q) && q.length > 0 ? q : filteredAndSortedScenes;
+                  if (list.length > 0) {
+                    const randIdx = Math.floor(Math.random() * list.length);
+                    handlePlayScene(list[randIdx], list);
+                  }
+                },
+                onNavigateToFolder: (p) => {
+                  handleCloseFolderProfile();
+                  navigateToFolder(p);
+                },
+              });
+            })(),
           playingScene &&
             React.createElement(
               SafeErrorBoundary,

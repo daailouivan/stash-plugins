@@ -146,7 +146,7 @@ Eliminate wasted vertical space with compact folder layouts tailored to any libr
 - [x] **Circular Vector Search Clear Button:** Tactile circular hover button with vector cross icon. *(v2.7.3 — 2026-09-24)*
 - [x] **Directory Keyboard Navigation Shortcuts:** Global single-key hotkeys for `/` (search), `Backspace`/`Alt+Left` (go up), `Ctrl+A` (select all), and `Esc` (clear/dismiss). *(v2.7.3 — 2026-09-24)*
 
-### 📍 Phase 3: Fast Inspection, Folder Profile & Autonomous Discovery Feed (Completed — v2.8.0 to v2.9.12)
+### 📍 Phase 3: Fast Inspection, Folder Profile & Autonomous Discovery Feed (Completed — v2.8.0 to v2.9.13)
 - [x] **Fast Filename Inspector View (`Names` Table):** Ultra-fast, text-only table view designed for instant scanning, regex evaluation, direct scene opening, and one-click clipboard copying. *(v2.8.0 — 2026-09-24)*
 - [x] **Browser History & URL Deep Linking:** Full browser history integration (`popstate`, hash routing `#file-manager?path=...`) with seamless Back/Forward navigation, `Alt+Left`, and `Backspace` folder level traversals. *(v2.8.0 — 2026-09-24)*
 - [x] **Folder Profile & Directory Video Wall (`FolderProfileView`):** Dedicated in-player directory profile view featuring folder avatar with gradient ring, 3 live metric columns (direct scenes, total tree scenes, total size), directory bio, and quick-action triggers (`Play All`, `Shuffle`, `Stash Grid`). *(v2.9.0 — 2026-09-26)*
@@ -174,6 +174,12 @@ Eliminate wasted vertical space with compact folder layouts tailored to any libr
 ---
 
 ## 📋 Changelog & Development History
+
+### [v2.9.13] — 2026-09-28 00:20:00
+* **Sub-Folder Profile Targeting, Profile Sub-Folder Toggle & Discover Feed Unification:**
+  * **Include Sub-Folders Toggle on Video Profile & Discover Pages:** Added an interactive "Sub-Folders" toggle button directly within the `FolderProfileView` top navigation bar and header bio chip row. Allows instant toggling between direct folder scenes only and full recursive subfolder aggregation. Metrics (video counts, file size, duration, resolution badges), the Video Wall grid, and the Discover mosaic all reactively recalculate.
+  * **Targeted Sub-Folder Profile Resolution:** When a video inside a sub-folder is playing or active, opening the profile now correctly targets and displays the video's immediate sub-folder as the profile title, badge, and directory path, rather than falling back to the higher-level directory path. Clicking "File Manager" from the profile immediately jumps the file manager view directly into that sub-folder.
+  * **Discover Mosaic Unified with Profile Scenes:** Unified the Explore / Discover mosaic tab to display the exact same pool of scenes as the profile (supporting direct vs subfolder scenes). Clicking "Shuffle Feed" instantly reshuffles the profile scenes into a randomized discovery mosaic with 0ms network latency.
 
 ### [v2.9.12] — 2026-09-28 00:05:00
 * **Fix Fullscreen & Desktop View Navigation on Video Profile & Discover Pages:**

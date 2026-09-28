@@ -2935,6 +2935,15 @@ button.badge.sfm-badge-btn {
   }
 }
 
+
+.sfm-profile-subfolders-btn {
+  font-size: 0.76rem !important;
+  border-radius: 6px !important;
+  white-space: nowrap !important;
+  padding: 0.25rem 0.55rem !important;
+  transition: all 0.15s ease;
+}
+
 .sfm-profile-nav-bar {
   position: sticky;
   top: 0;
@@ -3775,7 +3784,13 @@ button.badge.sfm-badge-btn {
 }
 
 @media (max-width: 576px) {
-  .sfm-profile-nav-bar {
+    .sfm-profile-subfolders-btn .sfm-btn-label-desktop {
+    display: none !important;
+  }
+  .sfm-profile-subfolders-btn .sfm-btn-label-mobile {
+    display: inline !important;
+  }
+.sfm-profile-nav-bar {
     padding-top: max(54px, calc(env(safe-area-inset-top, 47px) + 10px)) !important;
     min-height: 88px !important;
   }

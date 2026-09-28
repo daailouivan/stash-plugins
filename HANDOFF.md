@@ -1,11 +1,11 @@
 # Project Handoff Document: Stash Path File Manager Plugin
 
-**Current Version:** `v2.9.12`  
+**Current Version:** `v2.9.13`  
 **Active Repository:** `https://github.com/daailouivan/stash-plugins.git` (`main` branch)  
-**Distribution Package:** `stash_file_manager.zip` (SHA256: `98ac7a1333510b58ba337f313386a2e4f906a17a4ea17d727aea3f0b03ed00ba`)  
-**Plugin Manifest:** `stash_file_manager/stash_file_manager.yml` (version `2.9.12`)  
-**Index Manifest:** `index.yml` (version `2.9.12`)  
-**Total Release Tags:** `38` (`v1.0.0` through `v2.9.12`)  
+**Distribution Package:** `stash_file_manager.zip` (SHA256: `3b4c286971b7f8d1b7a30920e95d5e31737369d5c05562e9a4c95098b6e51bd7`)  
+**Plugin Manifest:** `stash_file_manager/stash_file_manager.yml` (version `2.9.13`)  
+**Index Manifest:** `index.yml` (version `2.9.13`)  
+**Total Release Tags:** `38` (`v1.0.0` through `v2.9.13`)  
 
 ---
 
@@ -76,7 +76,7 @@ The **Stash Path File Manager (`stash_file_manager`)** is a community plugin for
 
 ## 3. Instructions for Force Pushing to GitHub
 
-To force push the repository branch and all 37 release tags to GitHub (`https://github.com/daailouivan/stash-plugins.git`):
+To force push the repository branch and all 38 release tags to GitHub (`https://github.com/daailouivan/stash-plugins.git`):
 
 ```bash
 # 1. Pull / update to the latest bundle commit
@@ -85,9 +85,10 @@ git pull <path-to-bundle> main
 # 2. Force push the main branch to origin
 git push -u origin main --force
 
-# 3. Force push all 37 release tags to origin
+# 3. Force push all 38 release tags to origin
 git push origin --tags --force
 ```
-| `v2.9.12` | `e23c020` | Progressive feed windowing (social media optimization), in-player video wall launch & scroll fix |
-| `v2.9.12` | `20f0e4e` | Hotfix: resolved undeclared profileWallSort & clearCachedScenes with verified automated testing |
-| `v2.9.12` | `875b63c` | Fix fullscreen navigation & tab synchronization on profile and discover page |
+| `v2.9.13` | `e23c020` | Progressive feed windowing (social media optimization), in-player video wall launch & scroll fix |
+| `v2.9.13` | `20f0e4e` | Hotfix: resolved undeclared profileWallSort & clearCachedScenes with verified automated testing |
+| `v2.9.13` | `875b63c` | Fix fullscreen navigation & tab synchronization on profile and discover page |
+| `v2.9.13` | `547347a` | Add subfolder toggle to profile, subfolder targeting & unified discover feed |
