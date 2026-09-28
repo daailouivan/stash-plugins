@@ -1154,7 +1154,7 @@ body.sfm-body-locked {
   position: fixed;
   bottom: 24px;
   right: 24px;
-  z-index: 10060;
+  z-index: 10200 !important;
   pointer-events: auto;
   background: #242933;
   border: 1px solid #88c0d0;
@@ -1515,7 +1515,7 @@ body.sfm-body-locked {
 .sfm-reel-modal-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 10060 !important;
+  z-index: 10100 !important;
   background: rgba(0, 0, 0, 0.92);
   backdrop-filter: blur(8px);
   display: flex;
@@ -2050,7 +2050,7 @@ body.sfm-body-locked {
   position: fixed;
   bottom: 24px;
   right: 24px;
-  z-index: 10001;
+  z-index: 10200 !important;
   background: rgba(18, 22, 32, 0.95);
   border: 1px solid #88c0d0;
   color: #eceff4;
@@ -2771,7 +2771,7 @@ button.badge.sfm-badge-btn {
 .sfm-folder-profile-page {
   position: fixed !important;
   inset: 0 !important;
-  z-index: 10080 !important;
+  z-index: 10050 !important;
   background: #05070a !important;
   color: #eceff4 !important;
   overflow-y: auto !important;
@@ -2784,6 +2784,10 @@ button.badge.sfm-badge-btn {
   height: 100vh !important;
   height: 100dvh !important;
   animation: sfmFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.sfm-folder-profile-page.sfm-folder-profile-in-player {
+  z-index: 10150 !important;
 }
 
 /* Horizontal Sliding Viewport & 2-Page Carousel */
@@ -2934,7 +2938,7 @@ button.badge.sfm-badge-btn {
 .sfm-profile-nav-bar {
   position: sticky;
   top: 0;
-  z-index: 30;
+  z-index: 50;
   background: rgba(10, 12, 16, 0.98);
   backdrop-filter: blur(14px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
@@ -2942,6 +2946,7 @@ button.badge.sfm-badge-btn {
   padding-top: max(0.65rem, env(safe-area-inset-top, 0px));
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
   flex-shrink: 0;
+  pointer-events: auto !important;
 }
 
 .sfm-profile-back-btn {
@@ -3068,6 +3073,9 @@ button.badge.sfm-badge-btn {
   display: flex;
   align-items: stretch;
   justify-content: center;
+  position: relative;
+  z-index: 10;
+  pointer-events: auto !important;
 }
 
 .sfm-profile-tab-btn {
@@ -3082,6 +3090,7 @@ button.badge.sfm-badge-btn {
   user-select: none;
   flex: 1;
   max-width: 280px;
+  pointer-events: auto !important;
 }
 
 .sfm-profile-tab-btn:hover {

@@ -1,11 +1,11 @@
 # Project Handoff Document: Stash Path File Manager Plugin
 
-**Current Version:** `v2.9.10`  
+**Current Version:** `v2.9.12`  
 **Active Repository:** `https://github.com/daailouivan/stash-plugins.git` (`main` branch)  
-**Distribution Package:** `stash_file_manager.zip` (SHA256: `1482ffba90f692996d37a8161c1dc65f0d79fed91cd01158d5c03cce0a2dcc01`)  
-**Plugin Manifest:** `stash_file_manager/stash_file_manager.yml` (version `2.9.10`)  
-**Index Manifest:** `index.yml` (version `2.9.10`)  
-**Total Release Tags:** `38` (`v1.0.0` through `v2.9.10`)  
+**Distribution Package:** `stash_file_manager.zip` (SHA256: `98ac7a1333510b58ba337f313386a2e4f906a17a4ea17d727aea3f0b03ed00ba`)  
+**Plugin Manifest:** `stash_file_manager/stash_file_manager.yml` (version `2.9.12`)  
+**Index Manifest:** `index.yml` (version `2.9.12`)  
+**Total Release Tags:** `38` (`v1.0.0` through `v2.9.12`)  
 
 ---
 
@@ -76,7 +76,7 @@ The **Stash Path File Manager (`stash_file_manager`)** is a community plugin for
 
 ## 3. Instructions for Force Pushing to GitHub
 
-To force push the repository branch and all 35 release tags to GitHub (`https://github.com/daailouivan/stash-plugins.git`):
+To force push the repository branch and all 37 release tags to GitHub (`https://github.com/daailouivan/stash-plugins.git`):
 
 ```bash
 # 1. Pull / update to the latest bundle commit
@@ -85,8 +85,9 @@ git pull <path-to-bundle> main
 # 2. Force push the main branch to origin
 git push -u origin main --force
 
-# 3. Force push all 35 release tags to origin
+# 3. Force push all 37 release tags to origin
 git push origin --tags --force
 ```
-| `v2.9.10` | `e23c020` | Progressive feed windowing (social media optimization), in-player video wall launch & scroll fix |
-| `v2.9.10` | `20f0e4e` | Hotfix: resolved undeclared profileWallSort & clearCachedScenes with verified automated testing |
+| `v2.9.12` | `e23c020` | Progressive feed windowing (social media optimization), in-player video wall launch & scroll fix |
+| `v2.9.12` | `20f0e4e` | Hotfix: resolved undeclared profileWallSort & clearCachedScenes with verified automated testing |
+| `v2.9.12` | `875b63c` | Fix fullscreen navigation & tab synchronization on profile and discover page |

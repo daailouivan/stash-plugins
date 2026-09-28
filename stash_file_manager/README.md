@@ -146,7 +146,7 @@ Eliminate wasted vertical space with compact folder layouts tailored to any libr
 - [x] **Circular Vector Search Clear Button:** Tactile circular hover button with vector cross icon. *(v2.7.3 — 2026-09-24)*
 - [x] **Directory Keyboard Navigation Shortcuts:** Global single-key hotkeys for `/` (search), `Backspace`/`Alt+Left` (go up), `Ctrl+A` (select all), and `Esc` (clear/dismiss). *(v2.7.3 — 2026-09-24)*
 
-### 📍 Phase 3: Fast Inspection, Folder Profile & Autonomous Discovery Feed (Completed — v2.8.0 to v2.9.10)
+### 📍 Phase 3: Fast Inspection, Folder Profile & Autonomous Discovery Feed (Completed — v2.8.0 to v2.9.12)
 - [x] **Fast Filename Inspector View (`Names` Table):** Ultra-fast, text-only table view designed for instant scanning, regex evaluation, direct scene opening, and one-click clipboard copying. *(v2.8.0 — 2026-09-24)*
 - [x] **Browser History & URL Deep Linking:** Full browser history integration (`popstate`, hash routing `#file-manager?path=...`) with seamless Back/Forward navigation, `Alt+Left`, and `Backspace` folder level traversals. *(v2.8.0 — 2026-09-24)*
 - [x] **Folder Profile & Directory Video Wall (`FolderProfileView`):** Dedicated in-player directory profile view featuring folder avatar with gradient ring, 3 live metric columns (direct scenes, total tree scenes, total size), directory bio, and quick-action triggers (`Play All`, `Shuffle`, `Stash Grid`). *(v2.9.0 — 2026-09-26)*
@@ -174,6 +174,14 @@ Eliminate wasted vertical space with compact folder layouts tailored to any libr
 ---
 
 ## 📋 Changelog & Development History
+
+### [v2.9.12] — 2026-09-28 00:05:00
+* **Fix Fullscreen & Desktop View Navigation on Video Profile & Discover Pages:**
+  * **Fullscreen Escape & Pointer Event Unblocking:** Resolved the issue where opening the directory profile or discover page while watching a video in fullscreen left the navigation bar and tabs unclickable/disabled. Opening `FolderProfileView` from the video player now cleanly exits native browser fullscreen via `document.exitFullscreen()`, preventing the Fullscreen Top Layer from intercepting pointer clicks and keyboard inputs.
+  * **Keyboard Yield in In-Player Profile:** Updated `BingeReelPlayerModal`'s global keydown listener to yield immediately when `showFolderProfile` is active, allowing `ArrowLeft` and `ArrowRight` to switch between `REELS` and `EXPLORE` tabs, and `Escape` to close the profile.
+  * **Synchronized Tab Switching & URL Routing:** Added two-way reactive synchronization between `initialPage` and `activeTab` via `handleTabChange(tab)`, ensuring that clicking between `REELS & VIDEOS` and `EXPLORE / DISCOVER` tabs or using browser Back/Forward buttons updates the sub-route hash (`#file-manager?view=profile` vs `view=discover`) and displays the correct active tab.
+  * **Desktop / Mobile View Switcher Fallback:** Added autonomous `effectiveForceMobile` state management and local storage persistence to `FolderProfileView`, ensuring the "Desktop Mode" / "Mobile View" toggle button in the top navigation bar is fully operational across all views.
+  * **Contextual Back Navigation Labels:** Top navigation button now contextually displays "Back to Files" when opened from the directory workspace, or "Back to Video" when opened from the active video player.
 
 ### [v2.9.10] — 2026-09-26 20:34:00
 * **Hotfix: Resolved Missing Reference (`profileWallSort`) & Verified Automated AST/Runtime Test Suite:**

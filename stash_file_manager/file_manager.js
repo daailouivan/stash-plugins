@@ -866,6 +866,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
       currentScene,
       posterUrl,
       isForceMobile,
+      isInsidePlayer = false,
       onToggleForceMobile,
       onSelectScene,
       onCloseProfile,
@@ -873,8 +874,49 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
       onPlayAll,
       onShuffleAll,
       onNavigateToFolder,
+      initialPage = 0,
+      onPageChange,
     }) {
-      const [activeTab, setActiveTab] = useState("reels"); // "reels" | "explore"
+      const [forceMobileInternal, setForceMobileInternal] = useState(() => {
+        if (typeof isForceMobile === "boolean") return isForceMobile;
+        try {
+          return window.localStorage.getItem("sfm_force_mobile_view") === "true";
+        } catch (e) {
+          return false;
+        }
+      });
+
+      const effectiveForceMobile = typeof isForceMobile === "boolean" && onToggleForceMobile ? isForceMobile : forceMobileInternal;
+
+      const handleToggleMobile = useCallback(() => {
+        if (onToggleForceMobile) {
+          onToggleForceMobile();
+        } else {
+          setForceMobileInternal((prev) => {
+            const next = !prev;
+            try {
+              window.localStorage.setItem("sfm_force_mobile_view", String(next));
+            } catch (e) {}
+            return next;
+          });
+        }
+      }, [onToggleForceMobile]);
+
+      const [activeTab, setActiveTab] = useState(() => (initialPage === 1 ? "explore" : "reels"));
+
+      useEffect(() => {
+        const target = initialPage === 1 ? "explore" : "reels";
+        if (activeTab !== target) {
+          setActiveTab(target);
+        }
+      }, [initialPage]);
+
+      const handleTabChange = useCallback((tab) => {
+        setActiveTab(tab);
+        if (onPageChange) {
+          onPageChange(tab === "explore" ? 1 : 0);
+        }
+      }, [onPageChange]);
       const [exploreScenes, setExploreScenes] = useState([]);
       const [visibleWallCount, setVisibleWallCount] = useState(36);
       const wallSentinelRef = useRef(null);
@@ -935,27 +977,32 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
         if (Math.abs(deltaX) > 40 && Math.abs(deltaX) > Math.abs(deltaY) * 1.25 && deltaTime < 600) {
           if (deltaX < 0 && activeTab === "reels") {
             // Swipe Left -> switch to Explore page!
-            setActiveTab("explore");
+            handleTabChange("explore");
           } else if (deltaX > 0 && activeTab === "explore") {
             // Swipe Right -> switch to Reels page!
-            setActiveTab("reels");
+            handleTabChange("reels");
           }
         }
       };
 
-      // Desktop keyboard navigation: ArrowLeft for Reels, ArrowRight for Explore
+      // Desktop keyboard navigation: ArrowLeft for Reels, ArrowRight for Explore, Esc to close
       useEffect(() => {
         const handleKeyDown = (e) => {
           if (["input", "textarea"].includes(e.target.tagName?.toLowerCase())) return;
           if (e.key === "ArrowLeft") {
-            setActiveTab("reels");
+            handleTabChange("reels");
           } else if (e.key === "ArrowRight") {
-            setActiveTab("explore");
+            handleTabChange("explore");
+          } else if (e.key === "Escape") {
+            if (onCloseProfile) {
+              e.preventDefault();
+              onCloseProfile();
+            }
           }
         };
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
-      }, []);
+      }, [handleTabChange, onCloseProfile]);
 
       // Global Library Explore loader: draws a random selection from library cache or GraphQL
       const loadExploreScenes = useCallback(async (count = 60) => {
@@ -1023,20 +1070,10 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
         loadExploreScenes(60);
       }, [loadExploreScenes]);
 
-      // Selection handler for explore scene: plays scene and returns to standard player view
+      // Selection handler for explore scene: plays scene in player
       const handleSelectExploreScene = (s) => {
         if (!s) return;
-        const sPath = s.files?.[0]?.path;
-        if (sPath && onNavigateToFolder) {
-          const parts = sPath.split("/").filter(Boolean);
-          parts.pop(); // remove file basename
-          const folder = parts.join("/");
-          if (folder && folder !== targetFolderPath) {
-            onNavigateToFolder(folder);
-          }
-        }
-        onSelectScene(s);
-        onCloseProfile();
+        onSelectScene(s, exploreScenes);
       };
 
       const stats = useMemo(() => {
@@ -1075,7 +1112,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
       return React.createElement(
         "div",
         {
-          className: `sfm-folder-profile-page ${isForceMobile ? "sfm-profile-force-mobile" : ""}`,
+          className: `sfm-folder-profile-page ${isInsidePlayer ? "sfm-folder-profile-in-player" : ""} ${effectiveForceMobile ? "sfm-profile-force-mobile" : ""}`,
           onClick: (e) => e.stopPropagation(),
           onTouchStart: handleTouchStart,
           onTouchEnd: handleTouchEnd,
@@ -1090,10 +1127,10 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
               type: "button",
               className: "btn btn-sm btn-outline-info py-1 px-3 d-inline-flex align-items-center sfm-profile-back-btn",
               onClick: onCloseProfile,
-              title: "Back to Video Player (Esc)",
+              title: isInsidePlayer ? "Back to Video Player (Esc)" : "Back to File Manager (Esc)",
             },
             React.createElement(IconArrowLeft, { size: 14, className: "mr-1" }),
-            React.createElement("span", { className: "font-weight-bold sfm-btn-label-desktop" }, "Back to Video"),
+            React.createElement("span", { className: "font-weight-bold sfm-btn-label-desktop" }, isInsidePlayer ? "Back to Video" : "Back to Files"),
             React.createElement("span", { className: "font-weight-bold sfm-btn-label-mobile" }, "Back")
           ),
           React.createElement(
@@ -1110,13 +1147,13 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
               "button",
               {
                 type: "button",
-                className: `btn btn-sm ${isForceMobile ? "btn-info font-weight-bold" : "btn-outline-secondary"} py-1 px-2 d-inline-flex align-items-center sfm-profile-mode-btn`,
-                onClick: onToggleForceMobile,
-                title: isForceMobile ? "Switch to Desktop Grid View" : "Force Mobile Phone View (Instagram/TikTok 3-Column Wall)",
+                className: `btn btn-sm ${effectiveForceMobile ? "btn-info font-weight-bold" : "btn-outline-secondary"} py-1 px-2 d-inline-flex align-items-center sfm-profile-mode-btn`,
+                onClick: handleToggleMobile,
+                title: effectiveForceMobile ? "Switch to Fullscreen Desktop View" : "Switch to Mobile Phone View (Instagram/TikTok 3-Column Wall)",
               },
               React.createElement(IconSmartphone, { size: 14, className: "mr-1" }),
-              React.createElement("span", { className: "sfm-btn-label-desktop" }, isForceMobile ? "Desktop Mode" : "Mobile View"),
-              React.createElement("span", { className: "sfm-btn-label-mobile" }, isForceMobile ? "Desktop" : "Mobile")
+              React.createElement("span", { className: "sfm-btn-label-desktop" }, effectiveForceMobile ? "Desktop Mode" : "Mobile View"),
+              React.createElement("span", { className: "sfm-btn-label-mobile" }, effectiveForceMobile ? "Desktop" : "Mobile")
             ),
             React.createElement(
               "button",
@@ -1146,7 +1183,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
         // Main Profile Content Container (Mobile-framed when force mobile, web-centered on desktop)
         React.createElement(
           "div",
-          { className: `sfm-profile-main-container ${isForceMobile ? "sfm-profile-mobile-container" : ""}` },
+          { className: `sfm-profile-main-container ${effectiveForceMobile ? "sfm-profile-mobile-container" : ""}` },
           // 2. Profile Header Section (Social Media Creator Profile Simulation)
           React.createElement(
             "div",
@@ -1221,7 +1258,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                 {
                   type: "button",
                   className: "btn btn-sm btn-primary flex-grow-1 py-1 font-weight-bold d-inline-flex align-items-center justify-content-center",
-                  onClick: onPlayAll,
+                  onClick: () => onPlayAll && onPlayAll(scenes),
                   title: "Play all videos sequentially",
                 },
                 React.createElement("span", { className: "mr-1" }, "▶"),
@@ -1265,7 +1302,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
               {
                 type: "button",
                 className: `sfm-profile-tab-btn ${activeTab === "reels" ? "sfm-profile-tab-active" : "sfm-profile-tab-inactive"} d-flex align-items-center justify-content-center`,
-                onClick: () => setActiveTab("reels"),
+                onClick: () => handleTabChange("reels"),
                 title: "Directory Video Wall (Swipe right)",
               },
               React.createElement("span", { className: "mr-1 mr-sm-2 font-weight-bold" }, "▦"),
@@ -1280,7 +1317,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
               {
                 type: "button",
                 className: `sfm-profile-tab-btn ${activeTab === "explore" ? "sfm-profile-tab-active" : "sfm-profile-tab-inactive"} d-flex align-items-center justify-content-center`,
-                onClick: () => setActiveTab("explore"),
+                onClick: () => handleTabChange("explore"),
                 title: "Explore Library Mosaic (Swipe left)",
               },
               React.createElement(IconCompass, { size: 14, className: "mr-1 mr-sm-2" }),
@@ -1308,8 +1345,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                     key: s.id,
                     className: `sfm-wall-tile ${isCurrent ? "sfm-wall-tile-active" : ""}`,
                     onClick: () => {
-                      onSelectScene(s);
-                      onCloseProfile();
+                      onSelectScene(s, scenes);
                     },
                     title: `Play: ${sTitle}`,
                   },
@@ -2243,11 +2279,16 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
       useEffect(() => {
         const handleKeyDown = (e) => {
           if (["input", "textarea", "select"].includes(e.target.tagName?.toLowerCase())) return;
-          if (e.key === "Escape") {
-            if (showFolderProfile) {
+
+          if (showFolderProfile) {
+            if (e.key === "Escape") {
+              e.preventDefault();
               setShowFolderProfile(false);
-              return;
             }
+            return; // In profile/discover overlay, yield keyboard to profile view
+          }
+
+          if (e.key === "Escape") {
             if (isPipMode && document.pictureInPictureElement) {
               document.exitPictureInPicture().catch(() => {});
             }
@@ -2313,6 +2354,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
             currentScene: scene,
             posterUrl: posterUrl,
             isForceMobile: isForceMobile,
+            isInsidePlayer: true,
             onToggleForceMobile: handleToggleForceMobile,
             onSelectScene: (s) => {
               onSelectScene(s);
@@ -2930,6 +2972,9 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                       if (videoRef.current && !videoRef.current.paused) {
                         videoRef.current.pause();
                       }
+                      if (document.fullscreenElement) {
+                        document.exitFullscreen().catch(() => {});
+                      }
                       setShowFolderProfile(true);
                     },
                     onKeyDown: (e) => {
@@ -2938,6 +2983,9 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                         e.preventDefault();
                         if (videoRef.current && !videoRef.current.paused) {
                           videoRef.current.pause();
+                        }
+                        if (document.fullscreenElement) {
+                          document.exitFullscreen().catch(() => {});
                         }
                         setShowFolderProfile(true);
                       }
@@ -5544,8 +5592,11 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
         }
       }, [currentPath]);
 
-      const handlePlayScene = useCallback((s) => {
+      const [customPlayerScenes, setCustomPlayerScenes] = useState(null);
+
+      const handlePlayScene = useCallback((s, queue = null) => {
         setPlayingScene(s);
+        setCustomPlayerScenes(Array.isArray(queue) && queue.length > 0 ? queue : null);
         const currentView = showFolderProfile ? (currentProfilePage === 1 ? "discover" : "profile") : null;
         const targetHash = buildHashForPath(currentPath, currentView, s.id);
         if (window.location.hash !== targetHash) {
@@ -5555,6 +5606,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
 
       const handleClosePlayer = useCallback(() => {
         setPlayingScene(null);
+        setCustomPlayerScenes(null);
         if (window.location.hash.includes("scene=")) {
           window.history.back();
         } else {
@@ -7178,18 +7230,21 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                   window.history.replaceState({ sfmPath: currentPath, sfmView: viewName, sfmScene: playingScene?.id }, "", targetHash);
                 }
               },
-              onSelectScene: (s) => handlePlayScene(s),
+              isInsidePlayer: false,
+              onSelectScene: (s, q) => handlePlayScene(s, q),
               onCloseProfile: handleCloseFolderProfile,
               onNavigateToDirectory: () => handleCloseFolderProfile(),
-              onPlayAll: () => {
-                if (filteredAndSortedScenes.length > 0) {
-                  handlePlayScene(filteredAndSortedScenes[0]);
+              onPlayAll: (q) => {
+                const list = Array.isArray(q) && q.length > 0 ? q : filteredAndSortedScenes;
+                if (list.length > 0) {
+                  handlePlayScene(list[0], list);
                 }
               },
-              onShuffleAll: () => {
-                if (filteredAndSortedScenes.length > 0) {
-                  const randIdx = Math.floor(Math.random() * filteredAndSortedScenes.length);
-                  handlePlayScene(filteredAndSortedScenes[randIdx]);
+              onShuffleAll: (q) => {
+                const list = Array.isArray(q) && q.length > 0 ? q : filteredAndSortedScenes;
+                if (list.length > 0) {
+                  const randIdx = Math.floor(Math.random() * list.length);
+                  handlePlayScene(list[randIdx], list);
                 }
               },
               onNavigateToFolder: (p) => {
@@ -7203,8 +7258,8 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
               { onReset: handleClosePlayer },
               React.createElement(BingeReelPlayerModal, {
                 scene: playingScene,
-                scenes: filteredAndSortedScenes,
-                onSelectScene: (s) => handlePlayScene(s),
+                scenes: customPlayerScenes || filteredAndSortedScenes,
+                onSelectScene: (s) => handlePlayScene(s, customPlayerScenes),
                 onClose: handleClosePlayer,
                 folderName: currentFolderName,
                 currentPath: currentPath,
