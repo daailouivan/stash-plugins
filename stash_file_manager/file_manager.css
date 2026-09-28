@@ -3795,3 +3795,89 @@ button.badge.sfm-badge-btn {
     min-height: 88px !important;
   }
 }
+
+/* ==========================================================================
+   v2.9.14: Navigable Breadcrumbs & Infinite Scroll Bottom Sentinel
+   ========================================================================== */
+.sfm-profile-breadcrumbs {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 3px;
+  max-width: 100%;
+}
+
+.sfm-profile-nav-breadcrumbs {
+  max-width: 100%;
+  overflow-x: auto;
+  white-space: nowrap;
+  scrollbar-width: none;
+}
+.sfm-profile-nav-breadcrumbs::-webkit-scrollbar {
+  display: none;
+}
+
+.sfm-profile-crumb-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  color: #88c0d0 !important;
+  background: rgba(46, 52, 64, 0.75) !important;
+  border: 1px solid rgba(136, 192, 208, 0.25) !important;
+  border-radius: 4px !important;
+  padding: 2px 7px !important;
+  font-size: 0.8rem !important;
+  line-height: 1.25 !important;
+  text-decoration: none !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease-in-out !important;
+  white-space: nowrap !important;
+}
+
+.sfm-profile-crumb-btn:hover {
+  background: rgba(136, 192, 208, 0.25) !important;
+  color: #eceff4 !important;
+  border-color: #88c0d0 !important;
+  text-decoration: none !important;
+}
+
+.sfm-profile-crumb-btn.active {
+  background: rgba(136, 192, 208, 0.35) !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  border-color: #88c0d0 !important;
+}
+
+.sfm-profile-crumb-sep {
+  color: #4c566a !important;
+  font-size: 0.75rem !important;
+  user-select: none !important;
+  display: inline-block;
+  margin: 0 1px;
+}
+
+.sfm-infinite-scroll-bottom {
+  width: 100%;
+  padding: 1.75rem 1rem 3rem 1rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.sfm-infinite-load-btn {
+  background: rgba(46, 52, 64, 0.85) !important;
+  border: 1px solid #88c0d0 !important;
+  color: #88c0d0 !important;
+  border-radius: 20px !important;
+  font-size: 0.85rem !important;
+  padding: 6px 18px !important;
+  transition: all 0.2s ease-in-out !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4) !important;
+}
+
+.sfm-infinite-load-btn:hover {
+  background: #88c0d0 !important;
+  color: #2e3440 !important;
+  border-color: #88c0d0 !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 6px 16px rgba(136, 192, 208, 0.35) !important;
+}

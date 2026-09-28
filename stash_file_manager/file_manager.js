@@ -917,6 +917,22 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
           onPageChange(tab === "explore" ? 1 : 0);
         }
       }, [onPageChange]);
+
+      // Internal navigable path state (defaults to targetFolderPath, updates when breadcrumbs clicked)
+      const [currentFolderPath, setCurrentFolderPath] = useState(targetFolderPath || "");
+
+      useEffect(() => {
+        setCurrentFolderPath(targetFolderPath || "");
+      }, [targetFolderPath]);
+
+      const handleNavigateFolder = useCallback((nextPath) => {
+        const norm = normalizePath(nextPath);
+        setCurrentFolderPath(norm);
+        if (onNavigateToFolder) {
+          onNavigateToFolder(norm);
+        }
+      }, [onNavigateToFolder]);
+
       // Include Sub-Folders toggle state for Folder Profile & Discover pages
       const [includeSubfolders, setIncludeSubfolders] = useState(() => {
         try {
@@ -939,42 +955,140 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
       // Resolve effective scenes for this folder profile (direct vs recursive subfolders)
       const effectiveScenes = useMemo(() => {
         const trie = window.__SFM_GLOBAL_CACHE__?.trie;
-        if (trie && targetFolderPath !== undefined) {
-          const node = trie.getNode(targetFolderPath);
+        if (trie) {
+          const node = trie.getNode(currentFolderPath);
           if (node) {
             return includeSubfolders ? getAllDescendantScenes(node) : (node.directScenes || []);
           }
         }
         return scenes;
-      }, [targetFolderPath, includeSubfolders, scenes]);
+      }, [currentFolderPath, includeSubfolders, scenes]);
+
+      // Retrieve ALL scenes under root across the entire library
+      const allRootScenes = useMemo(() => {
+        if (Array.isArray(window.__SFM_GLOBAL_CACHE__?.scenes) && window.__SFM_GLOBAL_CACHE__.scenes.length > 0) {
+          return window.__SFM_GLOBAL_CACHE__.scenes;
+        }
+        const trie = window.__SFM_GLOBAL_CACHE__?.trie;
+        if (trie?.root) {
+          const descendants = getAllDescendantScenes(trie.root);
+          if (descendants.length > 0) return descendants;
+        }
+        return scenes || [];
+      }, [scenes]);
 
       const [exploreScenes, setExploreScenes] = useState([]);
       const [visibleWallCount, setVisibleWallCount] = useState(36);
-      const wallSentinelRef = useRef(null);
+      const [visibleExploreCount, setVisibleExploreCount] = useState(36);
+      const [isExploreLoading, setIsExploreLoading] = useState(false);
 
+      const wallSentinelRef = useRef(null);
+      const exploreSentinelRef = useRef(null);
+      const profileContainerRef = useRef(null);
+
+      // Reset visible counts when current folder or pool changes
       useEffect(() => {
         setVisibleWallCount(36);
-      }, [targetFolderPath, effectiveScenes]);
+      }, [currentFolderPath, includeSubfolders, effectiveScenes]);
 
       useEffect(() => {
-        if (typeof IntersectionObserver === "undefined") return;
+        setVisibleExploreCount(36);
+      }, [exploreScenes]);
+
+      // Discover Scene loader: displays ALL scenes under root in a randomized mosaic
+      const loadExploreScenes = useCallback(() => {
+        setIsExploreLoading(true);
+        const pool = allRootScenes;
+        if (!Array.isArray(pool) || pool.length === 0) {
+          setExploreScenes([]);
+          setVisibleExploreCount(36);
+          setIsExploreLoading(false);
+          return;
+        }
+        const shuffled = [...pool];
+        for (let i = shuffled.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+        setExploreScenes(shuffled);
+        setVisibleExploreCount(36);
+        setIsExploreLoading(false);
+      }, [allRootScenes]);
+
+      useEffect(() => {
+        if (allRootScenes.length > 0 && exploreScenes.length === 0) {
+          loadExploreScenes();
+        }
+      }, [allRootScenes, loadExploreScenes, exploreScenes.length]);
+
+      // Batch loaders for infinite scrolling (loads next batch when scrolling near bottom button)
+      const handleLoadMoreWall = useCallback(() => {
+        setVisibleWallCount((prev) => Math.min(prev + 36, effectiveScenes.length));
+      }, [effectiveScenes.length]);
+
+      const handleLoadMoreExplore = useCallback(() => {
+        setVisibleExploreCount((prev) => Math.min(prev + 36, exploreScenes.length));
+      }, [exploreScenes.length]);
+
+      // IntersectionObserver for Reels tab bottom sentinel button
+      useEffect(() => {
+        if (activeTab !== "reels" || typeof IntersectionObserver === "undefined") return;
         const sentinel = wallSentinelRef.current;
         if (!sentinel) return;
 
         const observer = new IntersectionObserver(
           (entries) => {
             const first = entries[0];
-            if (first.isIntersecting && visibleWallCount < effectiveScenes.length) {
-              setVisibleWallCount((prev) => Math.min(prev + 36, effectiveScenes.length));
+            if (first && first.isIntersecting && visibleWallCount < effectiveScenes.length) {
+              handleLoadMoreWall();
             }
           },
-          { root: null, rootMargin: "300px 0px", threshold: 0.05 }
+          { root: null, rootMargin: "400px 0px", threshold: 0.01 }
         );
 
         observer.observe(sentinel);
         return () => observer.disconnect();
-      }, [visibleWallCount, effectiveScenes.length]);
-      const [isExploreLoading, setIsExploreLoading] = useState(false);
+      }, [activeTab, visibleWallCount, effectiveScenes.length, handleLoadMoreWall]);
+
+      // IntersectionObserver for Explore tab bottom sentinel button
+      useEffect(() => {
+        if (activeTab !== "explore" || typeof IntersectionObserver === "undefined") return;
+        const sentinel = exploreSentinelRef.current;
+        if (!sentinel) return;
+
+        const observer = new IntersectionObserver(
+          (entries) => {
+            const first = entries[0];
+            if (first && first.isIntersecting && visibleExploreCount < exploreScenes.length) {
+              handleLoadMoreExplore();
+            }
+          },
+          { root: null, rootMargin: "400px 0px", threshold: 0.01 }
+        );
+
+        observer.observe(sentinel);
+        return () => observer.disconnect();
+      }, [activeTab, visibleExploreCount, exploreScenes.length, handleLoadMoreExplore]);
+
+      // Scroll listener fallback on profileContainerRef
+      useEffect(() => {
+        const el = profileContainerRef.current;
+        if (!el) return;
+
+        const handleScroll = () => {
+          const scrollBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+          if (scrollBottom < 400) {
+            if (activeTab === "reels" && visibleWallCount < effectiveScenes.length) {
+              handleLoadMoreWall();
+            } else if (activeTab === "explore" && visibleExploreCount < exploreScenes.length) {
+              handleLoadMoreExplore();
+            }
+          }
+        };
+
+        el.addEventListener("scroll", handleScroll, { passive: true });
+        return () => el.removeEventListener("scroll", handleScroll);
+      }, [activeTab, visibleWallCount, effectiveScenes.length, visibleExploreCount, exploreScenes.length, handleLoadMoreWall, handleLoadMoreExplore]);
 
       // Touch gesture coordinates for horizontal swipe left/right
       const touchStartXRef = useRef(0);
@@ -1001,30 +1115,20 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
         const deltaY = touch.clientY - touchStartYRef.current;
         const deltaTime = Date.now() - touchStartTimeRef.current;
 
-        // Verify valid horizontal swipe:
-        // 1. Horizontal movement > 40px
-        // 2. Clear horizontal orientation (Math.abs(deltaX) > Math.abs(deltaY) * 1.25)
-        // 3. Gesture completed within 600ms
         if (Math.abs(deltaX) > 40 && Math.abs(deltaX) > Math.abs(deltaY) * 1.25 && deltaTime < 600) {
           if (deltaX < 0 && activeTab === "reels") {
-            // Swipe Left -> switch to Explore page!
             handleTabChange("explore");
           } else if (deltaX > 0 && activeTab === "explore") {
-            // Swipe Right -> switch to Reels page!
             handleTabChange("reels");
           }
         }
       };
 
-      // Desktop keyboard navigation: ArrowLeft for Reels, ArrowRight for Explore, Esc to close
+      // Desktop keyboard navigation: Esc to close profile
       useEffect(() => {
         const handleKeyDown = (e) => {
-          if (["input", "textarea"].includes(e.target.tagName?.toLowerCase())) return;
-          if (e.key === "ArrowLeft") {
-            handleTabChange("reels");
-          } else if (e.key === "ArrowRight") {
-            handleTabChange("explore");
-          } else if (e.key === "Escape") {
+          if (["input", "textarea", "select"].includes(e.target.tagName?.toLowerCase())) return;
+          if (e.key === "Escape") {
             if (onCloseProfile) {
               e.preventDefault();
               onCloseProfile();
@@ -1033,25 +1137,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
         };
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
-      }, [handleTabChange, onCloseProfile]);
-
-      // Discover Scene loader: displays the profile scenes in a randomized mosaic (matching profile scenes)
-      const loadExploreScenes = useCallback((pool = effectiveScenes) => {
-        if (!Array.isArray(pool) || pool.length === 0) {
-          setExploreScenes([]);
-          return;
-        }
-        const shuffled = [...pool];
-        for (let i = shuffled.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-        }
-        setExploreScenes(shuffled);
-      }, [effectiveScenes]);
-
-      useEffect(() => {
-        loadExploreScenes(effectiveScenes);
-      }, [effectiveScenes, loadExploreScenes]);
+      }, [onCloseProfile]);
 
       // Selection handler for explore scene: plays scene in player
       const handleSelectExploreScene = (s) => {
@@ -1090,11 +1176,62 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
         };
       }, [effectiveScenes]);
 
-      const displayName = folderName || (targetFolderPath ? targetFolderPath.split("/").pop() : "Root");
+      const displayName = currentFolderPath
+        ? currentFolderPath.split("/").filter(Boolean).pop()
+        : (folderName || (targetFolderPath ? targetFolderPath.split("/").pop() : "Root"));
+
+      // Navigable Breadcrumbs renderer
+      const renderBreadcrumbs = (path, onNav, isNavTitle = false) => {
+        const segs = path ? path.split("/").filter(Boolean) : [];
+        return React.createElement(
+          "nav",
+          {
+            className: `sfm-profile-breadcrumbs ${isNavTitle ? "sfm-profile-nav-breadcrumbs" : "sfm-profile-bio-breadcrumbs"} d-inline-flex align-items-center flex-wrap`,
+            "aria-label": "Folder path",
+          },
+          React.createElement(
+            "button",
+            {
+              type: "button",
+              className: `btn btn-link sfm-profile-crumb-btn ${segs.length === 0 ? "active" : ""}`,
+              onClick: (e) => {
+                e.stopPropagation();
+                onNav("");
+              },
+              title: "Root directory (/)",
+            },
+            React.createElement(IconFolder, { size: 12, className: "mr-1 text-info flex-shrink-0" }),
+            React.createElement("span", null, "/")
+          ),
+          segs.map((seg, i) => {
+            const segPath = segs.slice(0, i + 1).join("/");
+            const isLast = i === segs.length - 1;
+            return React.createElement(
+              React.Fragment,
+              { key: segPath },
+              React.createElement("span", { className: "sfm-profile-crumb-sep" }, "/"),
+              React.createElement(
+                "button",
+                {
+                  type: "button",
+                  className: `btn btn-link sfm-profile-crumb-btn ${isLast ? "active" : ""}`,
+                  onClick: (e) => {
+                    e.stopPropagation();
+                    onNav(segPath);
+                  },
+                  title: `Navigate to /${segPath}`,
+                },
+                seg
+              )
+            );
+          })
+        );
+      };
 
       return React.createElement(
         "div",
         {
+          ref: profileContainerRef,
           className: `sfm-folder-profile-page ${isInsidePlayer ? "sfm-folder-profile-in-player" : ""} ${effectiveForceMobile ? "sfm-profile-force-mobile" : ""}`,
           onClick: (e) => e.stopPropagation(),
           onTouchStart: handleTouchStart,
@@ -1118,9 +1255,8 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
           ),
           React.createElement(
             "div",
-            { className: "sfm-profile-nav-title d-flex align-items-center text-truncate mx-2" },
-            React.createElement(IconFolder, { size: 16, color: "#88c0d0", className: "mr-2 flex-shrink-0" }),
-            React.createElement("span", { className: "font-weight-bold text-light text-truncate" }, displayFolderPath)
+            { className: "sfm-profile-nav-title d-flex align-items-center text-truncate mx-2 flex-grow-1" },
+            renderBreadcrumbs(currentFolderPath, handleNavigateFolder, true)
           ),
           React.createElement(
             "div",
@@ -1158,8 +1294,15 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
               {
                 type: "button",
                 className: "btn btn-sm btn-outline-secondary py-1 px-2 d-inline-flex align-items-center sfm-profile-fm-btn",
-                onClick: onNavigateToDirectory,
-                title: `Open "${targetFolderPath || "Root"}" in File Manager`,
+                onClick: () => {
+                  if (onNavigateToFolder) {
+                    onNavigateToFolder(currentFolderPath);
+                  }
+                  if (onNavigateToDirectory) {
+                    onNavigateToDirectory(currentFolderPath);
+                  }
+                },
+                title: `Open "${currentFolderPath || "Root"}" in File Manager`,
               },
               React.createElement(IconFolder, { size: 13, className: "mr-1" }),
               React.createElement("span", { className: "sfm-btn-label-desktop" }, "File Manager"),
@@ -1229,15 +1372,15 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                 )
               )
             ),
-            // Folder Bio: Title, Path Chip, Resolution Tags, Subfolders Toggle
+            // Folder Bio: Title, Path Breadcrumbs, Resolution Tags, Subfolders Toggle
             React.createElement(
               "div",
               { className: "sfm-profile-bio-box mb-3" },
               React.createElement("h2", { className: "sfm-profile-title mb-1 font-weight-bold text-light" }, displayName),
               React.createElement(
                 "div",
-                { className: "d-flex align-items-center flex-wrap gap-1 mb-2" },
-                React.createElement("span", { className: "badge badge-dark sfm-profile-path-badge" }, displayFolderPath),
+                { className: "d-flex align-items-center flex-wrap gap-2 mb-2" },
+                renderBreadcrumbs(currentFolderPath, handleNavigateFolder, false),
                 React.createElement(
                   "button",
                   {
@@ -1292,7 +1435,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                   type: "button",
                   className: "btn btn-sm btn-outline-secondary py-1 px-3 d-inline-flex align-items-center justify-content-center",
                   onClick: () => {
-                    const filter = { type: "path", value: targetFolderPath, modifier: "MATCHES_REGEX" };
+                    const filter = { type: "path", value: currentFolderPath, modifier: "MATCHES_REGEX" };
                     window.open(`/scenes?c=${encodeURIComponent(JSON.stringify(filter))}`, "_blank");
                   },
                   title: "Open in Stash scene grid (new tab)",
@@ -1329,195 +1472,253 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                 type: "button",
                 className: `sfm-profile-tab-btn ${activeTab === "explore" ? "sfm-profile-tab-active" : "sfm-profile-tab-inactive"} d-flex align-items-center justify-content-center`,
                 onClick: () => handleTabChange("explore"),
-                title: "Explore Library Mosaic (Swipe left)",
+                title: "Explore Library Mosaic (All scenes under root randomly)",
               },
               React.createElement(IconCompass, { size: 14, className: "mr-1 mr-sm-2" }),
               React.createElement("span", { className: "font-weight-bold text-uppercase letter-spacing-1 small sfm-tab-text" }, "EXPLORE"),
-              React.createElement("span", { className: "badge badge-info ml-2 sfm-tab-explore-badge" }, effectiveScenes.length)
+              React.createElement("span", { className: "badge badge-info ml-2 sfm-tab-explore-badge" }, allRootScenes.length)
             )
           ),
 
-          // 4. Content Area: Either Reels Video Wall OR Explore Mosaic Grid
+          // 4. Content Area: Either Reels Video Wall OR Explore Mosaic Grid with Infinite Scroll Sentinel
           activeTab === "reels" ? (
             React.createElement(
-              "div",
-              { className: "sfm-profile-wall-grid sfm-tab-content-reels" },
-              effectiveScenes.slice(0, visibleWallCount).map((s) => {
-                const isCurrent = s.id === currentScene?.id;
-                const sPoster = s.paths?.screenshot || `/scene/${s.id}/screenshot`;
-                const sTitle = s.title || s.files?.[0]?.basename || `Scene #${s.id}`;
-                const sDuration = formatDuration(s.files?.[0]?.duration);
-                const sHeight = s.files?.[0]?.height;
-                const sRes = sHeight >= 2160 ? "4K" : sHeight >= 1080 ? "1080p" : sHeight >= 720 ? "720p" : "";
-
-                return React.createElement(
-                  "div",
-                  {
-                    key: s.id,
-                    className: `sfm-wall-tile ${isCurrent ? "sfm-wall-tile-active" : ""}`,
-                    onClick: () => {
-                      onSelectScene(s, effectiveScenes);
-                    },
-                    title: `Play: ${sTitle}`,
-                  },
-                  React.createElement("img", {
-                    src: sPoster,
-                    className: "sfm-wall-tile-img",
-                    alt: sTitle,
-                    loading: "lazy",
-                  }),
-                  isCurrent &&
-                    React.createElement(
-                      "div",
-                      { className: "sfm-wall-tile-playing" },
-                      "▶ PLAYING"
-                    ),
-                  sRes &&
-                    React.createElement(
-                      "div",
-                      { className: "sfm-wall-tile-res" },
-                      sRes
-                    ),
-                  React.createElement(
-                    "div",
-                    { className: "sfm-wall-tile-views" },
-                    React.createElement("span", { className: "mr-1", style: { fontSize: "0.65rem" } }, "▶"),
-                    React.createElement("span", null, sDuration)
-                  ),
-                  React.createElement(
-                    "div",
-                    { className: "sfm-wall-tile-hover-overlay" },
-                    React.createElement(
-                      "div",
-                      { className: "sfm-wall-tile-hover-center" },
-                      "▶"
-                    ),
-                    React.createElement(
-                      "div",
-                      { className: "sfm-wall-tile-hover-title" },
-                      sTitle
-                    )
-                  )
-                );
-              })
-            )
-          ) : (
-            React.createElement(
-              "div",
-              { className: "sfm-explore-container sfm-tab-content-explore d-flex flex-column flex-grow-1" },
+              React.Fragment,
+              null,
               React.createElement(
                 "div",
-                { className: "sfm-explore-toolbar d-flex align-items-center justify-content-between px-3 py-2" },
-                React.createElement(
-                  "div",
-                  { className: "d-flex align-items-center text-truncate mr-2" },
-                  React.createElement(IconCompass, { size: 14, color: "#88c0d0", className: "mr-2 flex-shrink-0" }),
-                  React.createElement("span", { className: "small font-weight-bold text-light text-truncate" }, `Discovery Mosaic: ${displayName}`),
-                  React.createElement(
-                    "span",
-                    { className: "badge badge-dark ml-2 text-muted flex-shrink-0" },
-                    `${exploreScenes.length} scenes`
-                  )
-                ),
-                React.createElement(
-                  "button",
-                  {
-                    type: "button",
-                    className: "btn btn-sm btn-outline-info py-0 px-2 d-inline-flex align-items-center sfm-explore-refresh-btn font-weight-bold flex-shrink-0",
-                    onClick: () => loadExploreScenes(effectiveScenes),
-                    disabled: isExploreLoading,
-                    title: "Shuffle and re-arrange discovery scenes",
-                  },
-                  React.createElement(IconShuffle, { size: 12, className: "mr-1" }),
-                  isExploreLoading ? "Shuffling..." : "Shuffle Feed"
-                )
-              ),
-              isExploreLoading && exploreScenes.length === 0 ? (
-                React.createElement(
-                  "div",
-                  { className: "text-center py-5 text-muted" },
-                  React.createElement("div", { className: "spinner-border spinner-border-sm text-info mr-2" }),
-                  "Loading Explore Feed..."
-                )
-              ) : (
-                React.createElement(
-                  "div",
-                  { className: "sfm-explore-grid" },
-                  exploreScenes.map((s, idx) => {
-                    const isFeatured = idx % 12 === 0 || idx % 12 === 7;
-                    const isCurrent = s.id === currentScene?.id;
-                    const sPoster = s.paths?.screenshot || s.paths?.preview || `/scene/${s.id}/screenshot`;
-                    const sTitle = s.title || s.files?.[0]?.basename || `Scene #${s.id}`;
-                    const sDuration = formatDuration(s.files?.[0]?.duration);
-                    const sHeight = s.files?.[0]?.height;
-                    const sRes = sHeight >= 2160 ? "4K" : sHeight >= 1080 ? "1080p" : sHeight >= 720 ? "720p" : "";
-                    const studioName = s.studio?.name;
+                { className: "sfm-profile-wall-grid sfm-tab-content-reels" },
+                effectiveScenes.slice(0, visibleWallCount).map((s) => {
+                  const isCurrent = s.id === currentScene?.id;
+                  const sPoster = s.paths?.screenshot || `/scene/${s.id}/screenshot`;
+                  const sTitle = s.title || s.files?.[0]?.basename || `Scene #${s.id}`;
+                  const sDuration = formatDuration(s.files?.[0]?.duration);
+                  const sHeight = s.files?.[0]?.height;
+                  const sRes = sHeight >= 2160 ? "4K" : sHeight >= 1080 ? "1080p" : sHeight >= 720 ? "720p" : "";
 
-                    return React.createElement(
-                      "div",
-                      {
-                        key: `explore-${s.id}-${idx}`,
-                        className: `sfm-explore-tile ${isFeatured ? "sfm-explore-tile-featured" : ""} ${isCurrent ? "sfm-explore-tile-active" : ""}`,
-                        onClick: () => handleSelectExploreScene(s),
-                        title: `Play: ${sTitle}`,
+                  return React.createElement(
+                    "div",
+                    {
+                      key: s.id,
+                      className: `sfm-wall-tile ${isCurrent ? "sfm-wall-tile-active" : ""}`,
+                      onClick: () => {
+                        onSelectScene(s, effectiveScenes);
                       },
-                      React.createElement("img", {
-                        src: sPoster,
-                        className: "sfm-explore-tile-img",
-                        alt: sTitle,
-                        loading: "lazy",
-                      }),
-                      isFeatured &&
-                        React.createElement(
-                          "div",
-                          { className: "sfm-explore-tile-featured-badge" },
-                          "★ FEATURED"
-                        ),
-                      isCurrent &&
-                        React.createElement(
-                          "div",
-                          { className: "sfm-wall-tile-playing" },
-                          "▶ PLAYING"
-                        ),
-                      sRes &&
-                        React.createElement(
-                          "div",
-                          { className: "sfm-explore-tile-res" },
-                          sRes
-                        ),
+                      title: `Play: ${sTitle}`,
+                    },
+                    React.createElement("img", {
+                      src: sPoster,
+                      className: "sfm-wall-tile-img",
+                      alt: sTitle,
+                      loading: "lazy",
+                    }),
+                    isCurrent &&
                       React.createElement(
                         "div",
-                        { className: "sfm-explore-tile-views" },
-                        React.createElement("span", { className: "mr-1", style: { fontSize: "0.65rem" } }, "▶"),
-                        React.createElement("span", null, sDuration)
+                        { className: "sfm-wall-tile-playing" },
+                        "▶ PLAYING"
+                      ),
+                    sRes &&
+                      React.createElement(
+                        "div",
+                        { className: "sfm-wall-tile-res" },
+                        sRes
+                      ),
+                    React.createElement(
+                      "div",
+                      { className: "sfm-wall-tile-views" },
+                      React.createElement("span", { className: "mr-1", style: { fontSize: "0.65rem" } }, "▶"),
+                      React.createElement("span", null, sDuration)
+                    ),
+                    React.createElement(
+                      "div",
+                      { className: "sfm-wall-tile-hover-overlay" },
+                      React.createElement(
+                        "div",
+                        { className: "sfm-wall-tile-hover-center" },
+                        "▶"
                       ),
                       React.createElement(
                         "div",
-                        { className: "sfm-explore-tile-hover-overlay" },
+                        { className: "sfm-wall-tile-hover-title" },
+                        sTitle
+                      )
+                    )
+                  );
+                })
+              ),
+              React.createElement(
+                "div",
+                {
+                  ref: wallSentinelRef,
+                  className: "sfm-infinite-scroll-bottom text-center my-4 py-3",
+                },
+                visibleWallCount < effectiveScenes.length
+                  ? React.createElement(
+                      "button",
+                      {
+                        type: "button",
+                        className: "btn btn-sm btn-outline-info px-4 py-2 font-weight-bold sfm-infinite-load-btn",
+                        onClick: handleLoadMoreWall,
+                        title: "Load more scenes (or scroll down)",
+                      },
+                      React.createElement("span", { className: "mr-2" }, "↓"),
+                      `Load More Scenes (Showing ${Math.min(visibleWallCount, effectiveScenes.length)} of ${effectiveScenes.length})`
+                    )
+                  : effectiveScenes.length > 0 &&
+                    React.createElement(
+                      "div",
+                      { className: "text-muted small font-weight-bold" },
+                      `✓ All ${effectiveScenes.length} scenes loaded`
+                    )
+              )
+            )
+          ) : (
+            React.createElement(
+              React.Fragment,
+              null,
+              React.createElement(
+                "div",
+                { className: "sfm-explore-container sfm-tab-content-explore d-flex flex-column flex-grow-1" },
+                React.createElement(
+                  "div",
+                  { className: "sfm-explore-toolbar d-flex align-items-center justify-content-between px-3 py-2" },
+                  React.createElement(
+                    "div",
+                    { className: "d-flex align-items-center text-truncate mr-2" },
+                    React.createElement(IconCompass, { size: 14, color: "#88c0d0", className: "mr-2 flex-shrink-0" }),
+                    React.createElement("span", { className: "small font-weight-bold text-light text-truncate" }, "Explore Library Mosaic (Random)"),
+                    React.createElement(
+                      "span",
+                      { className: "badge badge-dark ml-2 text-muted flex-shrink-0" },
+                      `${exploreScenes.length} scenes`
+                    )
+                  ),
+                  React.createElement(
+                    "button",
+                    {
+                      type: "button",
+                      className: "btn btn-sm btn-outline-info py-0 px-2 d-inline-flex align-items-center sfm-explore-refresh-btn font-weight-bold flex-shrink-0",
+                      onClick: loadExploreScenes,
+                      disabled: isExploreLoading,
+                      title: "Shuffle and re-arrange all library scenes randomly",
+                    },
+                    React.createElement(IconShuffle, { size: 12, className: "mr-1" }),
+                    isExploreLoading ? "Shuffling..." : "Shuffle Feed"
+                  )
+                ),
+                isExploreLoading && exploreScenes.length === 0 ? (
+                  React.createElement(
+                    "div",
+                    { className: "text-center py-5 text-muted" },
+                    React.createElement("div", { className: "spinner-border spinner-border-sm text-info mr-2" }),
+                    "Loading Explore Feed..."
+                  )
+                ) : (
+                  React.createElement(
+                    "div",
+                    { className: "sfm-explore-grid" },
+                    exploreScenes.slice(0, visibleExploreCount).map((s, idx) => {
+                      const isFeatured = idx % 12 === 0 || idx % 12 === 7;
+                      const isCurrent = s.id === currentScene?.id;
+                      const sPoster = s.paths?.screenshot || s.paths?.preview || `/scene/${s.id}/screenshot`;
+                      const sTitle = s.title || s.files?.[0]?.basename || `Scene #${s.id}`;
+                      const sDuration = formatDuration(s.files?.[0]?.duration);
+                      const sHeight = s.files?.[0]?.height;
+                      const sRes = sHeight >= 2160 ? "4K" : sHeight >= 1080 ? "1080p" : sHeight >= 720 ? "720p" : "";
+                      const studioName = s.studio?.name;
+
+                      return React.createElement(
+                        "div",
+                        {
+                          key: `explore-${s.id}-${idx}`,
+                          className: `sfm-explore-tile ${isFeatured ? "sfm-explore-tile-featured" : ""} ${isCurrent ? "sfm-explore-tile-active" : ""}`,
+                          onClick: () => handleSelectExploreScene(s),
+                          title: `Play: ${sTitle}`,
+                        },
+                        React.createElement("img", {
+                          src: sPoster,
+                          className: "sfm-explore-tile-img",
+                          alt: sTitle,
+                          loading: "lazy",
+                        }),
+                        isFeatured &&
+                          React.createElement(
+                            "div",
+                            { className: "sfm-explore-tile-featured-badge" },
+                            "★ FEATURED"
+                          ),
+                        isCurrent &&
+                          React.createElement(
+                            "div",
+                            { className: "sfm-wall-tile-playing" },
+                            "▶ PLAYING"
+                          ),
+                        sRes &&
+                          React.createElement(
+                            "div",
+                            { className: "sfm-explore-tile-res" },
+                            sRes
+                          ),
                         React.createElement(
                           "div",
-                          { className: "sfm-explore-tile-hover-center" },
-                          "▶"
+                          { className: "sfm-explore-tile-views" },
+                          React.createElement("span", { className: "mr-1", style: { fontSize: "0.65rem" } }, "▶"),
+                          React.createElement("span", null, sDuration)
                         ),
                         React.createElement(
                           "div",
-                          { className: "sfm-explore-tile-hover-bottom" },
-                          studioName &&
-                            React.createElement(
-                              "div",
-                              { className: "sfm-explore-tile-hover-studio" },
-                              studioName
-                            ),
+                          { className: "sfm-explore-tile-hover-overlay" },
                           React.createElement(
                             "div",
-                            { className: "sfm-explore-tile-hover-title" },
-                            sTitle
+                            { className: "sfm-explore-tile-hover-center" },
+                            "▶"
+                          ),
+                          React.createElement(
+                            "div",
+                            { className: "sfm-explore-tile-hover-bottom" },
+                            studioName &&
+                              React.createElement(
+                                "div",
+                                { className: "sfm-explore-tile-hover-studio" },
+                                studioName
+                              ),
+                            React.createElement(
+                              "div",
+                              { className: "sfm-explore-tile-hover-title" },
+                              sTitle
+                            )
                           )
                         )
-                      )
-                    );
-                  })
+                      );
+                    })
+                  )
                 )
+              ),
+              React.createElement(
+                "div",
+                {
+                  ref: exploreSentinelRef,
+                  className: "sfm-infinite-scroll-bottom text-center my-4 py-3",
+                },
+                visibleExploreCount < exploreScenes.length
+                  ? React.createElement(
+                      "button",
+                      {
+                        type: "button",
+                        className: "btn btn-sm btn-outline-info px-4 py-2 font-weight-bold sfm-infinite-load-btn",
+                        onClick: handleLoadMoreExplore,
+                        title: "Load more scenes (or scroll down)",
+                      },
+                      React.createElement("span", { className: "mr-2" }, "↓"),
+                      `Load More Scenes (Showing ${Math.min(visibleExploreCount, exploreScenes.length)} of ${exploreScenes.length})`
+                    )
+                  : exploreScenes.length > 0 &&
+                    React.createElement(
+                      "div",
+                      { className: "text-muted small font-weight-bold" },
+                      `✓ All ${exploreScenes.length} scenes loaded`
+                    )
               )
             )
           )
@@ -1829,6 +2030,23 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
       const [volume, setVolume] = useState(1);
       const [isMuted, setIsMuted] = useState(false);
       const [hudNotice, setHudNotice] = useState("");
+      const hudTimerRef = useRef(null);
+      const showHud = useCallback((text) => {
+        if (hudTimerRef.current) clearTimeout(hudTimerRef.current);
+        setHudNotice(text);
+        hudTimerRef.current = setTimeout(() => setHudNotice(""), 800);
+      }, []);
+
+      const handleSeekBy = useCallback((seconds) => {
+        const v = videoRef.current;
+        if (!v) return;
+        const currentT = v.currentTime || 0;
+        const totalDur = (v.duration && !isNaN(v.duration) && v.duration > 0) ? v.duration : (duration || 999999);
+        const nextT = Math.max(0, Math.min(totalDur, currentT + seconds));
+        v.currentTime = nextT;
+        setCurrentTime(nextT);
+        showHud(seconds < 0 ? `${seconds}s` : `+${seconds}s`);
+      }, [duration, showHud]);
 
       // Auto-Hide Controls & Overlay Timer
       const [isControlsVisible, setIsControlsVisible] = useState(true);
@@ -2287,17 +2505,32 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
         touchSamplesRef.current = [];
       };
 
-      // Keyboard Controls
+      // Keyboard Controls (with Left/Right Arrow key Rewind & Fast Forward)
       useEffect(() => {
         const handleKeyDown = (e) => {
           if (["input", "textarea", "select"].includes(e.target.tagName?.toLowerCase())) return;
+
+          // Rewind 10s: Left Arrow or J
+          if (e.key === "ArrowLeft" || e.key === "j" || e.key === "J") {
+            e.preventDefault();
+            e.stopPropagation();
+            handleSeekBy(-10);
+            return;
+          }
+          // Fast Forward 10s: Right Arrow or L
+          if (e.key === "ArrowRight" || e.key === "l" || e.key === "L") {
+            e.preventDefault();
+            e.stopPropagation();
+            handleSeekBy(10);
+            return;
+          }
 
           if (showFolderProfile) {
             if (e.key === "Escape") {
               e.preventDefault();
               setShowFolderProfile(false);
             }
-            return; // In profile/discover overlay, yield keyboard to profile view
+            return; // In profile/discover overlay, yield remaining keys to profile view
           }
 
           if (e.key === "Escape") {
@@ -2311,20 +2544,6 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
           } else if (e.key === "ArrowUp" || e.key === "PageUp") {
             e.preventDefault();
             goToPrev();
-          } else if (e.key === "ArrowLeft") {
-            e.preventDefault();
-            if (videoRef.current) {
-              videoRef.current.currentTime = Math.max(0, videoRef.current.currentTime - 10);
-              setHudNotice("-10s");
-              setTimeout(() => setHudNotice(""), 800);
-            }
-          } else if (e.key === "ArrowRight") {
-            e.preventDefault();
-            if (videoRef.current) {
-              videoRef.current.currentTime = Math.min(duration || 999999, videoRef.current.currentTime + 10);
-              setHudNotice("+10s");
-              setTimeout(() => setHudNotice(""), 800);
-            }
           } else if (e.key === " " || e.key === "k") {
             e.preventDefault();
             handleTogglePlay();
@@ -2340,9 +2559,9 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
           }
         };
 
-        window.addEventListener("keydown", handleKeyDown);
-        return () => window.removeEventListener("keydown", handleKeyDown);
-      }, [onClose, goToNext, goToPrev, handleTogglePlay, handleToggleShuffle, duration, isPipMode, showFolderProfile]);
+        window.addEventListener("keydown", handleKeyDown, { capture: true });
+        return () => window.removeEventListener("keydown", handleKeyDown, { capture: true });
+      }, [onClose, goToNext, goToPrev, handleTogglePlay, handleToggleShuffle, handleSeekBy, isPipMode, showFolderProfile]);
 
       // Formatted duration helper
       const formatTime = (secs) => {
@@ -7270,8 +7489,9 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                   }
                 },
                 onNavigateToFolder: (p) => {
-                  handleCloseFolderProfile();
-                  navigateToFolder(p);
+                  if (p !== undefined && p !== currentPath) {
+                    navigateToFolder(p);
+                  }
                 },
               });
             })(),
