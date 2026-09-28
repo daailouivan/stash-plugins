@@ -1,11 +1,11 @@
 # Project Handoff Document: Stash Path File Manager Plugin
 
-**Current Version:** `v2.9.14`  
+**Current Version:** `v2.9.15`  
 **Active Repository:** `https://github.com/daailouivan/stash-plugins.git` (`main` branch)  
-**Distribution Package:** `stash_file_manager.zip` (SHA256: `2db10f11d1fa154b018bba90f237966ac5e783e92b35bfe95e7caf3165d7c48b`)  
-**Plugin Manifest:** `stash_file_manager/stash_file_manager.yml` (version `2.9.14`)  
-**Index Manifest:** `index.yml` (version `2.9.14`)  
-**Total Release Tags:** `39` (`v1.0.0` through `v2.9.14`)  
+**Distribution Package:** `stash_file_manager.zip` (SHA256: `42944219299aadfff0d25239585a353a95fa52c79fd710917f593ce9f54676d3`)  
+**Plugin Manifest:** `stash_file_manager/stash_file_manager.yml` (version `2.9.15`)  
+**Index Manifest:** `index.yml` (version `2.9.15`)  
+**Total Release Tags:** `40` (`v1.0.0` through `v2.9.15`)  
 
 ---
 
@@ -88,7 +88,7 @@ git push -u origin main --force
 # 3. Force push all 38 release tags to origin
 git push origin --tags --force
 ```
-| `v2.9.14` | `e23c020` | Progressive feed windowing (social media optimization), in-player video wall launch & scroll fix |
-| `v2.9.14` | `20f0e4e` | Hotfix: resolved undeclared profileWallSort & clearCachedScenes with verified automated testing |
-| `v2.9.14` | `875b63c` | Fix fullscreen navigation & tab synchronization on profile and discover page |
-| `v2.9.14` | `547347a` | Add subfolder toggle to profile, subfolder targeting & unified discover feed |
+| `v2.9.15` | `e23c020` | Progressive feed windowing (social media optimization), in-player video wall launch & scroll fix |
+| `v2.9.15` | `20f0e4e` | Hotfix: resolved undeclared profileWallSort & clearCachedScenes with verified automated testing |
+| `v2.9.15` | `875b63c` | Fix fullscreen navigation & tab synchronization on profile and discover page |
+| `v2.9.15` | `547347a` | Add subfolder toggle to profile, subfolder targeting & unified discover feed |

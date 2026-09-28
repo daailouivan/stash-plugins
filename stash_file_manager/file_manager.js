@@ -918,20 +918,18 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
         }
       }, [onPageChange]);
 
-      // Internal navigable path state (defaults to targetFolderPath, updates when breadcrumbs clicked)
+      // Internal navigable path state: defaults to targetFolderPath, updates when breadcrumbs clicked
       const [currentFolderPath, setCurrentFolderPath] = useState(targetFolderPath || "");
 
       useEffect(() => {
         setCurrentFolderPath(targetFolderPath || "");
       }, [targetFolderPath]);
 
+      // Jump profile folder and remain in the video profile card
       const handleNavigateFolder = useCallback((nextPath) => {
         const norm = normalizePath(nextPath);
         setCurrentFolderPath(norm);
-        if (onNavigateToFolder) {
-          onNavigateToFolder(norm);
-        }
-      }, [onNavigateToFolder]);
+      }, []);
 
       // Include Sub-Folders toggle state for Folder Profile & Discover pages
       const [includeSubfolders, setIncludeSubfolders] = useState(() => {
@@ -952,6 +950,22 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
         });
       }, []);
 
+      // Profile-isolated sorting (restored mobile sort option)
+      const [profileSort, setProfileSort] = useState(() => {
+        try {
+          return window.localStorage.getItem("sfm_profile_scene_sort") || "date_desc";
+        } catch (e) {
+          return "date_desc";
+        }
+      });
+
+      const handleProfileSortChange = useCallback((newSort) => {
+        setProfileSort(newSort);
+        try {
+          window.localStorage.setItem("sfm_profile_scene_sort", newSort);
+        } catch (e) {}
+      }, []);
+
       // Resolve effective scenes for this folder profile (direct vs recursive subfolders)
       const effectiveScenes = useMemo(() => {
         const trie = window.__SFM_GLOBAL_CACHE__?.trie;
@@ -964,7 +978,38 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
         return scenes;
       }, [currentFolderPath, includeSubfolders, scenes]);
 
-      // Retrieve ALL scenes under root across the entire library
+      // Sorted profile scenes for Reels & Videos view
+      const sortedProfileScenes = useMemo(() => {
+        if (!Array.isArray(effectiveScenes)) return [];
+        const list = [...effectiveScenes];
+        list.sort((a, b) => {
+          if (profileSort === "title_asc") {
+            return (a.title || a.files?.[0]?.basename || "").localeCompare(b.title || b.files?.[0]?.basename || "");
+          }
+          if (profileSort === "title_desc") {
+            return (b.title || b.files?.[0]?.basename || "").localeCompare(a.title || a.files?.[0]?.basename || "");
+          }
+          if (profileSort === "date_asc") {
+            return (a.date || "").localeCompare(b.date || "");
+          }
+          if (profileSort === "date_desc") {
+            return (b.date || "").localeCompare(a.date || "");
+          }
+          if (profileSort === "rating_desc") {
+            return (b.rating100 || 0) - (a.rating100 || 0);
+          }
+          if (profileSort === "duration_desc") {
+            return (b.files?.[0]?.duration || 0) - (a.files?.[0]?.duration || 0);
+          }
+          if (profileSort === "size_desc") {
+            return (b.files?.[0]?.size || 0) - (a.files?.[0]?.size || 0);
+          }
+          return 0;
+        });
+        return list;
+      }, [effectiveScenes, profileSort]);
+
+      // Retrieve ALL scenes under root across the entire library for Explore
       const allRootScenes = useMemo(() => {
         if (Array.isArray(window.__SFM_GLOBAL_CACHE__?.scenes) && window.__SFM_GLOBAL_CACHE__.scenes.length > 0) {
           return window.__SFM_GLOBAL_CACHE__.scenes;
@@ -986,10 +1031,10 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
       const exploreSentinelRef = useRef(null);
       const profileContainerRef = useRef(null);
 
-      // Reset visible counts when current folder or pool changes
+      // Reset visible counts when current folder, subfolders, or sort changes
       useEffect(() => {
         setVisibleWallCount(36);
-      }, [currentFolderPath, includeSubfolders, effectiveScenes]);
+      }, [currentFolderPath, includeSubfolders, effectiveScenes, profileSort]);
 
       useEffect(() => {
         setVisibleExploreCount(36);
@@ -1021,10 +1066,10 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
         }
       }, [allRootScenes, loadExploreScenes, exploreScenes.length]);
 
-      // Batch loaders for infinite scrolling (loads next batch when scrolling near bottom button)
+      // Batch loaders for infinite scrolling
       const handleLoadMoreWall = useCallback(() => {
-        setVisibleWallCount((prev) => Math.min(prev + 36, effectiveScenes.length));
-      }, [effectiveScenes.length]);
+        setVisibleWallCount((prev) => Math.min(prev + 36, sortedProfileScenes.length));
+      }, [sortedProfileScenes.length]);
 
       const handleLoadMoreExplore = useCallback(() => {
         setVisibleExploreCount((prev) => Math.min(prev + 36, exploreScenes.length));
@@ -1039,7 +1084,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
         const observer = new IntersectionObserver(
           (entries) => {
             const first = entries[0];
-            if (first && first.isIntersecting && visibleWallCount < effectiveScenes.length) {
+            if (first && first.isIntersecting && visibleWallCount < sortedProfileScenes.length) {
               handleLoadMoreWall();
             }
           },
@@ -1048,7 +1093,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
 
         observer.observe(sentinel);
         return () => observer.disconnect();
-      }, [activeTab, visibleWallCount, effectiveScenes.length, handleLoadMoreWall]);
+      }, [activeTab, visibleWallCount, sortedProfileScenes.length, handleLoadMoreWall]);
 
       // IntersectionObserver for Explore tab bottom sentinel button
       useEffect(() => {
@@ -1078,7 +1123,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
         const handleScroll = () => {
           const scrollBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
           if (scrollBottom < 400) {
-            if (activeTab === "reels" && visibleWallCount < effectiveScenes.length) {
+            if (activeTab === "reels" && visibleWallCount < sortedProfileScenes.length) {
               handleLoadMoreWall();
             } else if (activeTab === "explore" && visibleExploreCount < exploreScenes.length) {
               handleLoadMoreExplore();
@@ -1088,7 +1133,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
 
         el.addEventListener("scroll", handleScroll, { passive: true });
         return () => el.removeEventListener("scroll", handleScroll);
-      }, [activeTab, visibleWallCount, effectiveScenes.length, visibleExploreCount, exploreScenes.length, handleLoadMoreWall, handleLoadMoreExplore]);
+      }, [activeTab, visibleWallCount, sortedProfileScenes.length, visibleExploreCount, exploreScenes.length, handleLoadMoreWall, handleLoadMoreExplore]);
 
       // Touch gesture coordinates for horizontal swipe left/right
       const touchStartXRef = useRef(0);
@@ -1180,7 +1225,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
         ? currentFolderPath.split("/").filter(Boolean).pop()
         : (folderName || (targetFolderPath ? targetFolderPath.split("/").pop() : "Root"));
 
-      // Navigable Breadcrumbs renderer
+      // Navigable Breadcrumbs renderer (jumps profile folder and stays in card)
       const renderBreadcrumbs = (path, onNav, isNavTitle = false) => {
         const segs = path ? path.split("/").filter(Boolean) : [];
         return React.createElement(
@@ -1237,7 +1282,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
           onTouchStart: handleTouchStart,
           onTouchEnd: handleTouchEnd,
         },
-        // 1. Sticky Navigation Top Bar
+        // 1. Sticky Navigation Top Bar (Un-crowded layout with spacious actions)
         React.createElement(
           "div",
           { className: "sfm-profile-nav-bar d-flex align-items-center justify-content-between" },
@@ -1245,7 +1290,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
             "button",
             {
               type: "button",
-              className: "btn btn-sm btn-outline-info py-1 px-3 d-inline-flex align-items-center sfm-profile-back-btn",
+              className: "btn btn-sm btn-outline-info py-1 px-3 d-inline-flex align-items-center sfm-profile-back-btn mr-3",
               onClick: onCloseProfile,
               title: isInsidePlayer ? "Back to Video Player (Esc)" : "Back to File Manager (Esc)",
             },
@@ -1260,13 +1305,13 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
           ),
           React.createElement(
             "div",
-            { className: "d-flex align-items-center gap-2 flex-shrink-0" },
+            { className: "d-flex align-items-center sfm-profile-nav-actions flex-shrink-0" },
             // Include Sub-Folders Toggle Button
             React.createElement(
               "button",
               {
                 type: "button",
-                className: `btn btn-sm ${includeSubfolders ? "btn-info font-weight-bold" : "btn-outline-secondary"} py-1 px-2 d-inline-flex align-items-center sfm-profile-subfolders-btn`,
+                className: `btn btn-sm ${includeSubfolders ? "btn-info font-weight-bold" : "btn-outline-secondary"} py-1 px-3 d-inline-flex align-items-center sfm-profile-subfolders-btn`,
                 onClick: handleToggleSubfolders,
                 title: includeSubfolders
                   ? "Include Sub-Folders: ON — Showing all scenes in folder hierarchy"
@@ -1281,7 +1326,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
               "button",
               {
                 type: "button",
-                className: `btn btn-sm ${effectiveForceMobile ? "btn-info font-weight-bold" : "btn-outline-secondary"} py-1 px-2 d-inline-flex align-items-center sfm-profile-mode-btn`,
+                className: `btn btn-sm ${effectiveForceMobile ? "btn-info font-weight-bold" : "btn-outline-secondary"} py-1 px-3 d-inline-flex align-items-center sfm-profile-mode-btn`,
                 onClick: handleToggleMobile,
                 title: effectiveForceMobile ? "Switch to Fullscreen Desktop View" : "Switch to Mobile Phone View (Instagram/TikTok 3-Column Wall)",
               },
@@ -1289,17 +1334,17 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
               React.createElement("span", { className: "sfm-btn-label-desktop" }, effectiveForceMobile ? "Desktop Mode" : "Mobile View"),
               React.createElement("span", { className: "sfm-btn-label-mobile" }, effectiveForceMobile ? "Desktop" : "Mobile")
             ),
+            // File Manager button (explicitly navigates File Manager to currentFolderPath)
             React.createElement(
               "button",
               {
                 type: "button",
-                className: "btn btn-sm btn-outline-secondary py-1 px-2 d-inline-flex align-items-center sfm-profile-fm-btn",
+                className: "btn btn-sm btn-outline-secondary py-1 px-3 d-inline-flex align-items-center sfm-profile-fm-btn",
                 onClick: () => {
-                  if (onNavigateToFolder) {
-                    onNavigateToFolder(currentFolderPath);
-                  }
                   if (onNavigateToDirectory) {
                     onNavigateToDirectory(currentFolderPath);
+                  } else if (onNavigateToFolder) {
+                    onNavigateToFolder(currentFolderPath);
                   }
                 },
                 title: `Open "${currentFolderPath || "Root"}" in File Manager`,
@@ -1312,7 +1357,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
               "button",
               {
                 type: "button",
-                className: "btn btn-sm btn-outline-secondary py-1 px-2",
+                className: "btn btn-sm btn-outline-secondary py-1 px-2 d-inline-flex align-items-center justify-content-center sfm-profile-close-btn",
                 onClick: onCloseProfile,
                 title: "Close Profile",
               },
@@ -1372,15 +1417,21 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                 )
               )
             ),
-            // Folder Bio: Title, Path Breadcrumbs, Resolution Tags, Subfolders Toggle
+            // Folder Bio: Dedicated clean lines for Title, Breadcrumb Path, and Badges (Un-crowded)
             React.createElement(
               "div",
               { className: "sfm-profile-bio-box mb-3" },
-              React.createElement("h2", { className: "sfm-profile-title mb-1 font-weight-bold text-light" }, displayName),
+              React.createElement("h2", { className: "sfm-profile-title mb-2 font-weight-bold text-light" }, displayName),
+              // Dedicated Breadcrumbs Path Line
               React.createElement(
                 "div",
-                { className: "d-flex align-items-center flex-wrap gap-2 mb-2" },
-                renderBreadcrumbs(currentFolderPath, handleNavigateFolder, false),
+                { className: "sfm-profile-bio-path-wrap mb-2" },
+                renderBreadcrumbs(currentFolderPath, handleNavigateFolder, false)
+              ),
+              // Dedicated Chips & Subfolders Line
+              React.createElement(
+                "div",
+                { className: "sfm-profile-bio-chips-wrap d-flex align-items-center flex-wrap gap-2 mb-3" },
                 React.createElement(
                   "button",
                   {
@@ -1412,7 +1463,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                 {
                   type: "button",
                   className: "btn btn-sm btn-primary flex-grow-1 py-1 font-weight-bold d-inline-flex align-items-center justify-content-center",
-                  onClick: () => onPlayAll && onPlayAll(effectiveScenes),
+                  onClick: () => onPlayAll && onPlayAll(sortedProfileScenes),
                   title: "Play all videos sequentially",
                 },
                 React.createElement("span", { className: "mr-1" }, "▶"),
@@ -1461,7 +1512,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
               },
               React.createElement("span", { className: "mr-1 mr-sm-2 font-weight-bold" }, "▦"),
               React.createElement("span", { className: "font-weight-bold text-uppercase letter-spacing-1 small sfm-tab-text" }, "REELS & VIDEOS"),
-              React.createElement("span", { className: "badge badge-dark ml-2 sfm-tab-count-badge" }, effectiveScenes.length)
+              React.createElement("span", { className: "badge badge-dark ml-2 sfm-tab-count-badge" }, sortedProfileScenes.length)
             ),
             // Divider
             React.createElement("div", { className: "sfm-profile-tab-divider" }),
@@ -1480,15 +1531,48 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
             )
           ),
 
-          // 4. Content Area: Either Reels Video Wall OR Explore Mosaic Grid with Infinite Scroll Sentinel
+          // 4. Content Area: Either Reels Video Wall (with Mobile/Desktop Sort Toolbar) OR Explore Mosaic Grid
           activeTab === "reels" ? (
             React.createElement(
               React.Fragment,
               null,
+              // Reels Toolbar: Folder Name & Scene Count on Left, Sort Selector on Right (Restored Mobile Sort Option)
+              React.createElement(
+                "div",
+                { className: "sfm-reels-toolbar d-flex align-items-center justify-content-between px-3 py-2" },
+                React.createElement(
+                  "div",
+                  { className: "d-flex align-items-center text-truncate mr-2" },
+                  React.createElement(IconFolder, { size: 14, color: "#88c0d0", className: "mr-2 flex-shrink-0" }),
+                  React.createElement("span", { className: "small font-weight-bold text-light text-truncate" }, displayName),
+                  React.createElement("span", { className: "badge badge-dark ml-2 text-muted flex-shrink-0" }, `${sortedProfileScenes.length} videos`)
+                ),
+                React.createElement(
+                  "div",
+                  { className: "d-flex align-items-center sfm-profile-sort-wrap flex-shrink-0" },
+                  React.createElement("span", { className: "sfm-sort-label mr-2 text-muted small" }, "Sort:"),
+                  React.createElement(
+                    "select",
+                    {
+                      className: "sfm-sort-select sfm-profile-sort-select",
+                      value: profileSort,
+                      onChange: (e) => handleProfileSortChange(e.target.value),
+                      title: "Sort Profile Videos",
+                    },
+                    React.createElement("option", { value: "date_desc" }, "Date (Newest)"),
+                    React.createElement("option", { value: "date_asc" }, "Date (Oldest)"),
+                    React.createElement("option", { value: "title_asc" }, "Title (A-Z)"),
+                    React.createElement("option", { value: "title_desc" }, "Title (Z-A)"),
+                    React.createElement("option", { value: "rating_desc" }, "Rating (Highest)"),
+                    React.createElement("option", { value: "duration_desc" }, "Duration (Longest)"),
+                    React.createElement("option", { value: "size_desc" }, "Size (Largest)")
+                  )
+                )
+              ),
               React.createElement(
                 "div",
                 { className: "sfm-profile-wall-grid sfm-tab-content-reels" },
-                effectiveScenes.slice(0, visibleWallCount).map((s) => {
+                sortedProfileScenes.slice(0, visibleWallCount).map((s) => {
                   const isCurrent = s.id === currentScene?.id;
                   const sPoster = s.paths?.screenshot || `/scene/${s.id}/screenshot`;
                   const sTitle = s.title || s.files?.[0]?.basename || `Scene #${s.id}`;
@@ -1502,7 +1586,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                       key: s.id,
                       className: `sfm-wall-tile ${isCurrent ? "sfm-wall-tile-active" : ""}`,
                       onClick: () => {
-                        onSelectScene(s, effectiveScenes);
+                        onSelectScene(s, sortedProfileScenes);
                       },
                       title: `Play: ${sTitle}`,
                     },
@@ -1553,7 +1637,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                   ref: wallSentinelRef,
                   className: "sfm-infinite-scroll-bottom text-center my-4 py-3",
                 },
-                visibleWallCount < effectiveScenes.length
+                visibleWallCount < sortedProfileScenes.length
                   ? React.createElement(
                       "button",
                       {
@@ -1563,13 +1647,13 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                         title: "Load more scenes (or scroll down)",
                       },
                       React.createElement("span", { className: "mr-2" }, "↓"),
-                      `Load More Scenes (Showing ${Math.min(visibleWallCount, effectiveScenes.length)} of ${effectiveScenes.length})`
+                      `Load More Scenes (Showing ${Math.min(visibleWallCount, sortedProfileScenes.length)} of ${sortedProfileScenes.length})`
                     )
-                  : effectiveScenes.length > 0 &&
+                  : sortedProfileScenes.length > 0 &&
                     React.createElement(
                       "div",
                       { className: "text-muted small font-weight-bold" },
-                      `✓ All ${effectiveScenes.length} scenes loaded`
+                      `✓ All ${sortedProfileScenes.length} scenes loaded`
                     )
               )
             )
@@ -2592,28 +2676,30 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
               setShowFolderProfile(false);
             },
             onCloseProfile: () => setShowFolderProfile(false),
-            onNavigateToDirectory: () => {
+            onNavigateToDirectory: (fPath) => {
+              const dest = fPath !== undefined ? fPath : targetFolderPath;
               if (onNavigateToFolder) {
-                onNavigateToFolder(targetFolderPath);
+                onNavigateToFolder(dest);
               }
               onClose();
             },
-            onPlayAll: () => {
-              if (scenes.length > 0) {
-                onSelectScene(scenes[0]);
+            onPlayAll: (q) => {
+              const list = Array.isArray(q) && q.length > 0 ? q : scenes;
+              if (list.length > 0) {
+                onSelectScene(list[0]);
                 setShowFolderProfile(false);
               }
             },
-            onShuffleAll: () => {
-              if (scenes.length > 0) {
-                const q = createShuffledQueue(scenes, scenes[0]);
-                setShuffledQueue(q);
+            onShuffleAll: (q) => {
+              const list = Array.isArray(q) && q.length > 0 ? q : scenes;
+              if (list.length > 0) {
+                const shuffled = createShuffledQueue(list, list[0]);
+                setShuffledQueue(shuffled);
                 setIsShuffle(true);
-                onSelectScene(q[0]);
+                onSelectScene(shuffled[0]);
                 setShowFolderProfile(false);
               }
             },
-            onNavigateToFolder: onNavigateToFolder,
           }),
 
         // When in PiP mode, show small non-intrusive floating dock pill
@@ -5831,21 +5917,17 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
         const currentView = showFolderProfile ? (currentProfilePage === 1 ? "discover" : "profile") : null;
         const targetHash = buildHashForPath(currentPath, currentView, s.id);
         if (window.location.hash !== targetHash) {
-          window.history.pushState({ sfmPath: currentPath, sfmView: currentView, sfmScene: s.id }, "", targetHash);
+          window.history.replaceState({ sfmPath: currentPath, sfmView: currentView, sfmScene: s.id }, "", targetHash);
         }
       }, [currentPath, showFolderProfile, currentProfilePage]);
 
       const handleClosePlayer = useCallback(() => {
         setPlayingScene(null);
         setCustomPlayerScenes(null);
-        if (window.location.hash.includes("scene=")) {
-          window.history.back();
-        } else {
-          const currentView = showFolderProfile ? (currentProfilePage === 1 ? "discover" : "profile") : null;
-          const targetHash = buildHashForPath(currentPath, currentView);
-          if (window.location.hash !== targetHash) {
-            window.history.replaceState({ sfmPath: currentPath, sfmView: currentView }, "", targetHash);
-          }
+        const currentView = showFolderProfile ? (currentProfilePage === 1 ? "discover" : "profile") : null;
+        const targetHash = buildHashForPath(currentPath, currentView);
+        if (window.location.hash !== targetHash) {
+          window.history.replaceState({ sfmPath: currentPath, sfmView: currentView }, "", targetHash);
         }
       }, [currentPath, showFolderProfile, currentProfilePage]);
       const [pluginSettings, setPluginSettings] = useState(null);
