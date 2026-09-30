@@ -908,6 +908,61 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
       return "";
     }
 
+    // ==========================================
+    // History, URL Hash & Navigation Depth Helpers
+    // ==========================================
+    function normalizePath(p) {
+      if (!p) return "";
+      try {
+        return decodeURIComponent(p).replace(/\\/g, "/").replace(/^\/+|\/+$/g, "");
+      } catch (e) {
+        return p.replace(/\\/g, "/").replace(/^\/+|\/+$/g, "");
+      }
+    }
+
+    function buildHashForPath(path, view = null, sceneId = null) {
+      const params = new URLSearchParams();
+      if (path) params.set("path", path);
+      if (view) params.set("view", view);
+      if (sceneId) params.set("scene", String(sceneId));
+      const qs = params.toString();
+      return qs ? `#file-manager?${qs}` : "#file-manager";
+    }
+
+    function parseHashState() {
+      const hash = window.location.hash || "";
+      if (!hash.startsWith("#file-manager")) return null;
+      const qIdx = hash.indexOf("?");
+      if (qIdx !== -1) {
+        const params = new URLSearchParams(hash.slice(qIdx + 1));
+        return {
+          path: normalizePath(params.get("path") || ""),
+          view: params.get("view") || null, // "profile" | "discover" | null
+          sceneId: params.get("scene") || null,
+        };
+      }
+      if (hash.startsWith("#file-manager/")) {
+        return {
+          path: normalizePath(decodeURIComponent(hash.slice("#file-manager/".length)) || ""),
+          view: null,
+          sceneId: null,
+        };
+      }
+      return { path: "", view: null, sceneId: null };
+    }
+
+    function getPathFromHash() {
+      const state = parseHashState();
+      return state ? state.path : null;
+    }
+
+    function getNextSfmDepth() {
+      const cur = (window.history.state && typeof window.history.state.sfmDepth === "number")
+        ? window.history.state.sfmDepth
+        : 1;
+      return cur + 1;
+    }
+
     function FolderProfileView({
       folderName,
       targetFolderPath,
@@ -961,13 +1016,6 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
         }
       }, [initialPage]);
 
-      const handleTabChange = useCallback((tab) => {
-        setActiveTab(tab);
-        if (onPageChange) {
-          onPageChange(tab === "explore" ? 1 : 0);
-        }
-      }, [onPageChange]);
-
       // Internal navigable path state: defaults to targetFolderPath, updates when breadcrumbs clicked
       const [currentFolderPath, setCurrentFolderPath] = useState(targetFolderPath || "");
 
@@ -975,10 +1023,50 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
         setCurrentFolderPath(targetFolderPath || "");
       }, [targetFolderPath]);
 
+      const handleTabChange = useCallback((tab) => {
+        setActiveTab(tab);
+        const viewName = tab === "explore" ? "discover" : "profile";
+        const sceneId = isInsidePlayer ? (currentScene ? currentScene.id : null) : null;
+        const targetHash = buildHashForPath(currentFolderPath, viewName, sceneId);
+        if (window.location.hash !== targetHash) {
+          const nextDepth = getNextSfmDepth();
+          window.history.pushState({ sfmPath: currentFolderPath, sfmView: viewName, sfmScene: sceneId, inPlayerProfile: isInsidePlayer, sfmDepth: nextDepth }, "", targetHash);
+        }
+        if (onPageChange) {
+          onPageChange(tab === "explore" ? 1 : 0);
+        }
+      }, [currentFolderPath, isInsidePlayer, currentScene, onPageChange]);
+
       // Jump profile folder and remain in the video profile card
       const handleNavigateFolder = useCallback((nextPath) => {
         const norm = normalizePath(nextPath);
         setCurrentFolderPath(norm);
+        const viewName = activeTab === "explore" ? "discover" : "profile";
+        const sceneId = isInsidePlayer ? (currentScene ? currentScene.id : null) : null;
+        const targetHash = buildHashForPath(norm, viewName, sceneId);
+        if (window.location.hash !== targetHash) {
+          const nextDepth = getNextSfmDepth();
+          window.history.pushState({ sfmPath: norm, sfmView: viewName, sfmScene: sceneId, inPlayerProfile: isInsidePlayer, sfmDepth: nextDepth }, "", targetHash);
+        }
+      }, [activeTab, isInsidePlayer, currentScene]);
+
+      // Sync internal profile folder & tab with browser back/forward (pageback)
+      useEffect(() => {
+        const handleProfilePopstate = () => {
+          const state = parseHashState();
+          if (state) {
+            if (state.path !== undefined) {
+              setCurrentFolderPath(state.path);
+            }
+            if (state.view === "discover") {
+              setActiveTab("explore");
+            } else if (state.view === "profile") {
+              setActiveTab("reels");
+            }
+          }
+        };
+        window.addEventListener("popstate", handleProfilePopstate);
+        return () => window.removeEventListener("popstate", handleProfilePopstate);
       }, []);
 
       // Include Sub-Folders toggle state for Folder Profile & Discover pages
@@ -2202,6 +2290,20 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
         showHud(seconds < 0 ? `${seconds}s` : `+${seconds}s`);
       }, [duration, showHud]);
 
+      // Synchronize in-player profile overlay with browser pageback (popstate)
+      useEffect(() => {
+        const handlePlayerPopstate = () => {
+          const state = parseHashState();
+          if (!state || state.view !== "profile") {
+            setShowFolderProfile(false);
+          } else if (state.view === "profile") {
+            setShowFolderProfile(true);
+          }
+        };
+        window.addEventListener("popstate", handlePlayerPopstate);
+        return () => window.removeEventListener("popstate", handlePlayerPopstate);
+      }, []);
+
       // Auto-Hide Controls & Overlay Timer
       const [isControlsVisible, setIsControlsVisible] = useState(true);
 
@@ -2683,6 +2785,15 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
             if (e.key === "Escape") {
               e.preventDefault();
               setShowFolderProfile(false);
+              const curDepth = (window.history.state && typeof window.history.state.sfmDepth === "number") ? window.history.state.sfmDepth : 0;
+              if (curDepth > 1 && window.location.hash.includes("view=")) {
+                window.history.back();
+              } else {
+                const targetHash = buildHashForPath(targetFolderPath, null, scene?.id);
+                if (window.location.hash !== targetHash) {
+                  window.history.replaceState({ sfmPath: targetFolderPath, sfmScene: scene?.id, sfmDepth: Math.max(1, curDepth) }, "", targetHash);
+                }
+              }
             }
             return; // In profile/discover overlay, yield remaining keys to profile view
           }
@@ -2746,7 +2857,18 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
               onSelectScene(s);
               setShowFolderProfile(false);
             },
-            onCloseProfile: () => setShowFolderProfile(false),
+            onCloseProfile: () => {
+              setShowFolderProfile(false);
+              const curDepth = (window.history.state && typeof window.history.state.sfmDepth === "number") ? window.history.state.sfmDepth : 0;
+              if (curDepth > 1 && window.location.hash.includes("view=")) {
+                window.history.back();
+              } else {
+                const targetHash = buildHashForPath(targetFolderPath, null, scene?.id);
+                if (window.location.hash !== targetHash) {
+                  window.history.replaceState({ sfmPath: targetFolderPath, sfmScene: scene?.id, sfmDepth: Math.max(1, curDepth) }, "", targetHash);
+                }
+              }
+            },
             onNavigateToDirectory: (fPath) => {
               const dest = fPath !== undefined ? fPath : targetFolderPath;
               if (onNavigateToFolder) {
@@ -3361,6 +3483,11 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                         videoRef.current.pause();
                       }
                       setShowFolderProfile(true);
+                      const targetHash = buildHashForPath(targetFolderPath, "profile", scene?.id);
+                      if (window.location.hash !== targetHash) {
+                        const nextDepth = getNextSfmDepth();
+                        window.history.pushState({ sfmPath: targetFolderPath, sfmView: "profile", sfmScene: scene?.id, inPlayerProfile: true, sfmDepth: nextDepth }, "", targetHash);
+                      }
                     },
                     onKeyDown: (e) => {
                       if (e.key === "Enter" || e.key === " ") {
@@ -3370,6 +3497,11 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                           videoRef.current.pause();
                         }
                         setShowFolderProfile(true);
+                        const targetHash = buildHashForPath(targetFolderPath, "profile", scene?.id);
+                        if (window.location.hash !== targetHash) {
+                          const nextDepth = getNextSfmDepth();
+                          window.history.pushState({ sfmPath: targetFolderPath, sfmView: "profile", sfmScene: scene?.id, inPlayerProfile: true, sfmDepth: nextDepth }, "", targetHash);
+                        }
                       }
                     },
                     title: `View Directory Profile & Video Wall for "${targetFolderPath || "Root"}"`,
@@ -5221,53 +5353,6 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
       );
     }
 
-    // ==========================================
-    // History & URL Path Synchronization
-    // ==========================================
-    function normalizePath(p) {
-      if (!p) return "";
-      try {
-        return decodeURIComponent(p).replace(/\\/g, "/").replace(/^\/+|\/+$/g, "");
-      } catch (e) {
-        return p.replace(/\\/g, "/").replace(/^\/+|\/+$/g, "");
-      }
-    }
-
-    function buildHashForPath(path, view = null, sceneId = null) {
-      const params = new URLSearchParams();
-      if (path) params.set("path", path);
-      if (view) params.set("view", view);
-      if (sceneId) params.set("scene", String(sceneId));
-      const qs = params.toString();
-      return qs ? `#file-manager?${qs}` : "#file-manager";
-    }
-
-    function parseHashState() {
-      const hash = window.location.hash || "";
-      if (!hash.startsWith("#file-manager")) return null;
-      const qIdx = hash.indexOf("?");
-      if (qIdx !== -1) {
-        const params = new URLSearchParams(hash.slice(qIdx + 1));
-        return {
-          path: normalizePath(params.get("path") || ""),
-          view: params.get("view") || null, // "profile" | "discover" | null
-          sceneId: params.get("scene") || null,
-        };
-      }
-      if (hash.startsWith("#file-manager/")) {
-        return {
-          path: normalizePath(decodeURIComponent(hash.slice("#file-manager/".length)) || ""),
-          view: null,
-          sceneId: null,
-        };
-      }
-      return { path: "", view: null, sceneId: null };
-    }
-
-    function getPathFromHash() {
-      const state = parseHashState();
-      return state ? state.path : null;
-    }
 
     // ==========================================
     // Filenames Only Table View Component (for Easy Bulk Editing)
@@ -5723,7 +5808,8 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
         const targetHash = buildHashForPath(normalizedNext);
         const currentHashDecoded = normalizePath(getPathFromHash());
         if (currentHashDecoded !== normalizedNext) {
-          window.history.pushState({ sfmPath: normalizedNext }, "", targetHash);
+          const nextDepth = getNextSfmDepth();
+          window.history.pushState({ sfmPath: normalizedNext, sfmDepth: nextDepth }, "", targetHash);
         }
       }, [currentPath]);
 
@@ -5956,23 +6042,25 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
         setShowFolderProfile(true);
         setCurrentProfilePage(page);
         const viewName = page === 1 ? "discover" : "profile";
-        const targetHash = buildHashForPath(currentPath, viewName);
+        const targetHash = buildHashForPath(currentPath, viewName, playingScene?.id);
         if (window.location.hash !== targetHash) {
-          window.history.pushState({ sfmPath: currentPath, sfmView: viewName }, "", targetHash);
+          const nextDepth = getNextSfmDepth();
+          window.history.pushState({ sfmPath: currentPath, sfmView: viewName, sfmScene: playingScene?.id, sfmDepth: nextDepth }, "", targetHash);
         }
-      }, [currentPath]);
+      }, [currentPath, playingScene]);
 
       const handleCloseFolderProfile = useCallback(() => {
         setShowFolderProfile(false);
-        if (window.location.hash.includes("view=")) {
+        const curDepth = (window.history.state && typeof window.history.state.sfmDepth === "number") ? window.history.state.sfmDepth : 0;
+        if (curDepth > 1 && window.location.hash.includes("view=")) {
           window.history.back();
         } else {
-          const targetHash = buildHashForPath(currentPath);
+          const targetHash = buildHashForPath(currentPath, null, playingScene?.id);
           if (window.location.hash !== targetHash) {
-            window.history.replaceState({ sfmPath: currentPath }, "", targetHash);
+            window.history.replaceState({ sfmPath: currentPath, sfmScene: playingScene?.id, sfmDepth: Math.max(1, curDepth) }, "", targetHash);
           }
         }
-      }, [currentPath]);
+      }, [currentPath, playingScene]);
 
       const [customPlayerScenes, setCustomPlayerScenes] = useState(null);
 
@@ -5981,23 +6069,36 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
           const sFolder = resolveSceneFolder(s, trie);
           if (sFolder) s._folderPath = sFolder;
         }
+        const isEnteringPlayer = !playingScene;
         setPlayingScene(s);
         setCustomPlayerScenes(Array.isArray(queue) && queue.length > 0 ? queue : null);
         const currentView = showFolderProfile ? (currentProfilePage === 1 ? "discover" : "profile") : null;
         const targetHash = buildHashForPath(currentPath, currentView, s.id);
         if (window.location.hash !== targetHash) {
-          // Use replaceState so watching multiple scenes doesn't create a chain in history
-          window.history.replaceState({ sfmPath: currentPath, sfmView: currentView, sfmScene: s.id }, "", targetHash);
+          if (isEnteringPlayer) {
+            // Push history when opening player so browser Back (pageback) returns to previous page (folder or profile)
+            const nextDepth = getNextSfmDepth();
+            window.history.pushState({ sfmPath: currentPath, sfmView: currentView, sfmScene: s.id, sfmDepth: nextDepth }, "", targetHash);
+          } else {
+            // Replace state when scrolling/swiping through reels inside active player
+            const curDepth = (window.history.state && typeof window.history.state.sfmDepth === "number") ? window.history.state.sfmDepth : 1;
+            window.history.replaceState({ sfmPath: currentPath, sfmView: currentView, sfmScene: s.id, sfmDepth: curDepth }, "", targetHash);
+          }
         }
-      }, [currentPath, showFolderProfile, currentProfilePage, trie]);
+      }, [currentPath, showFolderProfile, currentProfilePage, trie, playingScene]);
 
       const handleClosePlayer = useCallback(() => {
         setPlayingScene(null);
         setCustomPlayerScenes(null);
         const currentView = showFolderProfile ? (currentProfilePage === 1 ? "discover" : "profile") : null;
-        const targetHash = buildHashForPath(currentPath, currentView);
-        if (window.location.hash !== targetHash) {
-          window.history.replaceState({ sfmPath: currentPath, sfmView: currentView }, "", targetHash);
+        const curDepth = (window.history.state && typeof window.history.state.sfmDepth === "number") ? window.history.state.sfmDepth : 0;
+        if (curDepth > 1 && window.location.hash.includes("scene=")) {
+          window.history.back();
+        } else {
+          const targetHash = buildHashForPath(currentPath, currentView);
+          if (window.location.hash !== targetHash) {
+            window.history.replaceState({ sfmPath: currentPath, sfmView: currentView, sfmDepth: Math.max(1, curDepth) }, "", targetHash);
+          }
         }
       }, [currentPath, showFolderProfile, currentProfilePage]);
       const [pluginSettings, setPluginSettings] = useState(null);
@@ -6537,6 +6638,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
           } else {
             if (playingScene) {
               setPlayingScene(null);
+              setCustomPlayerScenes(null);
             }
           }
         };
@@ -7698,7 +7800,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
       if (!isBrowserNav) {
         const expectedHash = buildHashForPath(path, state?.view, state?.sceneId);
         if (window.location.hash !== expectedHash) {
-          window.history.pushState({ sfmPath: path }, "", expectedHash);
+          window.history.pushState({ sfmPath: path, sfmDepth: 1 }, "", expectedHash);
         }
       }
     }
@@ -7740,6 +7842,10 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
 
     if (window.location.hash.startsWith("#file-manager")) {
       setTimeout(() => openFileManager(undefined, true), 200);
+      if (!window.history.state || typeof window.history.state.sfmDepth !== "number") {
+        const state = parseHashState();
+        window.history.replaceState({ ...window.history.state, sfmPath: state?.path || "", sfmDepth: 1 }, "", window.location.hash);
+      }
     }
 
     if (register && register.route) {
