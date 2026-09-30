@@ -1846,7 +1846,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                 { className: "sfm-profile-wall-grid sfm-tab-content-reels" },
                 sortedProfileScenes.slice(0, visibleWallCount).map((s) => {
                   const isCurrent = s.id === currentScene?.id;
-                  const sPoster = s.paths?.screenshot || `/scene/${s.id}/screenshot`;
+                  const sPoster = s.paths?.screenshot || s.paths?.preview || `/scene/${s.id}/screenshot`;
                   const sTitle = s.title || s.files?.[0]?.basename || `Scene #${s.id}`;
                   const sDuration = formatDuration(s.files?.[0]?.duration);
                   const sHeight = s.files?.[0]?.height;
@@ -1866,8 +1866,30 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                       src: sPoster,
                       className: "sfm-wall-tile-img",
                       alt: sTitle,
-                      loading: "lazy",
+                      decoding: "async",
+                      onError: (e) => {
+                        const img = e.currentTarget;
+                        if (!img.dataset.triedPreview && s.id) {
+                          img.dataset.triedPreview = "true";
+                          img.src = `/scene/${s.id}/preview`;
+                          return;
+                        }
+                        img.style.display = "none";
+                        const fb = img.nextElementSibling;
+                        if (fb && fb.classList.contains("sfm-wall-tile-fallback")) {
+                          fb.style.display = "flex";
+                        }
+                      },
                     }),
+                    React.createElement(
+                      "div",
+                      {
+                        className: "sfm-wall-tile-fallback d-flex flex-column align-items-center justify-content-center text-center p-2",
+                        style: { display: "none" },
+                      },
+                      React.createElement(IconFolder, { size: 24, className: "mb-1 text-info opacity-75" }),
+                      React.createElement("span", { className: "small font-weight-bold text-light text-truncate w-100" }, sTitle)
+                    ),
                     isCurrent &&
                       React.createElement(
                         "div",
@@ -1996,8 +2018,30 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                           src: sPoster,
                           className: "sfm-explore-tile-img",
                           alt: sTitle,
-                          loading: "lazy",
+                          decoding: "async",
+                          onError: (e) => {
+                            const img = e.currentTarget;
+                            if (!img.dataset.triedPreview && s.id) {
+                              img.dataset.triedPreview = "true";
+                              img.src = `/scene/${s.id}/preview`;
+                              return;
+                            }
+                            img.style.display = "none";
+                            const fb = img.nextElementSibling;
+                            if (fb && fb.classList.contains("sfm-explore-tile-fallback")) {
+                              fb.style.display = "flex";
+                            }
+                          },
                         }),
+                        React.createElement(
+                          "div",
+                          {
+                            className: "sfm-explore-tile-fallback d-flex flex-column align-items-center justify-content-center text-center p-2",
+                            style: { display: "none" },
+                          },
+                          React.createElement(IconFolder, { size: isFeatured ? 36 : 22, className: "mb-1 text-info opacity-75" }),
+                          React.createElement("span", { className: "small font-weight-bold text-light text-truncate w-100" }, sTitle)
+                        ),
                         isFeatured &&
                           React.createElement(
                             "div",
