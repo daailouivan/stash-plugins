@@ -979,6 +979,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
       onPlayAll,
       onShuffleAll,
       onNavigateToFolder,
+      onFolderChange,
       initialPage = 0,
       onPageChange,
     }) {
@@ -1026,39 +1027,42 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
       const handleTabChange = useCallback((tab) => {
         setActiveTab(tab);
         const viewName = tab === "explore" ? "discover" : "profile";
-        const sceneId = isInsidePlayer ? (currentScene ? currentScene.id : null) : null;
-        const targetHash = buildHashForPath(currentFolderPath, viewName, sceneId);
+        // Profile view hash must NOT contain sceneId so that hitting back never replays the video
+        const targetHash = buildHashForPath(currentFolderPath, viewName, null);
         if (window.location.hash !== targetHash) {
           if (isInsidePlayer) {
             const curDepth = (window.history.state && typeof window.history.state.sfmDepth === "number") ? window.history.state.sfmDepth : 1;
-            window.history.replaceState({ sfmPath: currentFolderPath, sfmView: viewName, sfmScene: sceneId, inPlayerProfile: true, sfmDepth: curDepth }, "", targetHash);
+            window.history.replaceState({ sfmPath: currentFolderPath, sfmView: viewName, inPlayerProfile: true, sfmDepth: curDepth }, "", targetHash);
           } else {
             const nextDepth = getNextSfmDepth();
-            window.history.pushState({ sfmPath: currentFolderPath, sfmView: viewName, sfmScene: sceneId, inPlayerProfile: false, sfmDepth: nextDepth }, "", targetHash);
+            window.history.pushState({ sfmPath: currentFolderPath, sfmView: viewName, inPlayerProfile: false, sfmDepth: nextDepth }, "", targetHash);
           }
         }
         if (onPageChange) {
           onPageChange(tab === "explore" ? 1 : 0);
         }
-      }, [currentFolderPath, isInsidePlayer, currentScene, onPageChange]);
+      }, [currentFolderPath, isInsidePlayer, onPageChange]);
 
       // Jump profile folder and remain in the video profile card
       const handleNavigateFolder = useCallback((nextPath) => {
         const norm = normalizePath(nextPath);
         setCurrentFolderPath(norm);
+        if (onFolderChange) {
+          onFolderChange(norm);
+        }
         const viewName = activeTab === "explore" ? "discover" : "profile";
-        const sceneId = isInsidePlayer ? (currentScene ? currentScene.id : null) : null;
-        const targetHash = buildHashForPath(norm, viewName, sceneId);
+        // Profile view hash must NOT contain sceneId so that hitting back never replays the video
+        const targetHash = buildHashForPath(norm, viewName, null);
         if (window.location.hash !== targetHash) {
           if (isInsidePlayer) {
             const curDepth = (window.history.state && typeof window.history.state.sfmDepth === "number") ? window.history.state.sfmDepth : 1;
-            window.history.replaceState({ sfmPath: norm, sfmView: viewName, sfmScene: sceneId, inPlayerProfile: true, sfmDepth: curDepth }, "", targetHash);
+            window.history.replaceState({ sfmPath: norm, sfmView: viewName, inPlayerProfile: true, sfmDepth: curDepth }, "", targetHash);
           } else {
             const nextDepth = getNextSfmDepth();
-            window.history.pushState({ sfmPath: norm, sfmView: viewName, sfmScene: sceneId, inPlayerProfile: false, sfmDepth: nextDepth }, "", targetHash);
+            window.history.pushState({ sfmPath: norm, sfmView: viewName, inPlayerProfile: false, sfmDepth: nextDepth }, "", targetHash);
           }
         }
-      }, [activeTab, isInsidePlayer, currentScene]);
+      }, [activeTab, isInsidePlayer, onFolderChange]);
 
       // Sync internal profile folder & tab with browser back/forward (pageback)
       useEffect(() => {
@@ -1115,12 +1119,24 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
       }, []);
 
       // Resolve effective scenes for this folder profile (direct vs recursive subfolders)
+      // When direct scenes are empty (e.g. parent directories or root), auto-fallback to descendant scenes so the wall never turns black!
       const effectiveScenes = useMemo(() => {
         const trie = window.__SFM_GLOBAL_CACHE__?.trie;
         if (trie) {
           const node = trie.getNode(currentFolderPath);
           if (node) {
-            return includeSubfolders ? getAllDescendantScenes(node) : (node.directScenes || []);
+            if (includeSubfolders) {
+              return getAllDescendantScenes(node);
+            }
+            if (Array.isArray(node.directScenes) && node.directScenes.length > 0) {
+              return node.directScenes;
+            }
+            // Auto-fallback: if direct scenes are empty in this folder, include subfolder scenes so video wall never stays black
+            const descendants = getAllDescendantScenes(node);
+            if (descendants.length > 0) {
+              return descendants;
+            }
+            return [];
           }
         }
         return scenes;
@@ -1369,9 +1385,11 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
         };
       }, [effectiveScenes]);
 
-      const displayName = currentFolderPath
-        ? currentFolderPath.split("/").filter(Boolean).pop()
-        : (folderName || (targetFolderPath ? targetFolderPath.split("/").pop() : "Root"));
+      const displayName = useMemo(() => {
+        if (!currentFolderPath) return "Root";
+        const segs = currentFolderPath.split("/").filter(Boolean);
+        return segs.length > 0 ? segs[segs.length - 1] : "Root";
+      }, [currentFolderPath]);
 
       // Navigable Breadcrumbs renderer (jumps profile folder and stays in card)
       const renderBreadcrumbs = (path, onNav, isNavTitle = false) => {
@@ -3500,10 +3518,11 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                         videoRef.current.pause();
                       }
                       setShowFolderProfile(true);
-                      const targetHash = buildHashForPath(targetFolderPath, "profile", scene?.id);
+                      // Open profile without sceneId in hash so hitting back cleanly exits to player
+                      const targetHash = buildHashForPath(targetFolderPath, "profile", null);
                       if (window.location.hash !== targetHash) {
                         const nextDepth = getNextSfmDepth();
-                        window.history.pushState({ sfmPath: targetFolderPath, sfmView: "profile", sfmScene: scene?.id, inPlayerProfile: true, sfmDepth: nextDepth }, "", targetHash);
+                        window.history.pushState({ sfmPath: targetFolderPath, sfmView: "profile", inPlayerProfile: true, sfmDepth: nextDepth }, "", targetHash);
                       }
                     },
                     onKeyDown: (e) => {
@@ -6059,12 +6078,13 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
         setShowFolderProfile(true);
         setCurrentProfilePage(page);
         const viewName = page === 1 ? "discover" : "profile";
-        const targetHash = buildHashForPath(currentPath, viewName, playingScene?.id);
+        // Profile view hash must NOT have sceneId so that hitting back returns to folder view, never replaying video
+        const targetHash = buildHashForPath(currentPath, viewName, null);
         if (window.location.hash !== targetHash) {
           const nextDepth = getNextSfmDepth();
-          window.history.pushState({ sfmPath: currentPath, sfmView: viewName, sfmScene: playingScene?.id, sfmDepth: nextDepth }, "", targetHash);
+          window.history.pushState({ sfmPath: currentPath, sfmView: viewName, sfmDepth: nextDepth }, "", targetHash);
         }
-      }, [currentPath, playingScene]);
+      }, [currentPath]);
 
       const handleCloseFolderProfile = useCallback(() => {
         setShowFolderProfile(false);
@@ -6072,9 +6092,9 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
         if (curDepth > 1 && window.location.hash.includes("view=")) {
           window.history.back();
         } else {
-          const targetHash = buildHashForPath(currentPath, null, playingScene?.id);
+          const targetHash = buildHashForPath(currentPath, null, null);
           if (window.location.hash !== targetHash) {
-            window.history.replaceState({ sfmPath: currentPath, sfmScene: playingScene?.id, sfmDepth: Math.max(1, curDepth) }, "", targetHash);
+            window.history.replaceState({ sfmPath: currentPath, sfmDepth: Math.max(1, curDepth) }, "", targetHash);
           }
         }
       }, [currentPath, playingScene]);
@@ -6110,17 +6130,18 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
         setPlayingScene(s);
         setCustomPlayerScenes(effectiveQueue);
 
-        const currentView = showFolderProfile ? (currentProfilePage === 1 ? "discover" : "profile") : null;
-        const targetHash = buildHashForPath(sFolder || currentPath, currentView, s.id);
+        // When playing a video, hash is #file-manager?path=...&scene=... (without view=profile)
+        // This ensures the previous history entry (#file-manager?path=...&view=profile) is preserved as the immediate back destination!
+        const targetHash = buildHashForPath(sFolder || currentPath, null, s.id);
         if (window.location.hash !== targetHash) {
           if (!isPlayerAlreadyOpen) {
             // Initial transition into the player from folder or profile view: push history entry
             const nextDepth = getNextSfmDepth();
-            window.history.pushState({ sfmPath: sFolder || currentPath, sfmView: currentView, sfmScene: s.id, sfmDepth: nextDepth }, "", targetHash);
+            window.history.pushState({ sfmPath: sFolder || currentPath, sfmView: null, sfmScene: s.id, sfmDepth: nextDepth }, "", targetHash);
           } else {
             // Already inside player: ALWAYS use replaceState regardless of how many videos are played
             const curDepth = (window.history.state && typeof window.history.state.sfmDepth === "number") ? window.history.state.sfmDepth : 1;
-            window.history.replaceState({ sfmPath: sFolder || currentPath, sfmView: currentView, sfmScene: s.id, sfmDepth: curDepth }, "", targetHash);
+            window.history.replaceState({ sfmPath: sFolder || currentPath, sfmView: null, sfmScene: s.id, sfmDepth: curDepth }, "", targetHash);
           }
         }
       }, [currentPath, showFolderProfile, currentProfilePage, trie, playingScene]);
@@ -7751,6 +7772,12 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                 posterUrl: (playingScene?.paths?.screenshot || filteredAndSortedScenes[0]?.paths?.screenshot) || "",
                 isForceMobile: false,
                 initialPage: currentProfilePage,
+                onFolderChange: (newPath) => {
+                  if (newPath !== currentPath) {
+                    setCurrentPath(newPath);
+                    localStorage.setItem("sfm_last_folder_path", newPath);
+                  }
+                },
                 onPageChange: (newPage) => {
                   setCurrentProfilePage(newPage);
                   const viewName = newPage === 1 ? "discover" : "profile";
