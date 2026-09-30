@@ -3771,3 +3771,200 @@ button.badge.sfm-badge-btn {
     min-height: 88px !important;
   }
 }
+
+/* ==========================================================================
+   v2.9.16: Un-crowded Button Spacing, Mobile Sort Selector & Breadcrumb Polish
+   ========================================================================== */
+.sfm-profile-nav-bar {
+  padding: 0.75rem 1.25rem !important;
+  gap: 12px;
+}
+
+.sfm-profile-nav-title {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.sfm-profile-nav-actions {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+}
+
+.sfm-profile-nav-actions .btn {
+  padding: 0.35rem 0.85rem !important;
+  font-size: 0.82rem !important;
+  border-radius: 6px !important;
+  white-space: nowrap !important;
+  display: inline-flex !important;
+  align-items: center !important;
+}
+
+.sfm-profile-back-btn {
+  padding: 0.35rem 1rem !important;
+  border-radius: 20px !important;
+  font-size: 0.82rem !important;
+}
+
+.sfm-profile-close-btn {
+  width: 32px !important;
+  height: 32px !important;
+  padding: 0 !important;
+}
+
+/* Dedicated, Un-crowded Bio Box Rows */
+.sfm-profile-bio-path-wrap {
+  width: 100%;
+  margin-bottom: 0.65rem;
+}
+
+.sfm-profile-bio-chips-wrap {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 0.85rem;
+}
+
+.sfm-profile-breadcrumbs {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  max-width: 100%;
+}
+
+.sfm-profile-nav-breadcrumbs {
+  max-width: 100%;
+  overflow-x: auto;
+  white-space: nowrap;
+  scrollbar-width: none;
+}
+.sfm-profile-nav-breadcrumbs::-webkit-scrollbar {
+  display: none;
+}
+
+.sfm-profile-crumb-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  color: #88c0d0 !important;
+  background: rgba(34, 41, 56, 0.85) !important;
+  border: 1px solid rgba(136, 192, 208, 0.28) !important;
+  border-radius: 6px !important;
+  padding: 3px 9px !important;
+  margin: 1px 2px !important;
+  font-size: 0.82rem !important;
+  line-height: 1.35 !important;
+  text-decoration: none !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease-in-out !important;
+  white-space: nowrap !important;
+}
+
+.sfm-profile-crumb-btn:hover {
+  background: rgba(136, 192, 208, 0.25) !important;
+  color: #eceff4 !important;
+  border-color: #88c0d0 !important;
+  text-decoration: none !important;
+}
+
+.sfm-profile-crumb-btn.active {
+  background: rgba(136, 192, 208, 0.38) !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  border-color: #88c0d0 !important;
+}
+
+.sfm-profile-crumb-sep {
+  color: #5c677d !important;
+  font-size: 0.8rem !important;
+  user-select: none !important;
+  display: inline-block;
+  margin: 0 3px !important;
+}
+
+/* Reels Toolbar: Restored Mobile/Desktop Sort Selector */
+.sfm-reels-toolbar {
+  background: rgba(18, 21, 28, 0.7);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  min-height: 42px;
+}
+
+.sfm-profile-sort-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sfm-profile-sort-select {
+  background-color: #12151c !important;
+  border: 1px solid #3b4252 !important;
+  color: #eceff4 !important;
+  border-radius: 6px !important;
+  padding: 3px 8px !important;
+  font-size: 0.8rem !important;
+  cursor: pointer !important;
+  outline: none;
+}
+
+.sfm-profile-sort-select:hover,
+.sfm-profile-sort-select:focus {
+  border-color: #88c0d0 !important;
+}
+
+/* Infinite Scroll Bottom Sentinel & Load More Button */
+.sfm-infinite-scroll-bottom {
+  width: 100%;
+  padding: 1.75rem 1rem 3.5rem 1rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.sfm-infinite-load-btn {
+  background: rgba(46, 52, 64, 0.85) !important;
+  border: 1px solid #88c0d0 !important;
+  color: #88c0d0 !important;
+  border-radius: 20px !important;
+  font-size: 0.85rem !important;
+  padding: 7px 20px !important;
+  transition: all 0.2s ease-in-out !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4) !important;
+}
+
+.sfm-infinite-load-btn:hover {
+  background: #88c0d0 !important;
+  color: #2e3440 !important;
+  border-color: #88c0d0 !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 6px 16px rgba(136, 192, 208, 0.35) !important;
+}
+
+@media (max-width: 576px) {
+  .sfm-profile-nav-actions {
+    gap: 6px !important;
+  }
+  .sfm-profile-nav-actions .btn {
+    padding: 0.3rem 0.55rem !important;
+    font-size: 0.76rem !important;
+  }
+  .sfm-profile-back-btn {
+    padding: 0.3rem 0.65rem !important;
+    font-size: 0.76rem !important;
+    margin-right: 0.5rem !important;
+  }
+  .sfm-reels-toolbar {
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+    padding: 0.4rem 0.75rem !important;
+  }
+  .sfm-profile-sort-wrap {
+    width: 100% !important;
+    justify-content: flex-end !important;
+  }
+  .sfm-profile-sort-select {
+    width: auto !important;
+    flex-grow: 1 !important;
+    max-width: 200px !important;
+  }
+}

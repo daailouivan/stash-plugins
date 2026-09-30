@@ -1,11 +1,11 @@
 # Project Handoff Document: Stash Path File Manager Plugin
 
-**Current Version:** `v2.9.10`  
+**Current Version:** `v2.9.16`  
 **Active Repository:** `https://github.com/daailouivan/stash-plugins.git` (`main` branch)  
-**Distribution Package:** `stash_file_manager.zip` (SHA256: `1482ffba90f692996d37a8161c1dc65f0d79fed91cd01158d5c03cce0a2dcc01`)  
-**Plugin Manifest:** `stash_file_manager/stash_file_manager.yml` (version `2.9.10`)  
-**Index Manifest:** `index.yml` (version `2.9.10`)  
-**Total Release Tags:** `38` (`v1.0.0` through `v2.9.10`)  
+**Distribution Package:** `stash_file_manager.zip` (SHA256: `49261d4553632852a949964ec478e73d66181f600fb227e89a2f111b3de29677`)  
+**Plugin Manifest:** `stash_file_manager/stash_file_manager.yml` (version `2.9.16`)  
+**Index Manifest:** `index.yml` (version `2.9.16`)  
+**Total Release Tags:** `41` (`v1.0.0` through `v2.9.16`)  
 
 ---
 
@@ -39,38 +39,38 @@ The **Stash Path File Manager (`stash_file_manager`)** is a community plugin for
 
 | Tag | Commit | Release Summary |
 |---|---|---|
-| `v1.0.0` | `3af72c9` | Initial release: Hierarchical tree, trie caching, regex parser |
-| `v1.0.1` | `ee99f62` | Modernized nav button and UI refinements |
-| `v1.0.2` | `df1202c` | Navbar sibling positioning and matching dimensions |
-| `v1.1.0` | `c0d7254` | Multi-select, floating bulk action bar, detail table, folder scan |
-| `v1.1.1` | `1fb83c6` | Native `PluginApi.patch` integration |
-| `v2.0.0` | `ff5b450` | 3 folder views, Binge reel player, draggable floating PiP |
-| `v2.0.1` | `8c52900` | Stream authentication and history back navigation |
-| `v2.0.2` | `c97c72c` | Format seconds error boundary, collapsible headers |
-| `v2.0.3` | `d258f33` | Package plugin as zip archive with sha256 checksum |
-| `v2.0.4` | `d020407` | Menu container children insertion |
-| `v2.1.0` | `10f3001` | Player UI redesign, swipe threshold animation, seek |
-| `v2.1.1` | `129871a` | Decoupled HLS segmented protocol from WebM progressive container |
-| `v2.2.0` | `3aba8f0` | Unified section headers, relocated select-all, card sliders |
-| `v2.3.0` | `34b09b6` | Native settings schema, `sfm_tasks.py` backend runner |
-| `v2.4.0` | `81c7f00` | Right circular action rail, TikTok auto-hide overlay |
-| `v2.5.0` | `3a75f34` | MPEG-4 Part 2 smart transcode fallback, zero-lingering PiP |
-| `v2.5.1` | `d21f161` | Plugin manifest schema validation |
-| `v2.5.2` | `3a0c8df` | Action button transform clipping fix |
-| `v2.5.3` | `168249b` | 5 core settings, monochrome SVGs, elevated overlay |
-| `v2.5.4` | `1798ddd` | PiP divider restore, fullscreen above scrubber, codec chip icon |
-| `v2.5.5` | `e3f741d` | TDZ ReferenceError fix for `streamMode` |
-| `v2.6.0` | `d4fcd18` | 5-slide window buffer, eliminate thumbnail flash, recursive include subfolders |
-| `v2.7.0` | `9e9de98` | Binge physics, folder list width slider, 10 scenes/row |
-| `v2.7.1` | `7c0e3ef` | Folder-first recursive scene sorting |
-| `v2.7.2` | `cb76ba1` | Streamlined SVG sliders, dynamic `[N] Selected` button |
-| `v2.7.3` | `e8d8a6a` | Standardized view labels, 2-line navbar layout, keyboard shortcuts |
-| `v2.8.0` | `07bc0f8` | Aligned headers, Group by Folder naming, Names view mode |
-| `v2.8.1` | `b82d6d0` | Selection-driven guided regex builder with multi-field tagging |
-| `v2.8.2` | `51342a6` | Floating toolbar button standardization, index.yml sync |
-| `v2.9.0` | `d6bb569` | Folder Profile Video Wall, Shuffle Queue, social avatar & path overlay |
-| `v2.9.1` | `e41f9df` | Instagram/TikTok seamless video wall, Force Mobile View toggle, button contrast overhaul |
-| `v2.9.2` | `7656fd6` | Instagram-style Explore mosaic page, swipe left/right mobile gestures, dual-tab header, responsive audit |
+| `v1.0.0` | `2a860ad` | Initial release: Hierarchical tree, trie caching, regex parser |
+| `v1.0.1` | `2a860ad` | Modernized nav button and UI refinements |
+| `v1.0.2` | `2a860ad` | Navbar sibling positioning and matching dimensions |
+| `v1.1.0` | `2a860ad` | Multi-select, floating bulk action bar, detail table, folder scan |
+| `v1.1.1` | `2a860ad` | Native `PluginApi.patch` integration |
+| `v2.0.0` | `2a860ad` | 3 folder views, Binge reel player, draggable floating PiP |
+| `v2.0.1` | `2a860ad` | Stream authentication and history back navigation |
+| `v2.0.2` | `2a860ad` | Format seconds error boundary, collapsible headers |
+| `v2.0.3` | `2a860ad` | Package plugin as zip archive with sha256 checksum |
+| `v2.0.4` | `2a860ad` | Menu container children insertion |
+| `v2.1.0` | `2a860ad` | Player UI redesign, swipe threshold animation, seek |
+| `v2.1.1` | `2a860ad` | Decoupled HLS segmented protocol from WebM progressive container |
+| `v2.2.0` | `2a860ad` | Unified section headers, relocated select-all, card sliders |
+| `v2.3.0` | `2a860ad` | Native settings schema, `sfm_tasks.py` backend runner |
+| `v2.4.0` | `2a860ad` | Right circular action rail, TikTok auto-hide overlay |
+| `v2.5.0` | `2a860ad` | MPEG-4 Part 2 smart transcode fallback, zero-lingering PiP |
+| `v2.5.1` | `2a860ad` | Plugin manifest schema validation |
+| `v2.5.2` | `2a860ad` | Action button transform clipping fix |
+| `v2.5.3` | `2a860ad` | 5 core settings, monochrome SVGs, elevated overlay |
+| `v2.5.4` | `2a860ad` | PiP divider restore, fullscreen above scrubber, codec chip icon |
+| `v2.5.5` | `2a860ad` | TDZ ReferenceError fix for `streamMode` |
+| `v2.6.0` | `2a860ad` | 5-slide window buffer, eliminate thumbnail flash, recursive include subfolders |
+| `v2.7.0` | `2a860ad` | Binge physics, folder list width slider, 10 scenes/row |
+| `v2.7.1` | `2a860ad` | Folder-first recursive scene sorting |
+| `v2.7.2` | `2a860ad` | Streamlined SVG sliders, dynamic `[N] Selected` button |
+| `v2.7.3` | `2a860ad` | Standardized view labels, 2-line navbar layout, keyboard shortcuts |
+| `v2.8.0` | `2a860ad` | Aligned headers, Group by Folder naming, Names view mode |
+| `v2.8.1` | `2a860ad` | Selection-driven guided regex builder with multi-field tagging |
+| `v2.8.2` | `2a860ad` | Floating toolbar button standardization, index.yml sync |
+| `v2.9.0` | `2a860ad` | Folder Profile Video Wall, Shuffle Queue, social avatar & path overlay |
+| `v2.9.1` | `2a860ad` | Instagram/TikTok seamless video wall, Force Mobile View toggle, button contrast overhaul |
+| `v2.9.2` | `2a860ad` | Instagram-style Explore mosaic page, swipe left/right mobile gestures, dual-tab header, responsive audit |
 
 ---
 
@@ -88,5 +88,5 @@ git push -u origin main --force
 # 3. Force push all 35 release tags to origin
 git push origin --tags --force
 ```
-| `v2.9.10` | `e23c020` | Progressive feed windowing (social media optimization), in-player video wall launch & scroll fix |
-| `v2.9.10` | `20f0e4e` | Hotfix: resolved undeclared profileWallSort & clearCachedScenes with verified automated testing |
+| `v2.9.16` | `2a860ad` | Progressive feed windowing (social media optimization), in-player video wall launch & scroll fix |
+| `v2.9.16` | `2a860ad` | Hotfix: resolved undeclared profileWallSort & clearCachedScenes with verified automated testing |
