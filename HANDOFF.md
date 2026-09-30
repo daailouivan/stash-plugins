@@ -45,8 +45,8 @@ node test_v3.0.0_native_card_and_scene_detail.js
 
 | Artifact | File Name | Size | Checksum (SHA256) |
 |---|---|---|---|
-| **Plugin Release Zip** | `stash_file_manager.zip` | ~115 KB | `f808268fd427e47fffc3e22aa3c8d6c11c570ac9f3d68b3b6bc90ee080796ffe` |
-| **Git Handoff Bundle** | `stash_plugins_v3.0.0_handoff.bundle` | ~3.5 MB | Full repository history through v3.0.0 tag |
+| **Plugin Release Zip** | `stash_file_manager.zip` | 117 KB | [Download Zip](https://drive.google.com/file/d/1Vz_6McIhiZfK3uIrgAQNhLcsHYab7zim/view?usp=drivesdk) |
+| **Git Handoff Bundle** | `stash_plugins_v3.0.0_handoff.bundle` | 3.6 MB | [Download Bundle](https://drive.google.com/file/d/1MdxmmJS6J7aDOOT7MTt9exzxHjNuPfgS/view?usp=drivesdk) |
 | **Repository Backup Zip** | `stash_plugins_repo_v3.0.0_handoff.zip` | ~4.9 MB | In VM working directory |
 
 ---
