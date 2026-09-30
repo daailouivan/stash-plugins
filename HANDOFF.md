@@ -1,11 +1,11 @@
 # Project Handoff Document: Stash Path File Manager Plugin
 
-**Current Version:** `v2.9.19`  
+**Current Version:** `v2.9.20`  
 **Active Repository:** `https://github.com/daailouivan/stash-plugins.git` (`main` branch)  
-**Distribution Package:** `stash_file_manager.zip` (SHA256: `d65787782ff6ef9c8a9a2bc8d2661aa1fda7afb9c1725239001c6dfb98efd475`)  
-**Plugin Manifest:** `stash_file_manager/stash_file_manager.yml` (version `2.9.19`)  
-**Index Manifest:** `index.yml` (version `2.9.19`)  
-**Total Release Tags:** `44` (`v1.0.0` through `v2.9.19`)  
+**Distribution Package:** `stash_file_manager.zip` (SHA256: `e6f76eab0efa793ea39e08beae5a9742eb8f97026c98d3ef12f55fe511fd21fe`)  
+**Plugin Manifest:** `stash_file_manager/stash_file_manager.yml` (version `2.9.20`)  
+**Index Manifest:** `index.yml` (version `2.9.20`)  
+**Total Release Tags:** `45` (`v1.0.0` through `v2.9.20`)  
 
 ---
 
@@ -88,5 +88,5 @@ git push -u origin main --force
 # 3. Force push all 35 release tags to origin
 git push origin --tags --force
 ```
-| `v2.9.19` | `2a860ad` | Progressive feed windowing (social media optimization), in-player video wall launch & scroll fix |
-| `v2.9.19` | `2a860ad` | Hotfix: resolved undeclared profileWallSort & clearCachedScenes with verified automated testing |
+| `v2.9.20` | `2a860ad` | Progressive feed windowing (social media optimization), in-player video wall launch & scroll fix |
+| `v2.9.20` | `2a860ad` | Hotfix: resolved undeclared profileWallSort & clearCachedScenes with verified automated testing |

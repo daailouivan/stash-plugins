@@ -1019,10 +1019,34 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
 
       // Internal navigable path state: defaults to targetFolderPath, updates when breadcrumbs clicked
       const [currentFolderPath, setCurrentFolderPath] = useState(targetFolderPath || "");
+      const [openCrumbMenu, setOpenCrumbMenu] = useState(false);
 
       useEffect(() => {
         setCurrentFolderPath(targetFolderPath || "");
+        setOpenCrumbMenu(false);
       }, [targetFolderPath]);
+
+      // Resolve current folder node and list of child subfolders from PathTrie
+      const trie = window.__SFM_GLOBAL_CACHE__?.trie;
+      const currentNode = useMemo(() => {
+        if (!trie) return null;
+        return trie.getNode(currentFolderPath);
+      }, [trie, currentFolderPath]);
+
+      const childFolders = useMemo(() => {
+        if (!currentNode || !currentNode.folders) return [];
+        return Object.keys(currentNode.folders).sort().map((subName) => {
+          const subNode = currentNode.folders[subName];
+          const subPath = currentFolderPath ? `${currentFolderPath}/${subName}` : subName;
+          const directCount = (subNode && Array.isArray(subNode.directScenes)) ? subNode.directScenes.length : 0;
+          const totalCount = subNode && subNode.allSceneIds ? subNode.allSceneIds.size : directCount;
+          return {
+            name: subName,
+            path: subPath,
+            count: totalCount || directCount,
+          };
+        });
+      }, [currentNode, currentFolderPath]);
 
       const handleTabChange = useCallback((tab) => {
         setActiveTab(tab);
@@ -1391,7 +1415,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
         return segs.length > 0 ? segs[segs.length - 1] : "Root";
       }, [currentFolderPath]);
 
-      // Navigable Breadcrumbs renderer (jumps profile folder and stays in card)
+      // Navigable Breadcrumbs renderer with inline subfolders indicator
       const renderBreadcrumbs = (path, onNav, isNavTitle = false) => {
         const segs = path ? path.split("/").filter(Boolean) : [];
         return React.createElement(
@@ -1435,7 +1459,61 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                 seg
               )
             );
-          })
+          }),
+          // Inline Subfolders Dropdown Indicator in navigation path
+          childFolders.length > 0 &&
+            React.createElement(
+              "div",
+              {
+                className: "dropdown d-inline-block sfm-profile-crumb-dropdown ml-1",
+                style: { position: "relative" },
+              },
+              React.createElement(
+                "button",
+                {
+                  type: "button",
+                  className: "btn btn-sm sfm-profile-crumb-dropdown-btn d-inline-flex align-items-center",
+                  onClick: (e) => {
+                    e.stopPropagation();
+                    setOpenCrumbMenu((prev) => !prev);
+                  },
+                  title: `${childFolders.length} folder${childFolders.length > 1 ? "s" : ""} inside "${displayName}"`,
+                },
+                React.createElement(IconFolder, { size: 12, className: "mr-1 text-info flex-shrink-0" }),
+                React.createElement("span", { className: "font-weight-bold" }, `${childFolders.length} folder${childFolders.length > 1 ? "s" : ""}`),
+                React.createElement("span", { className: "ml-1 small opacity-75" }, openCrumbMenu ? "▴" : "▾")
+              ),
+              openCrumbMenu &&
+                React.createElement(
+                  "div",
+                  {
+                    className: "sfm-profile-crumb-menu shadow-lg",
+                    onClick: (e) => e.stopPropagation(),
+                  },
+                  childFolders.map((cf) =>
+                    React.createElement(
+                      "button",
+                      {
+                        key: cf.path,
+                        type: "button",
+                        className: "sfm-profile-crumb-menu-item",
+                        onClick: (e) => {
+                          e.stopPropagation();
+                          setOpenCrumbMenu(false);
+                          onNav(cf.path);
+                        },
+                      },
+                      React.createElement(
+                        "div",
+                        { className: "d-flex align-items-center text-truncate mr-2" },
+                        React.createElement(IconFolder, { size: 13, className: "mr-2 text-info flex-shrink-0" }),
+                        React.createElement("span", { className: "text-truncate" }, cf.name)
+                      ),
+                      React.createElement("span", { className: "badge badge-dark text-muted ml-2 flex-shrink-0" }, `${cf.count}`)
+                    )
+                  )
+                )
+            )
         );
       };
 
@@ -1593,6 +1671,37 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                 "div",
                 { className: "sfm-profile-bio-path-wrap mb-2" },
                 renderBreadcrumbs(currentFolderPath, handleNavigateFolder, false)
+              ),
+              // Dedicated Subfolders Indicator & Navigation Row
+              React.createElement(
+                "div",
+                { className: "sfm-profile-subfolders-row d-flex align-items-center flex-wrap gap-2 mb-2" },
+                React.createElement(
+                  "span",
+                  { className: "sfm-subfolders-label text-muted small mr-1 font-weight-bold d-inline-flex align-items-center" },
+                  React.createElement(IconFolder, { size: 13, className: "mr-1 text-info" }),
+                  childFolders.length > 0
+                    ? `Folders inside ${displayName} (${childFolders.length}):`
+                    : `No subfolders inside "${displayName}"`
+                ),
+                childFolders.map((cf) =>
+                  React.createElement(
+                    "button",
+                    {
+                      key: cf.path,
+                      type: "button",
+                      className: "btn btn-sm sfm-subfolder-pill-btn d-inline-flex align-items-center",
+                      onClick: (e) => {
+                        e.stopPropagation();
+                        handleNavigateFolder(cf.path);
+                      },
+                      title: `Open "${cf.name}" (${cf.count} scenes)`,
+                    },
+                    React.createElement(IconFolder, { size: 12, className: "mr-1 text-info" }),
+                    React.createElement("span", { className: "font-weight-bold mr-1" }, cf.name),
+                    React.createElement("span", { className: "badge badge-dark text-muted font-weight-normal py-0 px-1 ml-1" }, `${cf.count}`)
+                  )
+                )
               ),
               // Dedicated Chips & Subfolders Line
               React.createElement(
