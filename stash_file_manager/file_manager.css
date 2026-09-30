@@ -4030,3 +4030,228 @@ button.badge.sfm-badge-btn {
   color: #fff !important;
   transform: translateY(-1px);
 }
+
+/* ==========================================================================
+   Phase 4 (v3.0.0): Native Stash Platform Deep Embedding Styles
+   ========================================================================== */
+
+:root {
+  --sfm-body-bg: var(--body-bg, #05070a);
+  --sfm-card-bg: var(--card-bg, #0d1117);
+  --sfm-accent: var(--primary, #88c0d0);
+  --sfm-text-color: var(--text-color, #eceff4);
+  --sfm-border-color: var(--border-color, rgba(255, 255, 255, 0.1));
+  --sfm-muted: var(--text-muted, #81a1c1);
+}
+
+/* Feature 1: Native Scene Card Path Chip & Quick Actions */
+.sfm-native-card-chip-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin-top: 6px;
+  font-size: 0.74rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.sfm-native-card-path-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: rgba(136, 192, 208, 0.12);
+  color: var(--sfm-accent, #88c0d0);
+  border: 1px solid rgba(136, 192, 208, 0.25);
+  text-decoration: none !important;
+  cursor: pointer;
+  max-width: calc(100% - 72px);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: inherit;
+  font-weight: 500;
+  transition: all 0.15s ease;
+}
+
+.sfm-native-card-path-chip:hover {
+  background: rgba(136, 192, 208, 0.25);
+  border-color: rgba(136, 192, 208, 0.5);
+  color: #ffffff;
+  text-decoration: none !important;
+}
+
+.sfm-chip-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sfm-native-card-quick-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.sfm-card-action-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: var(--sfm-text-color, #eceff4);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.sfm-card-action-icon:hover {
+  background: var(--sfm-accent, #88c0d0);
+  color: #05070a;
+  border-color: var(--sfm-accent, #88c0d0);
+}
+
+.sfm-native-card-hover-actions {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  z-index: 10;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+.scene-card:hover .sfm-native-card-hover-actions,
+.card:hover .sfm-native-card-hover-actions,
+.sfm-native-card-wrapper:hover .sfm-native-card-hover-actions {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.sfm-native-card-hover-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: rgba(5, 7, 10, 0.85);
+  border: 1px solid rgba(136, 192, 208, 0.4);
+  color: var(--sfm-accent, #88c0d0);
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  transition: all 0.15s ease;
+}
+
+.sfm-native-card-hover-btn:hover {
+  background: var(--sfm-accent, #88c0d0);
+  color: #05070a;
+  border-color: #88c0d0;
+}
+
+/* Feature 2: Native Scene Detail Page Directory Hierarchy & Reel Button */
+.sfm-scene-detail-directory-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 12px 0;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  box-sizing: border-box;
+}
+
+.sfm-scene-detail-dir-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 2px;
+}
+
+.sfm-scene-detail-dir-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--sfm-muted, #81a1c1);
+}
+
+.sfm-scene-detail-dir-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sfm-scene-detail-breadcrumbs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.8rem;
+}
+
+.sfm-breadcrumb-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: rgba(136, 192, 208, 0.1);
+  border: 1px solid rgba(136, 192, 208, 0.22);
+  color: var(--sfm-accent, #88c0d0);
+  cursor: pointer;
+  font-weight: 500;
+  text-decoration: none !important;
+  transition: all 0.15s ease;
+}
+
+.sfm-breadcrumb-item:hover {
+  background: rgba(136, 192, 208, 0.25);
+  border-color: rgba(136, 192, 208, 0.5);
+  color: #ffffff;
+}
+
+.sfm-breadcrumb-sep {
+  color: rgba(255, 255, 255, 0.28);
+  font-size: 0.72rem;
+  user-select: none;
+}
+
+.sfm-scene-reel-mode-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 14px;
+  border-radius: 4px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  background: linear-gradient(135deg, #88c0d0 0%, #5e81ac 100%);
+  color: #05070a !important;
+  border: none;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  vertical-align: middle;
+  text-decoration: none !important;
+}
+
+.sfm-scene-reel-mode-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(136, 192, 208, 0.4);
+  color: #000000 !important;
+}

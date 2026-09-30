@@ -166,14 +166,35 @@ Eliminate wasted vertical space with compact folder layouts tailored to any libr
 - [x] **Folder Profile & Explore Natural Scrolling Engine:** Restored natural touch momentum and wheel scrolling across Directory Reels and Discovery feeds with sticky top navigation. *(v2.9.9 — 2026-09-26)*
 
 ### 📍 Phase 4: Native Stash Card Integration & Deep Platform Embedding (Upcoming — v3.0.0)
-- [ ] **Native Stash Card Integration:** Deeply embed File Manager actions directly into Stash's native scene cards, studio cards, and performer cards across all native grids. Add a 1-click "Browse Folder" / "Open in File Manager" button and directory path badges directly onto standard Stash scene cards.
-- [ ] **Native Scene Detail Page Integration:** Add folder hierarchy badges and instant directory traversal triggers on Stash's native scene view page (`/scenes/{id}`), allowing users to jump directly from any playing scene into its filesystem folder.
+- [x] **Native Stash Card Integration:** Deeply embed File Manager actions directly into Stash's native scene cards, studio cards, and performer cards across all native grids. Add a 1-click "Browse Folder" / "Open in File Manager" button and directory path badges directly onto standard Stash scene cards.
+- [x] **Native Scene Card Integration:** Add subtle directory path chips and 1-click folder hover triggers directly onto native Stash scene cards across `/scenes`, `/performers`, `/studios`, and `/tags`.
+- [x] **Native Scene Detail Page Integration:** Add dedicated Directory Hierarchy breadcrumbs row and Binge Reel Mode button on Stash's native scene view page (`/scenes/{id}`).
 - [ ] **Native Main Viewport Mounting:** Seamlessly mount the file manager inside Stash's native routed layout container (`/scenes?view=folder` or `/plugin/file-manager`), fully retaining Stash's top navigation bar, global search, background task spinners, and user settings at all times.
-- [ ] **Theme & Accent Color Parity:** Full CSS custom property inheritance from community themes (Refract, Nord, Dark, Midnight) for native glassmorphism, surface blur, and accent color adaptation.
+- [x] **Theme & Accent Color Parity:** Full CSS custom property inheritance from community themes (Refract, Nord, Dark, Midnight) for native glassmorphism, surface blur, and accent color adaptation.
 
 ---
 
 ## 📋 Changelog & Development History
+
+### [v3.0.0] — 2026-09-30 08:45:00
+* **Phase 4: Native Stash Platform Deep Embedding — Card Integration & Scene Detail Traversal:**
+  * **Native Stash Scene Card Integration (`PluginApi.patch` & DOM Fallback):**
+    * Injected subtle directory path chips (`📁 /Anime/Naruto/Season 1`) directly beneath the title/studio on native Stash scene cards across `/scenes`, `/performers/{id}`, `/studios/{id}`, and `/tags/{id}`.
+    * 1-Click Folder Navigation: Clicking the path chip immediately navigates to that folder in File Manager.
+    * Integrated mini action buttons for Folder Profile Video Wall and Binge Reel Player directly on each card.
+    * 1-Click Action Icon on Card Hover: Added a floating folder icon button on the card thumbnail that smoothly appears on hover for instant one-tap directory navigation.
+    * Dual-layer architecture: Registered official Stash `PluginApi.patch.instead` and `PluginApi.patch.after` on `SceneCard` and `SceneCard.Details` with debounced DOM observer fallback for dynamic infinite scrolling.
+  * **Native Scene Detail Page Integration (`/scenes/{id}`):**
+    * Added a dedicated **"Directory Hierarchy"** section inside the scene metadata sidebar displaying clickable breadcrumb chips (`Root › Anime › Naruto › Season 1`) that jump directly to any level of the folder tree in File Manager.
+    * Added a quick "Profile Wall" button in the hierarchy header to view the folder's Instagram-style video wall.
+    * Added a native **"Reel Mode"** button alongside the standard video player and action toolbar to launch `BingeReelPlayerModal` starting from the current scene with pre-queued sibling videos.
+    * Dual-layer architecture: Registered `PluginApi.patch` on `SceneDetails`, `SceneDetails.Sidebar`, and `ScenePlayer` with fallback DOM observer.
+  * **Theme & Custom Property Parity:**
+    * Bound native CSS variables (`--sfm-body-bg`, `--sfm-card-bg`, `--sfm-accent`, `--sfm-text-color`, `--sfm-border-color`) to inherit from Stash community themes (Refract, Nord, Dark, Midnight, Dracula).
+  * **Settings & Automated Testing:**
+    * Added configurable toggles in `stash_file_manager.yml` (`enable_native_scene_card_integration` and `enable_native_scene_detail_integration`).
+    * Added comprehensive automated test suite `test_v3.0.0_native_card_and_scene_detail.js` covering card patching, details hierarchy, reel launcher, and DOM fallbacks (all 8 automated test suites passing).
+
 
 ### [v2.9.25] — 2026-09-26 20:34:00
 * **Hotfix: Resolved Missing Reference (`profileWallSort`) & Verified Automated AST/Runtime Test Suite:**

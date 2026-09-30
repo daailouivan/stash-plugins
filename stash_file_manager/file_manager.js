@@ -574,6 +574,50 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
       );
     }
 
+    function IconPlay({ size = 12, color = "currentColor", style = {} }) {
+      return React.createElement(
+        "svg",
+        {
+          width: size,
+          height: size,
+          viewBox: "0 0 24 24",
+          fill: color,
+          stroke: "none",
+          className: "sfm-icon-play",
+          style: { display: "inline-block", verticalAlign: "-1px", ...style },
+        },
+        React.createElement("polygon", { points: "5 3 19 12 5 21 5 3" })
+      );
+    }
+
+    function IconFilm({ size = 14, color = "currentColor", style = {} }) {
+      return React.createElement(
+        "svg",
+        {
+          width: size,
+          height: size,
+          viewBox: "0 0 24 24",
+          fill: "none",
+          stroke: color,
+          strokeWidth: "2",
+          strokeLinecap: "round",
+          strokeLinejoin: "round",
+          className: "sfm-icon-film",
+          style: { display: "inline-block", verticalAlign: "-2px", ...style },
+        },
+        React.createElement("rect", { x: "2", y: "2", width: "20", height: "20", rx: "2.18", ry: "2.18" }),
+        React.createElement("line", { x1: "7", y1: "2", x2: "7", y2: "22" }),
+        React.createElement("line", { x1: "17", y1: "2", x2: "17", y2: "22" }),
+        React.createElement("line", { x1: "2", y1: "12", x2: "22", y2: "12" }),
+        React.createElement("line", { x1: "2", y1: "7", x2: "7", y2: "7" }),
+        React.createElement("line", { x1: "2", y1: "17", x2: "7", y2: "17" }),
+        React.createElement("line", { x1: "17", y1: "17", x2: "22", y2: "17" }),
+        React.createElement("line", { x1: "17", y1: "7", x2: "22", y2: "7" })
+      );
+    }
+
+
+
     // Helper: Resolve common base library prefix across scenes and settings (Smart Common Root)
     function resolveLibraryRoot(scenes, configuredRoot = "", stashPaths = []) {
       // 1. Manual root override from plugin settings
@@ -807,6 +851,145 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
       }
     }
 
+    // ==========================================
+    // High-Performance Progressive Indexing & Multi-Tier Caching Singleton
+    // ==========================================
+    let catalogLoadingPromise = null;
+    async function ensureCatalog(forceBypassCache = false, onProgress = null) {
+      if (!forceBypassCache && window.__SFM_GLOBAL_CACHE__.trie) {
+        return window.__SFM_GLOBAL_CACHE__.trie;
+      }
+      if (catalogLoadingPromise && !forceBypassCache) {
+        return catalogLoadingPromise;
+      }
+
+      catalogLoadingPromise = (async () => {
+        try {
+          // Tier 2: Persistent IndexedDB Cache (~50ms across tab visits / reloads)
+          const cached = await idbGet(CACHE_KEY);
+          if (!forceBypassCache && cached && Array.isArray(cached.scenes) && cached.scenes.length > 0) {
+            if (Date.now() - cached.timestamp < CACHE_TTL_MS) {
+              const total = cached.scenes.length;
+              if (typeof onProgress === "function") {
+                onProgress(`Restoring ${total.toLocaleString()} scenes from local index...`);
+              }
+              const pluginCfg = await fetchStashPluginSettings();
+              const { basePrefix, diskRoot } = resolveLibraryRoot(
+                cached.scenes,
+                pluginCfg.root_library_path,
+                pluginCfg.__stashes__
+              );
+              const newTrie = new PathTrie(basePrefix, diskRoot);
+              for (let i = 0; i < total; i++) {
+                newTrie.insert(cached.scenes[i]);
+              }
+              newTrie.rebaseSingleChildRoot();
+
+              window.__SFM_GLOBAL_CACHE__.trie = newTrie;
+              window.__SFM_GLOBAL_CACHE__.scenes = cached.scenes;
+              window.__SFM_GLOBAL_CACHE__.timestamp = cached.timestamp;
+              return newTrie;
+            }
+          }
+
+          if (typeof window === "undefined" || typeof window.fetch !== "function") {
+            return null;
+          }
+
+          // Tier 3: Fresh GraphQL Library Ingestion
+          if (typeof onProgress === "function") {
+            onProgress("Querying library scenes via GraphQL...");
+          }
+
+          const query = `
+            query GetScenePaths {
+              findScenes(filter: { per_page: -1 }) {
+                count
+                scenes {
+                  id
+                  title
+                  date
+                  rating100
+                  studio { id name }
+                  performers { id name }
+                  tags { id name }
+                  paths { screenshot preview stream }
+                  files { id path basename size duration video_codec format }
+                }
+              }
+            }
+          `;
+          const data = await gqlFetch(query);
+          const scenes = data?.findScenes?.scenes || [];
+          const total = scenes.length;
+
+          const pluginCfg = await fetchStashPluginSettings();
+          const { basePrefix, diskRoot } = resolveLibraryRoot(
+            scenes,
+            pluginCfg.root_library_path,
+            pluginCfg.__stashes__
+          );
+          const newTrie = new PathTrie(basePrefix, diskRoot);
+          const chunkSize = 1000;
+
+          for (let i = 0; i < total; i += chunkSize) {
+            const chunk = scenes.slice(i, i + chunkSize);
+            chunk.forEach((s) => newTrie.insert(s));
+            const processed = Math.min(i + chunkSize, total);
+            if (typeof onProgress === "function") {
+              onProgress(`Indexing file hierarchy: ${processed.toLocaleString()} / ${total.toLocaleString()} scenes...`);
+            }
+            await new Promise((r) => setTimeout(r, 0));
+          }
+          newTrie.rebaseSingleChildRoot();
+
+          const compact = scenes.map((s) => ({
+            id: s.id,
+            title: s.title,
+            date: s.date,
+            rating100: s.rating100,
+            _folderPath: s._folderPath || "",
+            studio: s.studio ? { id: s.studio.id, name: s.studio.name } : null,
+            performers: s.performers ? s.performers.map((p) => ({ id: p.id, name: p.name })) : [],
+            tags: s.tags ? s.tags.map((t) => ({ id: t.id, name: t.name })) : [],
+            paths: {
+              screenshot: s.paths?.screenshot,
+              preview: s.paths?.preview,
+            },
+            files: Array.isArray(s.files)
+              ? s.files.map((f) => ({
+                  id: f.id,
+                  path: f.path,
+                  basename: f.basename,
+                  size: f.size,
+                  duration: f.duration,
+                }))
+              : [],
+          }));
+
+          window.__SFM_GLOBAL_CACHE__.trie = newTrie;
+          window.__SFM_GLOBAL_CACHE__.scenes = compact;
+          window.__SFM_GLOBAL_CACHE__.timestamp = Date.now();
+
+          await idbSet(CACHE_KEY, {
+            timestamp: Date.now(),
+            scenes: compact,
+          });
+
+          return newTrie;
+        } catch (err) {
+          console.warn("[PathFileManager] ensureCatalog error:", err);
+          return null;
+        } finally {
+          catalogLoadingPromise = null;
+        }
+      })();
+
+      return catalogLoadingPromise;
+    }
+
+
+
     // Helper: Collect all descendant scenes across all subfolder levels (all levels down)
     function getAllDescendantScenes(node) {
       if (!node) return [];
@@ -893,17 +1076,29 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
     // ==========================================
     // Folder Profile & Video Wall Component (Social Media Profile Simulation)
     // ==========================================
-    function resolveSceneFolder(scene, trieInstance = null) {
-      if (!scene) return "";
+    function resolveSceneFolder(sceneOrId, trieInstance = null) {
+      if (!sceneOrId) return "";
       const trie = trieInstance || window.__SFM_GLOBAL_CACHE__?.trie;
       if (trie && typeof trie.getSceneFolder === "function") {
-        const found = trie.getSceneFolder(scene);
+        const found = trie.getSceneFolder(sceneOrId);
         if (found !== undefined && found !== null && found !== "") {
           return found;
         }
       }
-      if (typeof scene._folderPath === "string" && scene._folderPath !== "") {
-        return scene._folderPath;
+      if (typeof sceneOrId === "object") {
+        if (typeof sceneOrId._folderPath === "string" && sceneOrId._folderPath !== "") {
+          return sceneOrId._folderPath;
+        }
+        const filePath = sceneOrId.files?.[0]?.path;
+        if (filePath) {
+          const clean = filePath.replace(/\\/g, "/");
+          const parts = clean.split("/").filter(Boolean);
+          parts.pop(); // drop filename
+          return parts.join("/");
+        }
+      } else if (typeof sceneOrId === "string" || typeof sceneOrId === "number") {
+        const cached = window.__SFM_GLOBAL_CACHE__?.scenes?.find((s) => String(s.id) === String(sceneOrId));
+        if (cached) return resolveSceneFolder(cached, trieInstance);
       }
       return "";
     }
@@ -6104,6 +6299,17 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
         const handleCustomPath = (e) => {
           if (e.detail && typeof e.detail.path === "string") {
             const p = normalizePath(e.detail.path);
+            if (e.detail.view) {
+              setShowFolderProfile(true);
+              setCurrentProfilePage(e.detail.view === "discover" ? 1 : 0);
+            } else if (e.detail.view === null && !e.detail.sceneId) {
+              setShowFolderProfile(false);
+            }
+            if (e.detail.sceneId) {
+              const allAvailable = window.__SFM_GLOBAL_CACHE__?.scenes || [];
+              const found = allAvailable.find((s) => String(s.id) === String(e.detail.sceneId)) || { id: e.detail.sceneId };
+              setPlayingScene(found);
+            }
             if (e.detail.isBrowserNav) {
               if (p !== currentPath) {
                 setCurrentPath(p);
@@ -6282,7 +6488,13 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
       const [showBatchModal, setShowBatchModal] = useState(false);
       const [showParserModal, setShowParserModal] = useState(false);
       const [showSettingsModal, setShowSettingsModal] = useState(false);
-      const [playingScene, setPlayingScene] = useState(null);
+      const initialHashState = parseHashState();
+      const [playingScene, setPlayingScene] = useState(() => {
+        if (initialHashState?.sceneId) {
+          return { id: initialHashState.sceneId };
+        }
+        return null;
+      });
 
       // Progressive Feed Windowing State (Social Media Infinite Chunking Optimization)
       const SCENE_CHUNK_SIZE = 48;
@@ -6291,7 +6503,6 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
       const isSceneLoadingRef = useRef(false);
 
       // Folder Profile & Discover State (Sub-Route Hash Synchronization)
-      const initialHashState = parseHashState();
       const [showFolderProfile, setShowFolderProfile] = useState(() => {
         return initialHashState?.view === "profile" || initialHashState?.view === "discover";
       });
@@ -6481,132 +6692,14 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
       // Feature 5: High-Performance Progressive Indexing & Multi-Tier Caching
       const fetchCatalog = useCallback(async (forceBypassCache = false) => {
         setLoading(true);
-
-        // Tier 1: Instant In-Memory Cache (0ms - zero hang)
-        if (!forceBypassCache && window.__SFM_GLOBAL_CACHE__.trie) {
-          setTrie(window.__SFM_GLOBAL_CACHE__.trie);
-          setLoading(false);
-          return;
-        }
-
-        // Tier 2: Persistent IndexedDB Cache (~50ms across tab visits / reloads)
-        if (!forceBypassCache) {
-          setStatusText("Checking local index database...");
-          const cached = await idbGet(CACHE_KEY);
-          if (cached && cached.scenes && cached.scenes.length > 0) {
-            if (Date.now() - cached.timestamp < CACHE_TTL_MS) {
-              const total = cached.scenes.length;
-              setStatusText(`Restoring ${total.toLocaleString()} scenes from local index...`);
-              const pluginCfg = pluginSettings || (await fetchStashPluginSettings());
-              const { basePrefix, diskRoot } = resolveLibraryRoot(
-                cached.scenes,
-                pluginCfg.root_library_path,
-                pluginCfg.__stashes__
-              );
-              const newTrie = new PathTrie(basePrefix, diskRoot);
-              const chunkSize = 1500;
-              for (let i = 0; i < total; i += chunkSize) {
-                const chunk = cached.scenes.slice(i, i + chunkSize);
-                chunk.forEach((s) => newTrie.insert(s));
-                if (total > 3000) {
-                  // Yield to browser event loop
-                  await new Promise((r) => setTimeout(r, 0));
-                }
-              }
-              newTrie.rebaseSingleChildRoot();
-              window.__SFM_GLOBAL_CACHE__.trie = newTrie;
-              window.__SFM_GLOBAL_CACHE__.scenes = cached.scenes;
-              window.__SFM_GLOBAL_CACHE__.timestamp = cached.timestamp;
-              setTrie(newTrie);
-              setLoading(false);
-              return;
-            }
-          }
-        }
-
-        // Tier 3: Fetch from Stash GraphQL
-        setStatusText("Querying scenes from Stash database...");
         try {
-          const query = `
-            query GetScenePaths {
-              findScenes(filter: { per_page: -1 }) {
-                count
-                scenes {
-                  id
-                  title
-                  date
-                  rating100
-                  studio { id name }
-                  performers { id name }
-                  tags { id name }
-                  paths { screenshot preview stream }
-                  files { id path basename size duration video_codec format }
-                }
-              }
-            }
-          `;
-          const data = await gqlFetch(query);
-          const scenes = data?.findScenes?.scenes || [];
-          const total = scenes.length;
-
-          // Build trie progressively with non-blocking UI chunks
-          const pluginCfg = pluginSettings || (await fetchStashPluginSettings());
-          const { basePrefix, diskRoot } = resolveLibraryRoot(
-            scenes,
-            pluginCfg.root_library_path,
-            pluginCfg.__stashes__
-          );
-          const newTrie = new PathTrie(basePrefix, diskRoot);
-          const chunkSize = 1000;
-
-          for (let i = 0; i < total; i += chunkSize) {
-            const chunk = scenes.slice(i, i + chunkSize);
-            chunk.forEach((s) => newTrie.insert(s));
-            const processed = Math.min(i + chunkSize, total);
-            setStatusText(`Indexing file hierarchy: ${processed.toLocaleString()} / ${total.toLocaleString()} scenes...`);
-            // Yield to browser event loop to prevent UI freezing
-            await new Promise((r) => setTimeout(r, 0));
+          const loadedTrie = await ensureCatalog(forceBypassCache, (status) => setStatusText(status));
+          if (loadedTrie) {
+            setTrie(loadedTrie);
           }
-          newTrie.rebaseSingleChildRoot();
-
-          // Compact scene representations to store efficiently
-          const compact = scenes.map((s) => ({
-            id: s.id,
-            title: s.title,
-            date: s.date,
-            rating100: s.rating100,
-            _folderPath: s._folderPath || "",
-            studio: s.studio ? { id: s.studio.id, name: s.studio.name } : null,
-            performers: s.performers ? s.performers.map((p) => ({ id: p.id, name: p.name })) : [],
-            tags: s.tags ? s.tags.map((t) => ({ id: t.id, name: t.name })) : [],
-            paths: {
-              screenshot: s.paths?.screenshot,
-              preview: s.paths?.preview,
-            },
-            files: s.files
-              ? s.files.map((f) => ({
-                  path: f.path,
-                  basename: f.basename,
-                  size: f.size,
-                  duration: f.duration,
-                }))
-              : [],
-          }));
-
-          // Store in memory and in IndexedDB
-          window.__SFM_GLOBAL_CACHE__.trie = newTrie;
-          window.__SFM_GLOBAL_CACHE__.scenes = compact;
-          window.__SFM_GLOBAL_CACHE__.timestamp = Date.now();
-
-          await idbSet(CACHE_KEY, {
-            timestamp: Date.now(),
-            scenes: compact,
-          });
-
-          setTrie(newTrie);
         } catch (err) {
           console.error(err);
-          setNotification(`Failed to load library: ${err.message}`);
+          setNotification("Failed to load library: " + (err && err.message ? err.message : String(err)));
         } finally {
           setLoading(false);
         }
@@ -8105,9 +8198,12 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
       }
     }
 
-    function openFileManager(targetPath, isBrowserNav = false) {
+    function openFileManager(targetPath, isBrowserNav = false, targetView = null, targetSceneId = null) {
       const state = parseHashState();
       const path = typeof targetPath === "string" ? normalizePath(targetPath) : (state !== null ? state.path : normalizePath(localStorage.getItem("sfm_last_folder_path") || ""));
+      const view = targetView !== undefined && targetView !== null ? targetView : state?.view;
+      const sceneId = targetSceneId !== undefined && targetSceneId !== null ? targetSceneId : state?.sceneId;
+
       let root = document.getElementById("sfm-workspace-root");
       if (!root) {
         root = document.createElement("div");
@@ -8123,13 +8219,14 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
         );
       } else {
         root.style.display = "block";
-        window.dispatchEvent(new CustomEvent("sfm:set-path", { detail: { path, isBrowserNav } }));
+        window.dispatchEvent(new CustomEvent("sfm:set-path", { detail: { path, isBrowserNav, view, sceneId } }));
       }
 
       if (!isBrowserNav) {
-        const expectedHash = buildHashForPath(path, state?.view, state?.sceneId);
+        const expectedHash = buildHashForPath(path, view, sceneId);
         if (window.location.hash !== expectedHash) {
-          window.history.pushState({ sfmPath: path, sfmDepth: 1 }, "", expectedHash);
+          const nextDepth = getNextSfmDepth();
+          window.history.pushState({ sfmPath: path, sfmView: view, sfmScene: sceneId, sfmDepth: nextDepth }, "", expectedHash);
         }
       }
     }
@@ -8180,6 +8277,327 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
     if (register && register.route) {
       register.route("/plugin/file-manager", FileManagerView);
     }
+
+    // ==========================================================================
+    // Phase 4 (v3.0.0): Native Stash Platform Deep Embedding Components
+    // ==========================================================================
+
+    // Feature 1: Native Scene Card Overlay (Path Chip & 1-Click Hover Actions)
+    function NativeSceneCardOverlay({ scene, folderPath }) {
+      const [resolvedPath, setResolvedPath] = useState(() => {
+        return folderPath || resolveSceneFolder(scene) || "";
+      });
+
+      useEffect(() => {
+        let isMounted = true;
+        if (!resolvedPath && scene) {
+          const p = resolveSceneFolder(scene);
+          if (p) {
+            setResolvedPath(p);
+          } else {
+            ensureCatalog().then((trie) => {
+              if (isMounted && trie) {
+                const fp = resolveSceneFolder(scene, trie);
+                if (fp) setResolvedPath(fp);
+              }
+            }).catch(() => {});
+          }
+        }
+        return () => { isMounted = false; };
+      }, [scene, resolvedPath]);
+
+      const p = resolvedPath || "";
+      const displayPath = p ? (p.startsWith("/") ? p : `/${p}`) : "/";
+
+      const handleOpenFolder = useCallback((e) => {
+        if (e) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+        openFileManager(p);
+      }, [p]);
+
+      const handleOpenProfile = useCallback((e) => {
+        if (e) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+        openFileManager(p, false, "profile");
+      }, [p]);
+
+      const handlePlayReel = useCallback((e) => {
+        if (e) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+        openFileManager(p, false, null, scene?.id);
+      }, [p, scene?.id]);
+
+      return React.createElement(
+        "div",
+        {
+          className: "sfm-native-card-chip-container",
+          "data-sfm-card-chip": "true",
+          onClick: (e) => e.stopPropagation(),
+        },
+        React.createElement(
+          "span",
+          {
+            className: "sfm-native-card-path-chip",
+            title: `Directory: ${displayPath}\nClick to browse directory in File Manager`,
+            onClick: handleOpenFolder,
+          },
+          React.createElement(IconFolder, { size: 12 }),
+          React.createElement("span", { className: "sfm-chip-text" }, displayPath)
+        ),
+        React.createElement(
+          "div",
+          { className: "sfm-native-card-quick-actions" },
+          React.createElement(
+            "button",
+            {
+              type: "button",
+              className: "sfm-card-action-icon",
+              title: `Browse "${displayPath}" in File Manager`,
+              onClick: handleOpenFolder,
+            },
+            React.createElement(IconFolder, { size: 11 })
+          ),
+          React.createElement(
+            "button",
+            {
+              type: "button",
+              className: "sfm-card-action-icon",
+              title: `Open Video Wall Profile for "${displayPath}"`,
+              onClick: handleOpenProfile,
+            },
+            React.createElement(IconGrid, { size: 11 })
+          ),
+          React.createElement(
+            "button",
+            {
+              type: "button",
+              className: "sfm-card-action-icon",
+              title: "Watch in Binge Reel Mode",
+              onClick: handlePlayReel,
+            },
+            React.createElement(IconPlay, { size: 11 })
+          )
+        ),
+        React.createElement(
+          "div",
+          { className: "sfm-native-card-hover-actions" },
+          React.createElement(
+            "button",
+            {
+              type: "button",
+              className: "sfm-native-card-hover-btn",
+              title: `Open folder "${displayPath}" in File Manager`,
+              onClick: handleOpenFolder,
+            },
+            React.createElement(IconFolder, { size: 12 }),
+            React.createElement("span", null, "Folder")
+          )
+        )
+      );
+    }
+
+    // Feature 2: Native Scene Detail Directory Hierarchy Breadcrumb Component
+    function NativeSceneDetailDirectoryHierarchy({ scene, folderPath }) {
+      const [resolvedPath, setResolvedPath] = useState(() => {
+        return folderPath || resolveSceneFolder(scene) || "";
+      });
+
+      useEffect(() => {
+        let isMounted = true;
+        if (!resolvedPath && scene) {
+          const p = resolveSceneFolder(scene);
+          if (p) {
+            setResolvedPath(p);
+          } else {
+            ensureCatalog().then((trie) => {
+              if (isMounted && trie) {
+                const fp = resolveSceneFolder(scene, trie);
+                if (fp) setResolvedPath(fp);
+              }
+            }).catch(() => {});
+          }
+        }
+        return () => { isMounted = false; };
+      }, [scene, resolvedPath]);
+
+      const p = resolvedPath || "";
+      const segments = p.split("/").filter(Boolean);
+
+      const crumbs = [
+        { name: "Root", path: "" },
+        ...segments.map((seg, idx) => ({
+          name: seg,
+          path: segments.slice(0, idx + 1).join("/"),
+        })),
+      ];
+
+      return React.createElement(
+        "div",
+        {
+          className: "sfm-scene-detail-directory-row",
+          id: "sfm-scene-hierarchy-row",
+          "data-sfm-hierarchy": "true",
+        },
+        React.createElement(
+          "div",
+          { className: "sfm-scene-detail-dir-header" },
+          React.createElement(
+            "span",
+            { className: "sfm-scene-detail-dir-label" },
+            React.createElement(IconFolder, { size: 13 }),
+            React.createElement("span", null, "Directory Hierarchy")
+          ),
+          React.createElement(
+            "div",
+            { className: "sfm-scene-detail-dir-actions" },
+            React.createElement(
+              "button",
+              {
+                type: "button",
+                className: "btn btn-secondary btn-sm",
+                style: { padding: "2px 8px", fontSize: "0.75rem", display: "inline-flex", alignItems: "center", gap: "4px" },
+                title: `Open Video Wall Profile for "${p || "Root"}"`,
+                onClick: (e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  openFileManager(p, false, "profile");
+                },
+              },
+              React.createElement(IconGrid, { size: 12 }),
+              React.createElement("span", null, "Profile Wall")
+            )
+          )
+        ),
+        React.createElement(
+          "div",
+          { className: "sfm-scene-detail-breadcrumbs" },
+          crumbs.map((crumb, idx) =>
+            React.createElement(
+              React.Fragment,
+              { key: crumb.path || "root" },
+              idx > 0 && React.createElement("span", { className: "sfm-breadcrumb-sep" }, "›"),
+              React.createElement(
+                "span",
+                {
+                  className: "sfm-breadcrumb-item",
+                  title: `Browse "${crumb.name}" in File Manager`,
+                  onClick: (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    openFileManager(crumb.path);
+                  },
+                },
+                idx === 0 ? React.createElement(IconFolder, { size: 11 }) : null,
+                React.createElement("span", null, crumb.name)
+              )
+            )
+          )
+        )
+      );
+    }
+
+    // Feature 2: Native Scene Detail Reel Mode Button
+    function NativeSceneDetailReelButton({ scene, folderPath }) {
+      const handleLaunchReel = useCallback((e) => {
+        if (e) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+        const path = folderPath || resolveSceneFolder(scene);
+        openFileManager(path, false, null, scene?.id);
+      }, [scene, folderPath]);
+
+      return React.createElement(
+        "button",
+        {
+          type: "button",
+          className: "btn btn-primary sfm-scene-reel-mode-btn",
+          id: "sfm-scene-reel-btn",
+          "data-sfm-reel-btn": "true",
+          title: "Watch this directory in full-viewport Binge Reel Player",
+          onClick: handleLaunchReel,
+        },
+        React.createElement(IconFilm, { size: 14 }),
+        React.createElement("span", null, "Reel Mode")
+      );
+    }
+
+    // Helper: Detect whether a node already contains our SFM addons
+    function hasSfmAddon(node, key) {
+      if (!node) return false;
+      if (Array.isArray(node)) {
+        return node.some((c) => hasSfmAddon(c, key));
+      }
+      if (React.isValidElement(node)) {
+        if (node.key === key) return true;
+        if (node.props && (node.props["data-sfm-card-chip"] || node.props["data-sfm-hierarchy"] || node.props["data-sfm-reel-btn"])) {
+          return true;
+        }
+        return hasSfmAddon(node.props && node.props.children, key);
+      }
+      return false;
+    }
+
+    function patchNativeSceneCard(props, res) {
+      try {
+        if (!props || !props.scene || !res) return res;
+        if (hasSfmAddon(res, "sfm-native-card-addon")) return res;
+        const scene = props.scene;
+        const folderPath = resolveSceneFolder(scene);
+        const addon = React.createElement(NativeSceneCardOverlay, {
+          key: "sfm-native-card-addon",
+          scene: scene,
+          folderPath: folderPath,
+        });
+        return appendNavChild(res, addon);
+      } catch (err) {
+        console.warn("[PathFileManager] patchNativeSceneCard error:", err);
+        return res;
+      }
+    }
+
+    function patchNativeSceneDetails(props, res) {
+      try {
+        if (!props || !props.scene || !res) return res;
+        if (hasSfmAddon(res, "sfm-scene-hierarchy-addon")) return res;
+        const scene = props.scene;
+        const folderPath = resolveSceneFolder(scene);
+        const hierarchyRow = React.createElement(NativeSceneDetailDirectoryHierarchy, {
+          key: "sfm-scene-hierarchy-addon",
+          scene: scene,
+          folderPath: folderPath,
+        });
+        return appendNavChild(res, hierarchyRow);
+      } catch (err) {
+        console.warn("[PathFileManager] patchNativeSceneDetails error:", err);
+        return res;
+      }
+    }
+
+    function patchNativeScenePlayer(props, res) {
+      try {
+        if (!props || !props.scene || !res) return res;
+        if (hasSfmAddon(res, "sfm-scene-reel-btn-addon")) return res;
+        const scene = props.scene;
+        const folderPath = resolveSceneFolder(scene);
+        const reelBtn = React.createElement(NativeSceneDetailReelButton, {
+          key: "sfm-scene-reel-btn-addon",
+          scene: scene,
+          folderPath: folderPath,
+        });
+        return appendNavChild(res, reelBtn);
+      } catch (err) {
+        console.warn("[PathFileManager] patchNativeScenePlayer error:", err);
+        return res;
+      }
+    }
+
 
     // ==========================================================================
     // Navigation Bar Integration (Binge's Native PluginApi.patch Method)
@@ -8276,6 +8694,42 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
           });
         }
 
+        // Phase 4: Patch SceneCard, SceneDetails and ScenePlayer
+        if (window.PluginApi.patch.instead) {
+          window.PluginApi.patch.instead("SceneCard", function (props) {
+            const next = arguments[arguments.length - 1];
+            const res = typeof next === "function" ? next(props) : null;
+            return patchNativeSceneCard(props, res);
+          });
+          window.PluginApi.patch.instead("SceneCard.Details", function (props) {
+            const next = arguments[arguments.length - 1];
+            const res = typeof next === "function" ? next(props) : null;
+            return patchNativeSceneCard(props, res);
+          });
+          window.PluginApi.patch.instead("SceneDetails", function (props) {
+            const next = arguments[arguments.length - 1];
+            const res = typeof next === "function" ? next(props) : null;
+            return patchNativeSceneDetails(props, res);
+          });
+          window.PluginApi.patch.instead("SceneDetails.Sidebar", function (props) {
+            const next = arguments[arguments.length - 1];
+            const res = typeof next === "function" ? next(props) : null;
+            return patchNativeSceneDetails(props, res);
+          });
+          window.PluginApi.patch.instead("ScenePlayer", function (props) {
+            const next = arguments[arguments.length - 1];
+            const res = typeof next === "function" ? next(props) : null;
+            return patchNativeScenePlayer(props, res);
+          });
+        } else if (window.PluginApi.patch.after) {
+          window.PluginApi.patch.after("SceneCard", patchNativeSceneCard);
+          window.PluginApi.patch.after("SceneCard.Details", patchNativeSceneCard);
+          window.PluginApi.patch.after("SceneDetails", patchNativeSceneDetails);
+          window.PluginApi.patch.after("SceneDetails.Sidebar", patchNativeSceneDetails);
+          window.PluginApi.patch.after("ScenePlayer", patchNativeScenePlayer);
+        }
+
+
         if (window.PluginApi.patch.before) {
           window.PluginApi.patch.before("CheckboxGroup", function (props) {
             try {
@@ -8349,6 +8803,100 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
       rowContainer.appendChild(container);
     }
 
+    // ==========================================================================
+    // Phase 4: Fallback DOM Injection Observers for Native Cards & Scene Details
+    // ==========================================================================
+    function injectSceneCardsDOMFallback() {
+      if (typeof document === "undefined" || !document.querySelectorAll || !document.querySelector) return;
+      if (typeof window !== "undefined" && window.location?.hash?.startsWith("#file-manager")) return;
+      const cardEls = document.querySelectorAll(".card.scene-card, .scene-card, [class*='SceneCard']");
+      if (!cardEls || cardEls.length === 0) return;
+
+      cardEls.forEach((cardEl) => {
+        if (cardEl.getAttribute("data-sfm-decorated") === "true") return;
+        if (cardEl.querySelector("[data-sfm-card-chip]")) {
+          cardEl.setAttribute("data-sfm-decorated", "true");
+          return;
+        }
+
+        const linkEl = cardEl.querySelector('a[href*="/scenes/"]');
+        if (!linkEl) return;
+        const href = linkEl.getAttribute("href") || "";
+        const m = href.match(/\/scenes\/(\d+)/);
+        if (!m) return;
+        const sceneId = m[1];
+
+        const cachedScene = window.__SFM_GLOBAL_CACHE__?.scenes?.find((s) => String(s.id) === String(sceneId)) || { id: sceneId };
+        const folderPath = resolveSceneFolder(cachedScene);
+
+        const targetContainer = cardEl.querySelector(".card-section, .scene-card__details, .card-body") || cardEl;
+        const mountDiv = document.createElement("div");
+        mountDiv.className = "sfm-native-card-injected-container";
+        targetContainer.appendChild(mountDiv);
+        cardEl.setAttribute("data-sfm-decorated", "true");
+
+        ReactDOM.render(
+          React.createElement(NativeSceneCardOverlay, { scene: cachedScene, folderPath }),
+          mountDiv
+        );
+      });
+    }
+
+    function injectSceneDetailDOMFallback() {
+      if (typeof document === "undefined" || !document.querySelector || !document.getElementById) return;
+      if (typeof window !== "undefined" && window.location?.hash?.startsWith("#file-manager")) return;
+      const m = typeof window !== "undefined" && window.location?.pathname?.match(/\/scenes\/(\d+)/);
+      if (!m) return;
+      const sceneId = m[1];
+
+      // 1. Directory Hierarchy Breadcrumbs Row
+      if (!document.getElementById("sfm-scene-hierarchy-row")) {
+        const sidebar = document.querySelector(".scene-info, .scene-details, .details-list, .scene-sidebar, .col-lg-4 .card-body");
+        if (sidebar && !sidebar.querySelector("[data-sfm-hierarchy]")) {
+          const cachedScene = window.__SFM_GLOBAL_CACHE__?.scenes?.find((s) => String(s.id) === String(sceneId)) || { id: sceneId };
+          const folderPath = resolveSceneFolder(cachedScene);
+          const mountDiv = document.createElement("div");
+          mountDiv.id = "sfm-scene-hierarchy-container";
+          sidebar.appendChild(mountDiv);
+
+          ReactDOM.render(
+            React.createElement(NativeSceneDetailDirectoryHierarchy, { scene: cachedScene, folderPath }),
+            mountDiv
+          );
+        }
+      }
+
+      // 2. Reel Mode Button
+      if (!document.getElementById("sfm-scene-reel-btn")) {
+        const toolbar = document.querySelector(".scene-toolbar, .scene-header .btn-toolbar, .scene-header .btn-group, .video-player-container, .scene-player");
+        if (toolbar && !toolbar.querySelector("[data-sfm-reel-btn]")) {
+          const cachedScene = window.__SFM_GLOBAL_CACHE__?.scenes?.find((s) => String(s.id) === String(sceneId)) || { id: sceneId };
+          const folderPath = resolveSceneFolder(cachedScene);
+          const mountDiv = document.createElement("div");
+          mountDiv.id = "sfm-scene-reel-btn-container";
+          mountDiv.style.display = "inline-block";
+          mountDiv.style.marginLeft = "8px";
+          toolbar.appendChild(mountDiv);
+
+          ReactDOM.render(
+            React.createElement(NativeSceneDetailReelButton, { scene: cachedScene, folderPath }),
+            mountDiv
+          );
+        }
+      }
+    }
+
+    let sfmMutationTimer = null;
+    function scheduleNativeDomScan() {
+      if (typeof document === "undefined" || !document.querySelector) return;
+      if (sfmMutationTimer) return;
+      sfmMutationTimer = setTimeout(() => {
+        sfmMutationTimer = null;
+        injectSceneCardsDOMFallback();
+        injectSceneDetailDOMFallback();
+      }, 150);
+    }
+
     // Bounded fallback injection timer (stops once injected or after 10 attempts to eliminate memory leaks)
     let fallbackAttempts = 0;
     const fallbackTimer = setInterval(() => {
@@ -8363,8 +8911,44 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
     if (window.PluginApi.Event) {
       window.PluginApi.Event.addEventListener("stash:location", () => {
         setTimeout(injectMainBarButtonFallback, 150);
+        scheduleNativeDomScan();
       });
     }
+
+    window.addEventListener("popstate", scheduleNativeDomScan);
+    window.addEventListener("hashchange", scheduleNativeDomScan);
+
+    if (typeof MutationObserver !== "undefined" && document.body) {
+      try {
+        const nativeObserver = new MutationObserver(() => {
+          scheduleNativeDomScan();
+        });
+        nativeObserver.observe(document.body, { childList: true, subtree: true });
+      } catch (e) {}
+    }
+    setTimeout(scheduleNativeDomScan, 300);
+
+    // Eager background library index restoration
+    setTimeout(() => {
+      ensureCatalog().catch(() => {});
+    }, 100);
+
+    // Expose Phase 4 native platform embedding APIs on global cache
+    window.__SFM_GLOBAL_CACHE__.NativeSceneCardOverlay = NativeSceneCardOverlay;
+    window.__SFM_GLOBAL_CACHE__.NativeSceneDetailDirectoryHierarchy = NativeSceneDetailDirectoryHierarchy;
+    window.__SFM_GLOBAL_CACHE__.NativeSceneDetailReelButton = NativeSceneDetailReelButton;
+    window.__SFM_GLOBAL_CACHE__.patchNativeSceneCard = patchNativeSceneCard;
+    window.__SFM_GLOBAL_CACHE__.patchNativeSceneDetails = patchNativeSceneDetails;
+    window.__SFM_GLOBAL_CACHE__.patchNativeScenePlayer = patchNativeScenePlayer;
+    window.__SFM_GLOBAL_CACHE__.resolveSceneFolder = resolveSceneFolder;
+    window.__SFM_GLOBAL_CACHE__.ensureCatalog = ensureCatalog;
+    window.__SFM_GLOBAL_CACHE__.openFileManager = openFileManager;
+    window.__SFM_GLOBAL_CACHE__.injectSceneCardsDOMFallback = injectSceneCardsDOMFallback;
+    window.__SFM_GLOBAL_CACHE__.injectSceneDetailDOMFallback = injectSceneDetailDOMFallback;
+    if (window.PluginApi) {
+      window.PluginApi.Filemanager = window.__SFM_GLOBAL_CACHE__;
+    }
+
 
     console.log("[PathFileManager] Initialized successfully with all enhanced features.");
   } catch (err) {

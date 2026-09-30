@@ -1,6 +1,6 @@
 name: Path File Manager
 description: Hierarchical directory file-manager navigation for Stash with customizable folder views, Binge-style reel player, draggable PIP player, regex metadata parser, and native tasks.
-version: 2.9.25
+version: 3.0.0
 ui:
   javascript:
     - file_manager.js
@@ -47,3 +47,11 @@ settings:
     displayName: Auto Rebuild Tree on Launch
     type: BOOLEAN
     description: "Automatically refresh directory hierarchy when launching File Manager. Default: false"
+  enable_native_scene_card_integration:
+    displayName: Native Scene Card Path Badges & Actions
+    type: BOOLEAN
+    description: "Display subtle directory path chips and 1-click folder hover actions on native Stash scene cards. Default: true"
+  enable_native_scene_detail_integration:
+    displayName: Native Scene Detail Directory Hierarchy
+    type: BOOLEAN
+    description: "Display clickable directory hierarchy breadcrumbs and Reel Mode button on native Stash scene playback pages. Default: true"
