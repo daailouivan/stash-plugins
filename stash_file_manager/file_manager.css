@@ -3244,6 +3244,7 @@ button.badge.sfm-badge-btn {
   opacity: 0;
   transition: opacity 0.18s ease;
   z-index: 4;
+  pointer-events: none !important;
 }
 
 .sfm-explore-tile:hover .sfm-explore-tile-hover-overlay {
@@ -3429,6 +3430,7 @@ button.badge.sfm-badge-btn {
   opacity: 0;
   transition: opacity 0.18s ease;
   z-index: 4;
+  pointer-events: none !important;
 }
 
 .sfm-wall-tile:hover .sfm-wall-tile-hover-overlay {

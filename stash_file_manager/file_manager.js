@@ -1365,7 +1365,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
         }
       };
 
-      // Desktop keyboard navigation: Esc to close profile
+      // Desktop & Controller navigation: Esc to close profile, Left/Right arrows to switch tabs
       useEffect(() => {
         const handleKeyDown = (e) => {
           if (["input", "textarea", "select"].includes(e.target.tagName?.toLowerCase())) return;
@@ -1374,11 +1374,25 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
               e.preventDefault();
               onCloseProfile();
             }
+          } else if (
+            e.key === "ArrowLeft" || e.key === "Left" ||
+            e.code === "ArrowLeft" || e.keyCode === 37 ||
+            e.key === "PageLeft" || e.key === "MediaTrackPrevious"
+          ) {
+            e.preventDefault();
+            handleTabChange("reels");
+          } else if (
+            e.key === "ArrowRight" || e.key === "Right" ||
+            e.code === "ArrowRight" || e.keyCode === 39 ||
+            e.key === "PageRight" || e.key === "MediaTrackNext"
+          ) {
+            e.preventDefault();
+            handleTabChange("explore");
           }
         };
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
-      }, [onCloseProfile]);
+      }, [onCloseProfile, handleTabChange]);
 
       // Selection handler for explore scene: plays scene in player
       const handleSelectExploreScene = (s) => {
@@ -2083,6 +2097,15 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
     }
     function BingeReelPlayerModal({ scene, scenes = [], onSelectScene, onClose, onOpenProfile, folderName, currentPath, onNavigateToFolder }) {
       const videoRef = useRef(null);
+
+      // Ensure browser fullscreen is cleanly exited when player modal unmounts
+      useEffect(() => {
+        return () => {
+          if (typeof document !== "undefined" && document.fullscreenElement) {
+            document.exitFullscreen().catch(() => {});
+          }
+        };
+      }, []);
       const videoContainerRef = useRef(null);
       const hlsInstanceRef = useRef(null);
       const hideTimeoutRef = useRef(null);
@@ -2716,12 +2739,13 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
         });
       }, [scenes, scene]);
 
-      // Fullscreen Toggle
+      // Fullscreen Toggle (targets workspace root / documentElement so controls, modals, and profile views remain interactive)
       const handleToggleFullscreen = () => {
-        const el = videoContainerRef.current;
-        if (!el) return;
         if (!document.fullscreenElement) {
-          el.requestFullscreen().catch(() => {});
+          const el = document.getElementById("sfm-workspace-root") || document.documentElement;
+          if (el && el.requestFullscreen) {
+            el.requestFullscreen().catch(() => {});
+          }
         } else {
           document.exitFullscreen().catch(() => {});
         }
@@ -2905,15 +2929,25 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
         const handleKeyDown = (e) => {
           if (["input", "textarea", "select"].includes(e.target.tagName?.toLowerCase())) return;
 
-          // Rewind 10s: Left Arrow or J
-          if (e.key === "ArrowLeft" || e.key === "j" || e.key === "J") {
+          // Rewind 10s: Left Arrow, J, or external mobile controller / HID media keys
+          if (
+            e.key === "ArrowLeft" || e.key === "Left" ||
+            e.key === "j" || e.key === "J" ||
+            e.code === "ArrowLeft" || e.keyCode === 37 || e.which === 37 ||
+            e.key === "MediaTrackPrevious" || e.key === "MediaRewind" || e.key === "PageLeft"
+          ) {
             e.preventDefault();
             e.stopPropagation();
             handleSeekBy(-10);
             return;
           }
-          // Fast Forward 10s: Right Arrow or L
-          if (e.key === "ArrowRight" || e.key === "l" || e.key === "L") {
+          // Fast Forward 10s: Right Arrow, L, or external mobile controller / HID media keys
+          if (
+            e.key === "ArrowRight" || e.key === "Right" ||
+            e.key === "l" || e.key === "L" ||
+            e.code === "ArrowRight" || e.keyCode === 39 || e.which === 39 ||
+            e.key === "MediaTrackNext" || e.key === "MediaFastForward" || e.key === "PageRight"
+          ) {
             e.preventDefault();
             e.stopPropagation();
             handleSeekBy(10);
@@ -2943,13 +2977,24 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
             }
             onClose();
             return;
-          } else if (e.key === "ArrowDown" || e.key === "PageDown") {
+          } else if (
+            e.key === "ArrowDown" || e.key === "Down" ||
+            e.key === "PageDown" || e.code === "ArrowDown" ||
+            e.keyCode === 40 || e.which === 40
+          ) {
             e.preventDefault();
             goToNext();
-          } else if (e.key === "ArrowUp" || e.key === "PageUp") {
+          } else if (
+            e.key === "ArrowUp" || e.key === "Up" ||
+            e.key === "PageUp" || e.code === "ArrowUp" ||
+            e.keyCode === 38 || e.which === 38
+          ) {
             e.preventDefault();
             goToPrev();
-          } else if (e.key === " " || e.key === "k") {
+          } else if (
+            e.key === " " || e.key === "k" || e.key === "K" ||
+            e.key === "MediaPlayPause" || e.keyCode === 32 || e.keyCode === 179
+          ) {
             e.preventDefault();
             handleTogglePlay();
           } else if (e.key === "f" || e.key === "F") {
@@ -2967,6 +3012,73 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
         window.addEventListener("keydown", handleKeyDown, { capture: true });
         return () => window.removeEventListener("keydown", handleKeyDown, { capture: true });
       }, [onClose, goToNext, goToPrev, handleTogglePlay, handleToggleShuffle, handleSeekBy, isPipMode, showFolderProfile]);
+
+            // External Controller / Bluetooth Gamepad API polling loop
+      useEffect(() => {
+        let animId = null;
+        let lastActionTime = 0;
+        const DEADZONE = 0.45;
+        const COOLDOWN_MS = 250;
+
+        const pollGamepad = () => {
+          if (typeof navigator !== "undefined" && typeof navigator.getGamepads === "function") {
+            const gamepads = navigator.getGamepads();
+            for (let i = 0; i < gamepads.length; i++) {
+              const gp = gamepads[i];
+              if (!gp || !gp.connected) continue;
+
+              const now = Date.now();
+              if (now - lastActionTime < COOLDOWN_MS) continue;
+
+              const b = gp.buttons;
+              const a = gp.axes;
+
+              // D-Pad Up (12) or Left Stick Up (axes[1] < -0.45)
+              if ((b[12] && b[12].pressed) || (a[1] !== undefined && a[1] < -DEADZONE)) {
+                lastActionTime = now;
+                goToPrev();
+                break;
+              }
+              // D-Pad Down (13) or Left Stick Down (axes[1] > 0.45)
+              if ((b[13] && b[13].pressed) || (a[1] !== undefined && a[1] > DEADZONE)) {
+                lastActionTime = now;
+                goToNext();
+                break;
+              }
+              // D-Pad Left (14) or Left Stick Left (axes[0] < -0.45) or LB / L1 (4)
+              if ((b[14] && b[14].pressed) || (a[0] !== undefined && a[0] < -DEADZONE) || (b[4] && b[4].pressed)) {
+                lastActionTime = now;
+                handleSeekBy(-10);
+                break;
+              }
+              // D-Pad Right (15) or Left Stick Right (axes[0] > 0.45) or RB / R1 (5)
+              if ((b[15] && b[15].pressed) || (a[0] !== undefined && a[0] > DEADZONE) || (b[5] && b[5].pressed)) {
+                lastActionTime = now;
+                handleSeekBy(10);
+                break;
+              }
+              // Button 0 (A / Cross) -> Play/Pause
+              if (b[0] && b[0].pressed) {
+                lastActionTime = now;
+                handleTogglePlay();
+                break;
+              }
+              // Button 1 (B / Circle) -> Close
+              if (b[1] && b[1].pressed) {
+                lastActionTime = now;
+                onClose();
+                break;
+              }
+            }
+          }
+          if (typeof window !== "undefined" && typeof window.requestAnimationFrame === "function") animId = window.requestAnimationFrame(pollGamepad);
+        };
+
+        if (typeof window !== "undefined" && typeof window.requestAnimationFrame === "function") animId = window.requestAnimationFrame(pollGamepad);
+        return () => {
+          if (animId && typeof window !== "undefined" && typeof window.cancelAnimationFrame === "function") window.cancelAnimationFrame(animId);
+        };
+      }, [goToNext, goToPrev, handleSeekBy, handleTogglePlay, onClose]);
 
       // Formatted duration helper
       const formatTime = (secs) => {
@@ -6216,6 +6328,9 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
       const isClosingPlayerRef = useRef(false);
 
       const handleOpenProfileFromPlayer = useCallback((targetPath) => {
+        if (typeof document !== "undefined" && document.fullscreenElement) {
+          document.exitFullscreen().catch(() => {});
+        }
         setPlayingScene(null);
         setCustomPlayerScenes(null);
         const p = normalizePath(targetPath);
@@ -6274,6 +6389,9 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
       }, [currentPath, trie]);
 
       const handleClosePlayer = useCallback(() => {
+        if (typeof document !== "undefined" && document.fullscreenElement) {
+          document.exitFullscreen().catch(() => {});
+        }
         isClosingPlayerRef.current = true;
         setPlayingScene(null);
         setCustomPlayerScenes(null);
