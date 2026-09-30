@@ -1019,11 +1019,13 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
 
       // Internal navigable path state: defaults to targetFolderPath, updates when breadcrumbs clicked
       const [currentFolderPath, setCurrentFolderPath] = useState(targetFolderPath || "");
-      const [openCrumbMenu, setOpenCrumbMenu] = useState(false);
+      const [isSubfoldersExpanded, setIsSubfoldersExpanded] = useState(false);
+      const [subfolderFilter, setSubfolderFilter] = useState("");
 
       useEffect(() => {
         setCurrentFolderPath(targetFolderPath || "");
-        setOpenCrumbMenu(false);
+        setIsSubfoldersExpanded(false);
+        setSubfolderFilter("");
       }, [targetFolderPath]);
 
       // Resolve current folder node and list of child subfolders from PathTrie
@@ -1047,6 +1049,12 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
           };
         });
       }, [currentNode, currentFolderPath]);
+
+      const displayedSubfolders = useMemo(() => {
+        if (!subfolderFilter.trim()) return childFolders;
+        const q = subfolderFilter.toLowerCase().trim();
+        return childFolders.filter((cf) => cf.name.toLowerCase().includes(q));
+      }, [childFolders, subfolderFilter]);
 
       const handleTabChange = useCallback((tab) => {
         setActiveTab(tab);
@@ -1459,61 +1467,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                 seg
               )
             );
-          }),
-          // Inline Subfolders Dropdown Indicator in navigation path
-          childFolders.length > 0 &&
-            React.createElement(
-              "div",
-              {
-                className: "dropdown d-inline-block sfm-profile-crumb-dropdown ml-1",
-                style: { position: "relative" },
-              },
-              React.createElement(
-                "button",
-                {
-                  type: "button",
-                  className: "btn btn-sm sfm-profile-crumb-dropdown-btn d-inline-flex align-items-center",
-                  onClick: (e) => {
-                    e.stopPropagation();
-                    setOpenCrumbMenu((prev) => !prev);
-                  },
-                  title: `${childFolders.length} folder${childFolders.length > 1 ? "s" : ""} inside "${displayName}"`,
-                },
-                React.createElement(IconFolder, { size: 12, className: "mr-1 text-info flex-shrink-0" }),
-                React.createElement("span", { className: "font-weight-bold" }, `${childFolders.length} folder${childFolders.length > 1 ? "s" : ""}`),
-                React.createElement("span", { className: "ml-1 small opacity-75" }, openCrumbMenu ? "▴" : "▾")
-              ),
-              openCrumbMenu &&
-                React.createElement(
-                  "div",
-                  {
-                    className: "sfm-profile-crumb-menu shadow-lg",
-                    onClick: (e) => e.stopPropagation(),
-                  },
-                  childFolders.map((cf) =>
-                    React.createElement(
-                      "button",
-                      {
-                        key: cf.path,
-                        type: "button",
-                        className: "sfm-profile-crumb-menu-item",
-                        onClick: (e) => {
-                          e.stopPropagation();
-                          setOpenCrumbMenu(false);
-                          onNav(cf.path);
-                        },
-                      },
-                      React.createElement(
-                        "div",
-                        { className: "d-flex align-items-center text-truncate mr-2" },
-                        React.createElement(IconFolder, { size: 13, className: "mr-2 text-info flex-shrink-0" }),
-                        React.createElement("span", { className: "text-truncate" }, cf.name)
-                      ),
-                      React.createElement("span", { className: "badge badge-dark text-muted ml-2 flex-shrink-0" }, `${cf.count}`)
-                    )
-                  )
-                )
-            )
+          })
         );
       };
 
@@ -1672,37 +1626,80 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                 { className: "sfm-profile-bio-path-wrap mb-2" },
                 renderBreadcrumbs(currentFolderPath, handleNavigateFolder, false)
               ),
-              // Dedicated Subfolders Indicator & Navigation Row
-              React.createElement(
-                "div",
-                { className: "sfm-profile-subfolders-row d-flex align-items-center flex-wrap gap-2 mb-2" },
+              // Collapsible Subfolders Section (Collapsed by default, eliminates clutter and redundancy)
+              childFolders.length > 0 &&
                 React.createElement(
-                  "span",
-                  { className: "sfm-subfolders-label text-muted small mr-1 font-weight-bold d-inline-flex align-items-center" },
-                  React.createElement(IconFolder, { size: 13, className: "mr-1 text-info" }),
-                  childFolders.length > 0
-                    ? `Folders inside ${displayName} (${childFolders.length}):`
-                    : `No subfolders inside "${displayName}"`
-                ),
-                childFolders.map((cf) =>
+                  "div",
+                  { className: "sfm-profile-subfolders-section mb-3" },
                   React.createElement(
-                    "button",
+                    "div",
                     {
-                      key: cf.path,
-                      type: "button",
-                      className: "btn btn-sm sfm-subfolder-pill-btn d-inline-flex align-items-center",
+                      className: "sfm-profile-subfolders-toggle d-flex align-items-center justify-content-between p-2",
+                      role: "button",
+                      tabIndex: 0,
                       onClick: (e) => {
                         e.stopPropagation();
-                        handleNavigateFolder(cf.path);
+                        setIsSubfoldersExpanded((prev) => !prev);
                       },
-                      title: `Open "${cf.name}" (${cf.count} scenes)`,
+                      title: isSubfoldersExpanded ? "Click to collapse subfolders" : "Click to expand subfolders",
                     },
-                    React.createElement(IconFolder, { size: 12, className: "mr-1 text-info" }),
-                    React.createElement("span", { className: "font-weight-bold mr-1" }, cf.name),
-                    React.createElement("span", { className: "badge badge-dark text-muted font-weight-normal py-0 px-1 ml-1" }, `${cf.count}`)
-                  )
-                )
-              ),
+                    React.createElement(
+                      "div",
+                      { className: "d-flex align-items-center" },
+                      React.createElement("span", { className: "sfm-collapse-icon mr-2 text-info font-weight-bold" }, isSubfoldersExpanded ? "▼" : "▶"),
+                      React.createElement(IconFolder, { size: 14, className: "mr-2 text-info flex-shrink-0" }),
+                      React.createElement("span", { className: "font-weight-bold text-light small mr-2" }, `Subfolders in ${displayName}`),
+                      React.createElement("span", { className: "badge badge-dark text-muted font-weight-normal py-0 px-2" }, `${childFolders.length}`)
+                    ),
+                    React.createElement(
+                      "span",
+                      { className: "small text-muted" },
+                      isSubfoldersExpanded ? "Hide ▲" : "Show ▼"
+                    )
+                  ),
+                  isSubfoldersExpanded &&
+                    React.createElement(
+                      "div",
+                      { className: "sfm-profile-subfolders-body p-2" },
+                      childFolders.length > 8 &&
+                        React.createElement(
+                          "div",
+                          { className: "sfm-subfolder-filter-wrap mb-2" },
+                          React.createElement("input", {
+                            type: "text",
+                            className: "form-control form-control-sm sfm-subfolder-filter-input",
+                            placeholder: `Filter ${childFolders.length} subfolders...`,
+                            value: subfolderFilter,
+                            onChange: (e) => setSubfolderFilter(e.target.value),
+                            onClick: (e) => e.stopPropagation(),
+                          })
+                        ),
+                      React.createElement(
+                        "div",
+                        { className: "sfm-profile-subfolders-pills d-flex align-items-center flex-wrap gap-2" },
+                        displayedSubfolders.map((cf) =>
+                          React.createElement(
+                            "button",
+                            {
+                              key: cf.path,
+                              type: "button",
+                              className: "btn btn-sm sfm-subfolder-pill-btn d-inline-flex align-items-center",
+                              onClick: (e) => {
+                                e.stopPropagation();
+                                handleNavigateFolder(cf.path);
+                              },
+                              title: `Open "${cf.name}" (${cf.count} scenes)`,
+                            },
+                            React.createElement(IconFolder, { size: 12, className: "mr-1 text-info" }),
+                            React.createElement("span", { className: "font-weight-bold mr-1" }, cf.name),
+                            React.createElement("span", { className: "badge badge-dark text-muted font-weight-normal py-0 px-1 ml-1" }, `${cf.count}`)
+                          )
+                        ),
+                        displayedSubfolders.length === 0 &&
+                          React.createElement("span", { className: "small text-muted py-1" }, `No subfolders match "${subfolderFilter}"`)
+                      )
+                    )
+                ),
               // Dedicated Chips & Subfolders Line
               React.createElement(
                 "div",
@@ -6238,6 +6235,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
 
         setPlayingScene(s);
         setCustomPlayerScenes(effectiveQueue);
+        setShowFolderProfile(false); // Dismiss standalone profile overlay so video player immediately displays!
 
         // When playing a video, hash is #file-manager?path=...&scene=... (without view=profile)
         // This ensures the previous history entry (#file-manager?path=...&view=profile) is preserved as the immediate back destination!

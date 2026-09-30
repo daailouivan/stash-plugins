@@ -1515,7 +1515,7 @@ body.sfm-body-locked {
 .sfm-reel-modal-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 10060 !important;
+  z-index: 10100 !important;
   background: rgba(0, 0, 0, 0.92);
   backdrop-filter: blur(8px);
   display: flex;
@@ -3969,81 +3969,47 @@ button.badge.sfm-badge-btn {
   }
 }
 
-/* Subfolder Dropdown in Navigation Path */
-.sfm-profile-crumb-dropdown {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
+/* Collapsible Subfolders Section in Profile View (Collapsed by Default) */
+.sfm-profile-subfolders-section {
+  background: rgba(22, 27, 38, 0.7);
+  border: 1px solid rgba(136, 192, 208, 0.2);
+  border-radius: 8px;
+  overflow: hidden;
+  transition: border-color 0.15s ease;
 }
 
-.sfm-profile-crumb-dropdown-btn {
-  background: rgba(34, 41, 56, 0.95) !important;
-  color: #88c0d0 !important;
-  border: 1px dashed rgba(136, 192, 208, 0.5) !important;
-  border-radius: 6px !important;
-  font-size: 0.78rem !important;
-  padding: 2px 7px !important;
-  margin: 1px 2px !important;
-  cursor: pointer !important;
-  transition: all 0.15s ease-in-out !important;
+.sfm-profile-subfolders-section:hover {
+  border-color: rgba(136, 192, 208, 0.38);
 }
 
-.sfm-profile-crumb-dropdown-btn:hover {
-  background: rgba(136, 192, 208, 0.25) !important;
-  border-color: #88c0d0 !important;
-  color: #fff !important;
-}
-
-.sfm-profile-crumb-menu {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  z-index: 1050;
-  min-width: 180px;
-  max-width: 280px;
-  max-height: 260px;
-  overflow-y: auto;
-  background: #1e222d;
-  border: 1px solid #434c5e;
-  border-radius: 6px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
-  padding: 4px 0;
-  margin-top: 4px;
-}
-
-.sfm-profile-crumb-menu-item {
-  width: 100%;
-  background: none;
-  border: none;
-  padding: 6px 12px;
-  color: #eceff4;
-  font-size: 0.82rem;
-  text-align: left;
+.sfm-profile-subfolders-toggle {
+  background: rgba(26, 32, 44, 0.85);
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  user-select: none;
   transition: background 0.15s ease;
 }
 
-.sfm-profile-crumb-menu-item:hover {
-  background: #2e3440;
-  color: #88c0d0;
+.sfm-profile-subfolders-toggle:hover {
+  background: rgba(36, 44, 60, 0.95);
 }
 
-/* Dedicated Subfolder Explorer Row in Bio Section */
-.sfm-profile-subfolders-row {
-  margin-top: 2px;
-  padding: 6px 10px;
-  background: rgba(24, 29, 40, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: 8px;
+.sfm-profile-subfolders-body {
+  background: rgba(18, 22, 30, 0.6);
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  max-height: 220px;
+  overflow-y: auto;
 }
 
-.sfm-subfolders-label {
-  font-size: 0.8rem;
-  letter-spacing: 0.2px;
-  white-space: nowrap;
+.sfm-subfolder-filter-input {
+  background-color: #12151c !important;
+  border: 1px solid #434c5e !important;
+  color: #eceff4 !important;
+  border-radius: 6px !important;
+}
+
+.sfm-subfolder-filter-input:focus {
+  border-color: #88c0d0 !important;
+  box-shadow: 0 0 0 2px rgba(136, 192, 208, 0.25) !important;
 }
 
 .sfm-subfolder-pill-btn {
