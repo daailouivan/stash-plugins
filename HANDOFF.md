@@ -4,7 +4,7 @@
 **Current Release:** `v3.0.0`  
 **Target Milestone:** `v3.1.0` (Phase 4 Continuation: Native Viewport Container Mounting & Advanced Platform Hooks)  
 **Active Repository:** `https://github.com/daailouivan/stash-plugins.git` (`main` branch)  
-**Distribution Package:** `stash_file_manager.zip` (SHA256: `f808268fd427e47fffc3e22aa3c8d6c11c570ac9f3d68b3b6bc90ee080796ffe`)  
+**Distribution Package:** `stash_file_manager.zip` (SHA256: `7dae49b5bc3550bf41cf537e379bc3d09ec15b46e9df6bf349ddf7fb3705341e`)  
 **Plugin Manifest:** `stash_file_manager/stash_file_manager.yml` (version `3.0.0`)  
 **Repository Index:** `index.yml` (version `3.0.0`)  
 **Total Release Tags:** `46` (`v1.0.0` through `v3.0.0`)  

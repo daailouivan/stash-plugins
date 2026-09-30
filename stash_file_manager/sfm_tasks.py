@@ -28,7 +28,9 @@ DEFAULT_SETTINGS = {
     "folder_card_size": 160,
     "scene_card_size": 240,
     "remember_last_path": True,
-    "auto_rebuild_tree_on_start": False
+    "auto_rebuild_tree_on_start": False,
+    "enable_native_scene_card_integration": True,
+    "enable_native_scene_detail_integration": True
 }
 
 def log(msg, level="INFO"):

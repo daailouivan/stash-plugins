@@ -4255,3 +4255,23 @@ button.badge.sfm-badge-btn {
   box-shadow: 0 4px 10px rgba(136, 192, 208, 0.4);
   color: #000000 !important;
 }
+
+/* Explicit Stash Native Card Visibility & Overflow Protection */
+.card.scene-card,
+.scene-card {
+  position: relative !important;
+  overflow: visible !important;
+  height: auto !important;
+}
+
+.scene-card .card-section,
+.scene-card .scene-card__details,
+.scene-card .card-body {
+  overflow: visible !important;
+}
+
+.sfm-native-card-injected-container {
+  display: block !important;
+  width: 100% !important;
+  margin-top: 4px !important;
+}

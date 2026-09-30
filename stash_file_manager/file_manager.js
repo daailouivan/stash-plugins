@@ -1076,6 +1076,31 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
     // ==========================================
     // Folder Profile & Video Wall Component (Social Media Profile Simulation)
     // ==========================================
+    // Helper: derive clean directory path from file path
+    function deriveFolderFromPath(filePath) {
+      if (!filePath) return "";
+      const clean = filePath.replace(/\\/g, "/");
+      const parts = clean.split("/").filter(Boolean);
+      parts.pop(); // remove file basename
+      
+      const trie = window.__SFM_GLOBAL_CACHE__?.trie;
+      if (trie?.basePrefix && trie.basePrefix.length > 0) {
+        if (parts.length >= trie.basePrefix.length) {
+          let match = true;
+          for (let i = 0; i < trie.basePrefix.length; i++) {
+            if (parts[i] !== trie.basePrefix[i]) {
+              match = false;
+              break;
+            }
+          }
+          if (match) {
+            return parts.slice(trie.basePrefix.length).join("/");
+          }
+        }
+      }
+      return parts.join("/");
+    }
+
     function resolveSceneFolder(sceneOrId, trieInstance = null) {
       if (!sceneOrId) return "";
       const trie = trieInstance || window.__SFM_GLOBAL_CACHE__?.trie;
@@ -1091,10 +1116,11 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
         }
         const filePath = sceneOrId.files?.[0]?.path;
         if (filePath) {
-          const clean = filePath.replace(/\\/g, "/");
-          const parts = clean.split("/").filter(Boolean);
-          parts.pop(); // drop filename
-          return parts.join("/");
+          const derived = deriveFolderFromPath(filePath);
+          if (derived) {
+            sceneOrId._folderPath = derived;
+            return derived;
+          }
         }
       } else if (typeof sceneOrId === "string" || typeof sceneOrId === "number") {
         const cached = window.__SFM_GLOBAL_CACHE__?.scenes?.find((s) => String(s.id) === String(sceneOrId));
@@ -8290,11 +8316,32 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
 
       useEffect(() => {
         let isMounted = true;
-        if (!resolvedPath && scene) {
+        const sceneId = scene?.id || scene?._id;
+        if (!resolvedPath && sceneId) {
           const p = resolveSceneFolder(scene);
           if (p) {
             setResolvedPath(p);
           } else {
+            // Fast single-scene on-demand GraphQL query (<10ms)
+            if (typeof window !== "undefined" && typeof window.fetch === "function") {
+              gqlFetch(`query FastSceneFolder($id: ID!) { findScene(id: $id) { id files { path } } }`, { id: sceneId })
+                .then((data) => {
+                  const filePath = data?.findScene?.files?.[0]?.path;
+                  if (filePath && isMounted) {
+                    const derived = deriveFolderFromPath(filePath);
+                    if (derived) {
+                      setResolvedPath(derived);
+                      if (typeof scene === "object") {
+                        scene._folderPath = derived;
+                        if (!scene.files) scene.files = data.findScene.files;
+                      }
+                    }
+                  }
+                })
+                .catch(() => {});
+            }
+
+            // Also load global catalog in background
             ensureCatalog().then((trie) => {
               if (isMounted && trie) {
                 const fp = resolveSceneFolder(scene, trie);
@@ -8307,7 +8354,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
       }, [scene, resolvedPath]);
 
       const p = resolvedPath || "";
-      const displayPath = p ? (p.startsWith("/") ? p : `/${p}`) : "/";
+      const displayPath = p ? (p.startsWith("/") ? p : `/${p}`) : "Folder";
 
       const handleOpenFolder = useCallback((e) => {
         if (e) {
@@ -8546,9 +8593,10 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
 
     function patchNativeSceneCard(props, res) {
       try {
-        if (!props || !props.scene || !res) return res;
+        if (!props || !res) return res;
+        const scene = props.scene || (props.id ? props : props.item || null);
+        if (!scene || !scene.id) return res;
         if (hasSfmAddon(res, "sfm-native-card-addon")) return res;
-        const scene = props.scene;
         const folderPath = resolveSceneFolder(scene);
         const addon = React.createElement(NativeSceneCardOverlay, {
           key: "sfm-native-card-addon",
@@ -8564,9 +8612,10 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
 
     function patchNativeSceneDetails(props, res) {
       try {
-        if (!props || !props.scene || !res) return res;
+        if (!props || !res) return res;
+        const scene = props.scene || (props.id ? props : props.item || null);
+        if (!scene || !scene.id) return res;
         if (hasSfmAddon(res, "sfm-scene-hierarchy-addon")) return res;
-        const scene = props.scene;
         const folderPath = resolveSceneFolder(scene);
         const hierarchyRow = React.createElement(NativeSceneDetailDirectoryHierarchy, {
           key: "sfm-scene-hierarchy-addon",
@@ -8582,9 +8631,10 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
 
     function patchNativeScenePlayer(props, res) {
       try {
-        if (!props || !props.scene || !res) return res;
+        if (!props || !res) return res;
+        const scene = props.scene || (props.id ? props : props.item || null);
+        if (!scene || !scene.id) return res;
         if (hasSfmAddon(res, "sfm-scene-reel-btn-addon")) return res;
-        const scene = props.scene;
         const folderPath = resolveSceneFolder(scene);
         const reelBtn = React.createElement(NativeSceneDetailReelButton, {
           key: "sfm-scene-reel-btn-addon",
@@ -8694,17 +8744,43 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
           });
         }
 
-        // Phase 4: Patch SceneCard, SceneDetails and ScenePlayer
+        // Phase 4: Patch SceneCard, SceneCard.Details, SceneCard.Overlays, ScenePage, SceneFileInfoPanel, ScenePlayer
+        const patchSceneCard = function (props, res) {
+          return patchNativeSceneCard(props, res);
+        };
+        const patchSceneDetails = function (props, res) {
+          return patchNativeSceneDetails(props, res);
+        };
+        const patchScenePlayer = function (props, res) {
+          return patchNativeScenePlayer(props, res);
+        };
+
+        if (window.PluginApi.patch.after) {
+          window.PluginApi.patch.after("SceneCard.Details", patchSceneCard);
+          window.PluginApi.patch.after("SceneCard.Overlays", patchSceneCard);
+          window.PluginApi.patch.after("SceneCard", patchSceneCard);
+          window.PluginApi.patch.after("ScenePage", patchSceneDetails);
+          window.PluginApi.patch.after("SceneDetails", patchSceneDetails);
+          window.PluginApi.patch.after("SceneDetails.Sidebar", patchSceneDetails);
+          window.PluginApi.patch.after("SceneFileInfoPanel", patchSceneDetails);
+          window.PluginApi.patch.after("ScenePlayer", patchScenePlayer);
+        }
+
         if (window.PluginApi.patch.instead) {
+          window.PluginApi.patch.instead("SceneCard.Details", function (props) {
+            const next = arguments[arguments.length - 1];
+            const res = typeof next === "function" ? next(props) : null;
+            return patchNativeSceneCard(props, res);
+          });
           window.PluginApi.patch.instead("SceneCard", function (props) {
             const next = arguments[arguments.length - 1];
             const res = typeof next === "function" ? next(props) : null;
             return patchNativeSceneCard(props, res);
           });
-          window.PluginApi.patch.instead("SceneCard.Details", function (props) {
+          window.PluginApi.patch.instead("ScenePage", function (props) {
             const next = arguments[arguments.length - 1];
             const res = typeof next === "function" ? next(props) : null;
-            return patchNativeSceneCard(props, res);
+            return patchNativeSceneDetails(props, res);
           });
           window.PluginApi.patch.instead("SceneDetails", function (props) {
             const next = arguments[arguments.length - 1];
@@ -8716,17 +8792,16 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
             const res = typeof next === "function" ? next(props) : null;
             return patchNativeSceneDetails(props, res);
           });
+          window.PluginApi.patch.instead("SceneFileInfoPanel", function (props) {
+            const next = arguments[arguments.length - 1];
+            const res = typeof next === "function" ? next(props) : null;
+            return patchNativeSceneDetails(props, res);
+          });
           window.PluginApi.patch.instead("ScenePlayer", function (props) {
             const next = arguments[arguments.length - 1];
             const res = typeof next === "function" ? next(props) : null;
             return patchNativeScenePlayer(props, res);
           });
-        } else if (window.PluginApi.patch.after) {
-          window.PluginApi.patch.after("SceneCard", patchNativeSceneCard);
-          window.PluginApi.patch.after("SceneCard.Details", patchNativeSceneCard);
-          window.PluginApi.patch.after("SceneDetails", patchNativeSceneDetails);
-          window.PluginApi.patch.after("SceneDetails.Sidebar", patchNativeSceneDetails);
-          window.PluginApi.patch.after("ScenePlayer", patchNativeScenePlayer);
         }
 
 
@@ -8809,7 +8884,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
     function injectSceneCardsDOMFallback() {
       if (typeof document === "undefined" || !document.querySelectorAll || !document.querySelector) return;
       if (typeof window !== "undefined" && window.location?.hash?.startsWith("#file-manager")) return;
-      const cardEls = document.querySelectorAll(".card.scene-card, .scene-card, [class*='SceneCard']");
+      const cardEls = document.querySelectorAll(".scene-card, .card.scene-card, .scene-cards-grid .card, .scene-card-grid .card, [class*='SceneCard']");
       if (!cardEls || cardEls.length === 0) return;
 
       cardEls.forEach((cardEl) => {
@@ -8822,7 +8897,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
         const linkEl = cardEl.querySelector('a[href*="/scenes/"]');
         if (!linkEl) return;
         const href = linkEl.getAttribute("href") || "";
-        const m = href.match(/\/scenes\/(\d+)/);
+        const m = href.match(/\/scenes\/([a-zA-Z0-9_-]+)/);
         if (!m) return;
         const sceneId = m[1];
 
@@ -8845,13 +8920,13 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
     function injectSceneDetailDOMFallback() {
       if (typeof document === "undefined" || !document.querySelector || !document.getElementById) return;
       if (typeof window !== "undefined" && window.location?.hash?.startsWith("#file-manager")) return;
-      const m = typeof window !== "undefined" && window.location?.pathname?.match(/\/scenes\/(\d+)/);
+      const m = typeof window !== "undefined" && window.location?.pathname?.match(/\/scenes\/([a-zA-Z0-9_-]+)/);
       if (!m) return;
       const sceneId = m[1];
 
       // 1. Directory Hierarchy Breadcrumbs Row
       if (!document.getElementById("sfm-scene-hierarchy-row")) {
-        const sidebar = document.querySelector(".scene-info, .scene-details, .details-list, .scene-sidebar, .col-lg-4 .card-body");
+        const sidebar = document.querySelector(".scene-info, .scene-details, .details-list, .scene-sidebar, .col-lg-4 .card-body, .scene-file-info");
         if (sidebar && !sidebar.querySelector("[data-sfm-hierarchy]")) {
           const cachedScene = window.__SFM_GLOBAL_CACHE__?.scenes?.find((s) => String(s.id) === String(sceneId)) || { id: sceneId };
           const folderPath = resolveSceneFolder(cachedScene);
@@ -8868,7 +8943,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
 
       // 2. Reel Mode Button
       if (!document.getElementById("sfm-scene-reel-btn")) {
-        const toolbar = document.querySelector(".scene-toolbar, .scene-header .btn-toolbar, .scene-header .btn-group, .video-player-container, .scene-player");
+        const toolbar = document.querySelector(".scene-toolbar, .scene-header .btn-toolbar, .scene-header .btn-group, .video-player-container, .scene-player, .scene-header");
         if (toolbar && !toolbar.querySelector("[data-sfm-reel-btn]")) {
           const cachedScene = window.__SFM_GLOBAL_CACHE__?.scenes?.find((s) => String(s.id) === String(sceneId)) || { id: sceneId };
           const folderPath = resolveSceneFolder(cachedScene);
