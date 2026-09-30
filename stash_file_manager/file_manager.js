@@ -2125,7 +2125,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
         )
       );
     }
-    function BingeReelPlayerModal({ scene, scenes = [], onSelectScene, onClose, folderName, currentPath, onNavigateToFolder }) {
+    function BingeReelPlayerModal({ scene, scenes = [], onSelectScene, onClose, onOpenProfile, folderName, currentPath, onNavigateToFolder }) {
       const videoRef = useRef(null);
       const videoContainerRef = useRef(null);
       const hlsInstanceRef = useRef(null);
@@ -3667,12 +3667,15 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                       if (videoRef.current && !videoRef.current.paused) {
                         videoRef.current.pause();
                       }
+                      if (onOpenProfile) {
+                        onOpenProfile(targetFolderPath, scene);
+                        return;
+                      }
                       setShowFolderProfile(true);
-                      // Open profile without sceneId in hash so hitting back cleanly exits to player
                       const targetHash = buildHashForPath(targetFolderPath, "profile", null);
                       if (window.location.hash !== targetHash) {
-                        const nextDepth = getNextSfmDepth();
-                        window.history.pushState({ sfmPath: targetFolderPath, sfmView: "profile", inPlayerProfile: true, sfmDepth: nextDepth }, "", targetHash);
+                        const curDepth = (window.history.state && typeof window.history.state.sfmDepth === "number") ? window.history.state.sfmDepth : 1;
+                        window.history.replaceState({ sfmPath: targetFolderPath, sfmView: "profile", inPlayerProfile: true, sfmDepth: curDepth }, "", targetHash);
                       }
                     },
                     onKeyDown: (e) => {
@@ -3682,11 +3685,15 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                         if (videoRef.current && !videoRef.current.paused) {
                           videoRef.current.pause();
                         }
+                        if (onOpenProfile) {
+                          onOpenProfile(targetFolderPath, scene);
+                          return;
+                        }
                         setShowFolderProfile(true);
-                        const targetHash = buildHashForPath(targetFolderPath, "profile", scene?.id);
+                        const targetHash = buildHashForPath(targetFolderPath, "profile", null);
                         if (window.location.hash !== targetHash) {
-                          const nextDepth = getNextSfmDepth();
-                          window.history.pushState({ sfmPath: targetFolderPath, sfmView: "profile", sfmScene: scene?.id, inPlayerProfile: true, sfmDepth: nextDepth }, "", targetHash);
+                          const curDepth = (window.history.state && typeof window.history.state.sfmDepth === "number") ? window.history.state.sfmDepth : 1;
+                          window.history.replaceState({ sfmPath: targetFolderPath, sfmView: "profile", inPlayerProfile: true, sfmDepth: curDepth }, "", targetHash);
                         }
                       }
                     },
@@ -6250,6 +6257,20 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
       }, [currentPath, playingScene]);
 
       const [customPlayerScenes, setCustomPlayerScenes] = useState(null);
+      const isClosingPlayerRef = useRef(false);
+
+      const handleOpenProfileFromPlayer = useCallback((targetPath) => {
+        setPlayingScene(null);
+        setCustomPlayerScenes(null);
+        const p = normalizePath(targetPath);
+        setCurrentPath(p);
+        setShowFolderProfile(true);
+        setCurrentProfilePage(0);
+        // Replace active video playback with profile view in history so old video doesn't linger underneath
+        const curDepth = (window.history.state && typeof window.history.state.sfmDepth === "number") ? window.history.state.sfmDepth : 1;
+        const targetHash = buildHashForPath(p, "profile", null);
+        window.history.replaceState({ sfmPath: p, sfmView: "profile", inPlayerProfile: false, sfmDepth: curDepth }, "", targetHash);
+      }, []);
 
       const handlePlayScene = useCallback((s, queue = null) => {
         if (!s) return;
@@ -6270,11 +6291,10 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
           effectiveQueue = queue;
         }
 
-        // Robust check: Player is already open if playingScene is set, or hash contains scene=, or modal element exists
-        const isPlayerAlreadyOpen = Boolean(
-          playingScene ||
-          window.location.hash.includes("scene=") ||
-          (typeof document !== "undefined" && document.querySelector(".sfm-reel-player-modal"))
+        // True only if currently actively watching a video in player (not on profile/explore view)
+        const isCurrentlyViewingVideo = Boolean(
+          window.location.hash.includes("scene=") &&
+          !window.location.hash.includes("view=")
         );
 
         setPlayingScene(s);
@@ -6285,30 +6305,32 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
         // This ensures the previous history entry (#file-manager?path=...&view=profile) is preserved as the immediate back destination!
         const targetHash = buildHashForPath(sFolder || currentPath, null, s.id);
         if (window.location.hash !== targetHash) {
-          if (!isPlayerAlreadyOpen) {
+          if (!isCurrentlyViewingVideo) {
             // Initial transition into the player from folder or profile view: push history entry
             const nextDepth = getNextSfmDepth();
             window.history.pushState({ sfmPath: sFolder || currentPath, sfmView: null, sfmScene: s.id, sfmDepth: nextDepth }, "", targetHash);
           } else {
-            // Already inside player: ALWAYS use replaceState regardless of how many videos are played
+            // Already inside active video playback: replaceState so swiping or queue advance doesn't create duplicate history entries
             const curDepth = (window.history.state && typeof window.history.state.sfmDepth === "number") ? window.history.state.sfmDepth : 1;
             window.history.replaceState({ sfmPath: sFolder || currentPath, sfmView: null, sfmScene: s.id, sfmDepth: curDepth }, "", targetHash);
           }
         }
-      }, [currentPath, showFolderProfile, currentProfilePage, trie, playingScene]);
+      }, [currentPath, trie]);
 
       const handleClosePlayer = useCallback(() => {
+        isClosingPlayerRef.current = true;
         setPlayingScene(null);
         setCustomPlayerScenes(null);
-        const currentView = showFolderProfile ? (currentProfilePage === 1 ? "discover" : "profile") : null;
         const curDepth = (window.history.state && typeof window.history.state.sfmDepth === "number") ? window.history.state.sfmDepth : 0;
         if (curDepth > 1 && window.location.hash.includes("scene=")) {
           window.history.back();
         } else {
-          const targetHash = buildHashForPath(currentPath, currentView);
+          const currentView = showFolderProfile ? (currentProfilePage === 1 ? "discover" : "profile") : null;
+          const targetHash = buildHashForPath(currentPath, currentView, null);
           if (window.location.hash !== targetHash) {
             window.history.replaceState({ sfmPath: currentPath, sfmView: currentView, sfmDepth: Math.max(1, curDepth) }, "", targetHash);
           }
+          isClosingPlayerRef.current = false;
         }
       }, [currentPath, showFolderProfile, currentProfilePage]);
       const [pluginSettings, setPluginSettings] = useState(null);
@@ -6828,17 +6850,33 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
           }
 
           // 2. View synchronization (profile vs discover vs folder)
-          if (state.view === "profile") {
+          if (state.view === "profile" || state.view === "discover") {
             setShowFolderProfile(true);
-            setCurrentProfilePage(0);
-          } else if (state.view === "discover") {
-            setShowFolderProfile(true);
-            setCurrentProfilePage(1);
+            setCurrentProfilePage(state.view === "discover" ? 1 : 0);
+            if (playingScene) {
+              setPlayingScene(null);
+              setCustomPlayerScenes(null);
+            }
+            isClosingPlayerRef.current = false;
+            return;
           } else {
             setShowFolderProfile(false);
           }
 
           // 3. Scene player synchronization
+          if (isClosingPlayerRef.current) {
+            if (state.sceneId) {
+              // The browser popped into a previous scene entry from an old navigation chain.
+              // Strip sceneId so it NEVER reopens an unwanted previous video!
+              const targetHash = buildHashForPath(state.path || currentPath, null, null);
+              window.history.replaceState({ ...window.history.state, sfmScene: null }, "", targetHash);
+            }
+            isClosingPlayerRef.current = false;
+            setPlayingScene(null);
+            setCustomPlayerScenes(null);
+            return;
+          }
+
           if (state.sceneId) {
             if (!playingScene || String(playingScene.id) !== String(state.sceneId)) {
               const allAvailable = window.__SFM_GLOBAL_CACHE__?.scenes || (currentNode ? currentNode.directScenes : []);
@@ -7932,9 +7970,9 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                 onPageChange: (newPage) => {
                   setCurrentProfilePage(newPage);
                   const viewName = newPage === 1 ? "discover" : "profile";
-                  const targetHash = buildHashForPath(activeProfilePath, viewName, playingScene ? playingScene.id : null);
+                  const targetHash = buildHashForPath(activeProfilePath, viewName, null);
                   if (window.location.hash !== targetHash) {
-                    window.history.replaceState({ sfmPath: activeProfilePath, sfmView: viewName, sfmScene: playingScene?.id }, "", targetHash);
+                    window.history.replaceState({ sfmPath: activeProfilePath, sfmView: viewName, sfmScene: null }, "", targetHash);
                   }
                 },
                 isInsidePlayer: false,
@@ -7970,6 +8008,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                 scenes: customPlayerScenes || filteredAndSortedScenes,
                 onSelectScene: (s, q) => handlePlayScene(s, q),
                 onClose: handleClosePlayer,
+                onOpenProfile: handleOpenProfileFromPlayer,
                 folderName: currentFolderName,
                 currentPath: currentPath,
                 onNavigateToFolder: (path) => {
