@@ -4028,14 +4028,3 @@ button.badge.sfm-badge-btn {
   color: #fff !important;
   transform: translateY(-1px);
 }
-
-/* Wall & Explore Tile Fallback Placeholders */
-.sfm-wall-tile-fallback,
-.sfm-explore-tile-fallback {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(135deg, #182030 0%, #0d121c 100%);
-  color: #d8dee9;
-  z-index: 1;
-  user-select: none;
-}
