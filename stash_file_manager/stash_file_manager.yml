@@ -55,3 +55,7 @@ settings:
     displayName: Native Scene Detail Directory Hierarchy
     type: BOOLEAN
     description: "Display clickable directory hierarchy breadcrumbs and Reel Mode button on native Stash scene playback pages. Default: true"
+  workspace_layout_mode:
+    displayName: Workspace Layout Mode
+    type: STRING
+    description: "Display mode for File Manager: 'native' (Embedded directly inside Stash main container below navbar) or 'overlay' (Fullscreen overlay). Default: native"

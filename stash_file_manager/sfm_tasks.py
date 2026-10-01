@@ -30,7 +30,8 @@ DEFAULT_SETTINGS = {
     "remember_last_path": True,
     "auto_rebuild_tree_on_start": False,
     "enable_native_scene_card_integration": True,
-    "enable_native_scene_detail_integration": True
+    "enable_native_scene_detail_integration": True,
+    "workspace_layout_mode": "native"
 }
 
 def log(msg, level="INFO"):

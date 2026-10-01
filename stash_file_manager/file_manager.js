@@ -5581,10 +5581,11 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
       const studioName = scene.studio?.name;
       const performers = scene.performers?.map((p) => p.name).join(", ");
       const duration = formatDuration(scene.files?.[0]?.duration);
+      const resolution = scene.files?.[0]?.height ? (scene.files[0].height >= 2160 ? "4K" : scene.files[0].height >= 1440 ? "1440p" : scene.files[0].height >= 1080 ? "1080p" : scene.files[0].height >= 720 ? "720p" : null) : null;
 
       return React.createElement(
         "div",
-        { className: `sfm-scene-card ${isSelected ? "sfm-card-selected" : ""}` },
+        { className: `card scene-card sfm-scene-card sfm-native-scene-card ${isSelected ? "sfm-card-selected" : ""}` },
         // Selection Checkbox Overlay
         React.createElement(
           "div",
@@ -5606,7 +5607,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
         React.createElement(
           "div",
           {
-            className: "sfm-scene-thumb-container",
+            className: "card-image-container image-container sfm-scene-thumb-container",
             onMouseEnter: () => setIsHovered(true),
             onMouseLeave: () => setIsHovered(false),
             onClick: () => onPlay(scene),
@@ -5614,7 +5615,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
           React.createElement("img", {
             src: thumbUrl,
             alt: scene.title || "Scene",
-            className: "sfm-scene-thumb",
+            className: "card-image sfm-scene-thumb",
             loading: "lazy",
           }),
           isHovered &&
@@ -5631,21 +5632,26 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
             { className: "sfm-play-overlay" },
             React.createElement("span", { style: { fontSize: "1.2rem", marginLeft: "2px" } }, "▶")
           ),
-          duration && React.createElement("div", { className: "sfm-duration-badge" }, duration)
+          duration && React.createElement("div", { className: "sfm-duration-badge" }, duration),
+          resolution && React.createElement("div", { className: "sfm-resolution-badge" }, resolution)
         ),
         React.createElement(
           "div",
-          { className: "sfm-scene-info" },
+          { className: "card-section scene-card__details sfm-scene-info p-2" },
           React.createElement(
-            "a",
-            {
-              href: `/scenes/${scene.id}`,
-              target: "_blank",
-              rel: "noreferrer",
-              className: "sfm-scene-title",
-              title: scene.title || scene.files?.[0]?.basename,
-            },
-            scene.title || scene.files?.[0]?.basename || `Scene #${scene.id}`
+            "div",
+            { className: "scene-card__title" },
+            React.createElement(
+              "a",
+              {
+                href: `/scenes/${scene.id}`,
+                target: "_blank",
+                rel: "noreferrer",
+                className: "sfm-scene-title font-weight-bold",
+                title: scene.title || scene.files?.[0]?.basename,
+              },
+              scene.title || scene.files?.[0]?.basename || `Scene #${scene.id}`
+            )
           ),
           studioName &&
             React.createElement(
@@ -5662,7 +5668,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
           })(),
           React.createElement(
             "div",
-            { className: "sfm-scene-meta" },
+            { className: "sfm-scene-meta d-flex justify-content-between align-items-center small text-muted mt-1" },
             React.createElement("span", null, scene.date || "No date"),
             scene.rating100 &&
               React.createElement("span", { className: "text-warning" }, `★ ${(scene.rating100 / 20).toFixed(1)}`)
@@ -7622,21 +7628,91 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                     const count = childNode ? childNode.allSceneIds.size : 0;
                     const size = childNode ? formatBytes(childNode.totalSize) : "0 B";
                     const nextPath = currentPath ? `${currentPath}/${folderName}` : folderName;
+                    const firstSceneId = childNode && childNode.allSceneIds && childNode.allSceneIds.size > 0 ? childNode.allSceneIds.values().next().value : null;
+                    const firstScene = firstSceneId ? ((window.__SFM_GLOBAL_CACHE__?.scenes || []).find(s => String(s.id) === String(firstSceneId)) || null) : null;
+                    const folderThumb = firstScene?.paths?.screenshot || "";
+                    const subCount = childNode ? Object.keys(childNode.folders).length : 0;
+
                     return React.createElement(
                       "div",
                       {
                         key: folderName,
-                        className: "sfm-folder-card sfm-folder-card-compact",
+                        className: "card studio-card sfm-native-folder-card sfm-folder-card sfm-folder-card-compact",
+                        style: { width: `${folderCardSize}px`, minWidth: `${Math.min(130, folderCardSize)}px` },
                         onClick: () => navigateToFolder(nextPath),
                         title: `${folderName} (${count} scenes, ${size})`,
                       },
-                      React.createElement("div", { className: "sfm-folder-icon-wrap" }, React.createElement(IconFolderCard, { size: Math.max(20, Math.min(36, Math.round(folderCardSize * 0.18))), color: "#81a1c1" })),
-                      React.createElement("div", { className: "sfm-folder-name" }, folderName),
                       React.createElement(
                         "div",
-                        { className: "sfm-folder-badges" },
-                        React.createElement("span", { className: "sfm-badge" }, React.createElement("strong", { style: { color: "#88c0d0" } }, count), " scenes"),
-                        count > 0 && React.createElement("span", { className: "sfm-badge text-muted" }, size)
+                        { className: "card-image-container image-container sfm-folder-cover-container" },
+                        folderThumb
+                          ? React.createElement("img", {
+                              src: folderThumb,
+                              alt: folderName,
+                              className: "card-image sfm-folder-cover-img",
+                              loading: "lazy",
+                            })
+                          : React.createElement(
+                              "div",
+                              { className: "sfm-folder-cover-placeholder d-flex align-items-center justify-content-center" },
+                              React.createElement(IconFolderCard, { size: Math.max(28, Math.min(48, Math.round(folderCardSize * 0.22))), color: "#81a1c1" })
+                            ),
+                        React.createElement(
+                          "div",
+                          { className: "sfm-folder-type-badge" },
+                          React.createElement(IconFolder, { size: 12, color: "#ffffff" }),
+                          React.createElement("span", { className: "ml-1" }, "FOLDER")
+                        ),
+                        React.createElement(
+                          "div",
+                          { className: "sfm-folder-card-hover-actions" },
+                          count > 0 && React.createElement(
+                            "button",
+                            {
+                              type: "button",
+                              className: "btn btn-sm btn-primary sfm-folder-quick-btn",
+                              onClick: (e) => {
+                                e.stopPropagation();
+                                const q = (window.__SFM_GLOBAL_CACHE__?.scenes || []).filter(s => childNode.allSceneIds.has(s.id));
+                                if (q.length > 0) handlePlayScene(q[0], q);
+                              },
+                              title: "Play all scenes in Binge Reel",
+                            },
+                            "▶ Reel"
+                          ),
+                          React.createElement(
+                            "button",
+                            {
+                              type: "button",
+                              className: "btn btn-sm btn-secondary sfm-folder-quick-btn ml-1",
+                              onClick: (e) => {
+                                e.stopPropagation();
+                                navigateToFolder(nextPath);
+                                setShowFolderProfile(true);
+                                setCurrentProfilePage(0);
+                              },
+                              title: "Open Video Wall",
+                            },
+                            "▦ Wall"
+                          )
+                        ),
+                        React.createElement(
+                          "div",
+                          { className: "sfm-folder-thumb-badges" },
+                          React.createElement("span", { className: "badge badge-secondary sfm-badge" }, React.createElement("strong", { style: { color: "#88c0d0" } }, count), " scenes"),
+                          count > 0 && React.createElement("span", { className: "badge badge-dark sfm-badge ml-1" }, size)
+                        )
+                      ),
+                      React.createElement(
+                        "div",
+                        { className: "card-section sfm-folder-card-details p-2" },
+                        React.createElement("h5", { className: "card-title sfm-folder-name text-truncate mb-1 font-weight-bold", title: folderName }, folderName),
+                        React.createElement(
+                          "div",
+                          { className: "card-subtitle text-muted small text-truncate d-flex align-items-center justify-content-between" },
+                          React.createElement("span", null, subCount > 0 ? `${subCount} subfolders` : "Folder"),
+                          React.createElement("span", { className: "badge badge-dark text-info" }, `/${folderName}`)
+                        )
                       )
                     );
                   })
@@ -8213,13 +8289,43 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
       );
     }
 
-    // Modal Manager / View Opener with Folder Path Synchronization
+    // Native Viewport Container Mounting & Lifecycle Management
+    function getOrCreateWorkspaceRoot() {
+      let root = document.getElementById("sfm-workspace-root");
+      const mainContainer = (typeof document !== "undefined" && (document.querySelector(".main-container, main, #root .container-fluid, #root > div:nth-child(2)") || document.body)) || null;
+
+      if (!root) {
+        root = document.createElement("div");
+        root.id = "sfm-workspace-root";
+        root.className = "sfm-native-embedded-workspace";
+
+        if (mainContainer && mainContainer !== document.body) {
+          mainContainer.appendChild(root);
+          mainContainer.setAttribute("data-sfm-embedded", "true");
+        } else if (document.body) {
+          document.body.appendChild(root);
+        }
+      } else if (mainContainer && root.parentElement === document.body && mainContainer !== document.body) {
+        mainContainer.appendChild(root);
+        mainContainer.setAttribute("data-sfm-embedded", "true");
+      }
+      return root;
+    }
+
     function closeWorkspace() {
       const root = document.getElementById("sfm-workspace-root");
       if (root) {
         root.style.display = "none";
       }
-      if (window.location.hash.startsWith("#file-manager")) {
+      const mainContainer = typeof document !== "undefined" && document.querySelector(".main-container, main, #root .container-fluid, #root > div:nth-child(2)");
+      if (mainContainer) {
+        mainContainer.removeAttribute("data-sfm-active");
+      }
+      if (typeof document !== "undefined" && document.body) {
+        document.body.removeAttribute("data-sfm-active");
+        document.body.classList.remove("sfm-body-locked");
+      }
+      if (typeof window !== "undefined" && window.location?.hash?.startsWith("#file-manager")) {
         window.history.pushState(null, "", window.location.pathname + window.location.search);
       }
     }
@@ -8230,25 +8336,33 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
       const view = targetView !== undefined && targetView !== null ? targetView : state?.view;
       const sceneId = targetSceneId !== undefined && targetSceneId !== null ? targetSceneId : state?.sceneId;
 
-      let root = document.getElementById("sfm-workspace-root");
-      if (!root) {
-        root = document.createElement("div");
-        root.id = "sfm-workspace-root";
-        document.body.appendChild(root);
-        ReactDOM.render(
-          React.createElement(
-            SafeErrorBoundary,
-            { onReset: closeWorkspace },
-            React.createElement(FileManagerView, { onClose: closeWorkspace, initialPath: path })
-          ),
-          root
-        );
-      } else {
-        root.style.display = "block";
-        window.dispatchEvent(new CustomEvent("sfm:set-path", { detail: { path, isBrowserNav, view, sceneId } }));
+      const mainContainer = typeof document !== "undefined" && document.querySelector(".main-container, main, #root .container-fluid, #root > div:nth-child(2)");
+      if (mainContainer) {
+        mainContainer.setAttribute("data-sfm-active", "true");
+      }
+      if (typeof document !== "undefined" && document.body) {
+        document.body.setAttribute("data-sfm-active", "true");
       }
 
-      if (!isBrowserNav) {
+      const root = getOrCreateWorkspaceRoot();
+      if (root) {
+        root.style.display = "block";
+        if (!root._sfm_mounted) {
+          root._sfm_mounted = true;
+          ReactDOM.render(
+            React.createElement(
+              SafeErrorBoundary,
+              { onReset: closeWorkspace },
+              React.createElement(FileManagerView, { onClose: closeWorkspace, initialPath: path })
+            ),
+            root
+          );
+        } else {
+          window.dispatchEvent(new CustomEvent("sfm:set-path", { detail: { path, isBrowserNav, view, sceneId } }));
+        }
+      }
+
+      if (!isBrowserNav && typeof window !== "undefined") {
         const expectedHash = buildHashForPath(path, view, sceneId);
         if (window.location.hash !== expectedHash) {
           const nextDepth = getNextSfmDepth();
