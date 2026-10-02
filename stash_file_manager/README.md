@@ -169,12 +169,33 @@ Eliminate wasted vertical space with compact folder layouts tailored to any libr
 - [x] **Native Stash Card Integration:** Deeply embed File Manager actions directly into Stash's native scene cards, studio cards, and performer cards across all native grids. Add a 1-click "Browse Folder" / "Open in File Manager" button and directory path badges directly onto standard Stash scene cards.
 - [x] **Native Scene Card Integration:** Add subtle directory path chips and 1-click folder hover triggers directly onto native Stash scene cards across `/scenes`, `/performers`, `/studios`, and `/tags`.
 - [x] **Native Scene Detail Page Integration:** Add dedicated Directory Hierarchy breadcrumbs row and Binge Reel Mode button on Stash's native scene view page (`/scenes/{id}`).
-- [ ] **Native Main Viewport Mounting:** Seamlessly mount the file manager inside Stash's native routed layout container (`/scenes?view=folder` or `/plugin/file-manager`), fully retaining Stash's top navigation bar, global search, background task spinners, and user settings at all times.
+- [x] **Native Main Viewport Mounting:** Seamlessly mount the file manager inside Stash's native routed layout container (`/scenes?view=folder` or `/plugin/file-manager`), fully retaining Stash's top navigation bar, global search, background task spinners, and user settings at all times.
 - [x] **Theme & Accent Color Parity:** Full CSS custom property inheritance from community themes (Refract, Nord, Dark, Midnight) for native glassmorphism, surface blur, and accent color adaptation.
 
 ---
 
 ## 📋 Changelog & Development History
+
+### [v3.0.2] — 2026-10-02 07:55:00
+* **Title Line Geometry Alignment, Synchronized Two-Way State Toggles & UI Modernization:**
+  * **Section Headers & Count Badges Geometry Alignment:**
+    * Implemented fixed-geometry layout for section titles (`.sfm-section-title-box`, fixed 195px) and title labels (`.sfm-section-title-label`, fixed 115px), ensuring consistent alignment across variable directory path lengths and file counts.
+    * Standardized count bubble badge (`.sfm-section-count-badge`) with fixed 48px width, centered typography, and high-visibility `#88c0d0` accent.
+    * Standardized "Sub-folders" hyphenated naming convention.
+  * **Synchronized Two-Way State Toggles & Interactive Status Controls:**
+    * Standardized geometry pairing between line 1 toggles and line 2 status indicators:
+      * Line 1 "Sub-folders" toggle (175px `.sfm-pill-subfolders`) aligns with Line 2 "Sub-Folders Included / Excluded" button.
+      * Line 1 "Group by Folder" toggle (160px `.sfm-pill-foldersort`) aligns with Line 2 "Grouped by Folder / Sorted Altogether" button.
+      * Line 1 "Hide empty" toggle (110px `.sfm-pill-hideempty`).
+      * Shared uniform 0.5rem margin-left spacing across all toggles and indicators.
+    * Converted scenes-line status indicators into active two-way interactive buttons: clicking either indicator directly toggles the respective state (`includeSubfolders` / `sortByFolderFirst`) and synchronizes with line 1 controls.
+    * Enhanced active and inactive visual states (`.sfm-state-active` / `#88c0d0` cyan glow vs `.sfm-state-inactive` / `#707e94` slate).
+  * **Permanent Menu Bar Clearance & View Polish:**
+    * Offset `BingeReelPlayerModal` backdrop (`top: 60px !important`, dialog `max-height: calc(100vh - 75px)`, action column & close button `top: 24px !important`) to permanently clear Stash's native top navigation bar.
+    * Streamlined folder list view grid spacing (`gap: 5px !important`, item padding `0.35rem 0.65rem !important`).
+    * Replaced legacy emoji icons with sleek vector SVG icons (`IconSettings`, `IconScissors`, `IconGlobe`, `IconAlert`, `IconCheck`, `IconSearch`) throughout settings, modals, and toolbars.
+  * **Automated Verification:**
+    * Added automated test suite `test_v3.0.2_title_line_alignment.js` verifying geometry alignment, hyphenated naming, interactive two-way status toggles, color contracts, and viewport clearances.
 
 ### [v3.0.0] — 2026-09-30 08:45:00
 * **Phase 4: Native Stash Platform Deep Embedding — Card Integration & Scene Detail Traversal:**

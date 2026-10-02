@@ -8,26 +8,24 @@ body.sfm-body-locked {
 }
 
 #sfm-workspace-root {
-  position: fixed;
-  inset: 0;
-  width: 100%;
-  height: 100vh;
-  height: 100dvh;
-  max-height: 100dvh;
-  z-index: 10030 !important;
-  overflow: hidden !important;
-  overscroll-behavior: none !important;
-  background: transparent;
+  position: relative !important;
+  inset: auto !important;
+  width: 100% !important;
+  min-height: calc(100vh - 65px) !important;
+  height: auto !important;
+  max-height: none !important;
+  z-index: 1 !important;
+  display: block;
+  overflow: visible !important;
+  overscroll-behavior: auto !important;
+  background: transparent !important;
 }
 
 .sfm-workspace-content {
   width: 100%;
-  height: 100%;
-  overflow-y: auto;
-  overflow-x: hidden;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior: contain !important;
-  overscroll-behavior-y: contain !important;
+  height: auto;
+  overflow: visible;
+  padding: 0;
 }
 
 .sfm-folder-profile-page,
@@ -60,19 +58,29 @@ body.sfm-body-locked {
    Full-Screen Workspace Modal / Overlay
    ========================================================================== */
 
-.sfm-workspace-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background-color: #12151c;
-  z-index: 1040;
+.sfm-workspace-overlay,
+.sfm-native-page {
+  position: relative !important;
+  inset: auto !important;
+  width: 100% !important;
+  min-height: calc(100vh - 65px) !important;
+  height: auto !important;
+  max-height: none !important;
+  z-index: 1 !important;
   display: flex;
   flex-direction: column;
-  color: #e9ecef;
-  overflow: hidden;
+  color: var(--sfm-text-color, #e9ecef) !important;
+  background: transparent !important;
+  overflow: visible !important;
+  padding: 0.5rem 1rem 3rem 1rem !important;
+  box-sizing: border-box !important;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+.sfm-native-heading {
+  font-size: 1.5rem !important;
+  letter-spacing: -0.3px;
+  color: var(--sfm-text-color, #eceff4) !important;
 }
 
 .sfm-workspace-header {
@@ -864,12 +872,12 @@ body.sfm-body-locked {
 .sfm-folder-list-item {
   background-color: #1a1e27;
   border: 1px solid #282e3d;
-  border-radius: 6px;
-  padding: 0.5rem 0.75rem;
+  border-radius: 5px !important;
+  padding: 0.35rem 0.65rem !important;
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 0.55rem;
+  gap: 0.45rem !important;
   transition: all 0.16s ease;
   user-select: none;
 }
@@ -1514,21 +1522,32 @@ body.sfm-body-locked {
 
 .sfm-reel-modal-backdrop {
   position: fixed;
-  inset: 0;
+  top: 60px !important;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: calc(100vh - 60px) !important;
   z-index: 10100 !important;
-  background: rgba(0, 0, 0, 0.92);
+  background: rgba(0, 0, 0, 0.94);
   backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
   justify-content: center;
+  box-sizing: border-box;
+}
+
+:fullscreen .sfm-reel-modal-backdrop,
+::-webkit-full-screen .sfm-reel-modal-backdrop {
+  top: 0 !important;
+  height: 100vh !important;
 }
 
 .sfm-reel-modal-dialog {
   position: relative;
   width: 100vw;
-  height: 100vh;
+  height: 100%;
   max-width: 1440px;
-  max-height: 92vh;
+  max-height: calc(100vh - 75px);
   background: #000000;
   border-radius: 12px;
   overflow: hidden;
@@ -1546,7 +1565,7 @@ body.sfm-body-locked {
 
 .sfm-reel-close-btn {
   position: absolute;
-  top: 18px;
+  top: 24px !important;
   right: 18px;
   z-index: 55;
   width: 38px;
@@ -1899,7 +1918,7 @@ body.sfm-body-locked {
 
 .sfm-reel-top-notices {
   position: absolute;
-  top: 18px;
+  top: 24px !important;
   left: 50%;
   transform: translateX(-50%);
   z-index: 50;
@@ -1913,9 +1932,9 @@ body.sfm-body-locked {
 
 .sfm-reel-actions-column {
   position: absolute;
-  top: 18px;
+  top: 24px !important;
   bottom: 64px;
-  right: 18px;
+  right: 20px !important;
   transform: none !important;
   display: flex;
   flex-direction: column;
@@ -2185,8 +2204,8 @@ body.sfm-body-locked {
 .sfm-folder-list-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(var(--sfm-folder-list-width, 220px), 1fr));
-  gap: 0.65rem;
-  margin-bottom: 1.25rem;
+  gap: 5px !important;
+  margin-bottom: 1rem;
 }
 
 /* ==========================================================================
@@ -4460,3 +4479,136 @@ button.badge.sfm-badge-btn {
   overflow: visible !important;
 }
 
+
+/* ==========================================================================
+   v3.0.1 Aligned Section Headers, Count Badges & Synchronized State Toggles
+   ========================================================================== */
+
+.sfm-section-title-box {
+  width: 195px !important;
+  min-width: 195px !important;
+  max-width: 195px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 0.35rem !important;
+  flex-shrink: 0 !important;
+  cursor: pointer;
+  user-select: none;
+  box-sizing: border-box !important;
+}
+
+.sfm-section-title-box .sfm-collapse-chevron {
+  width: 14px !important;
+  min-width: 14px !important;
+  display: inline-block !important;
+  text-align: center !important;
+  flex-shrink: 0 !important;
+}
+
+.sfm-section-title-label {
+  width: 115px !important;
+  min-width: 115px !important;
+  max-width: 115px !important;
+  display: inline-block !important;
+  font-size: 0.95rem !important;
+  font-weight: 700 !important;
+  color: #eceff4 !important;
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+
+.sfm-section-count-badge {
+  width: 48px !important;
+  min-width: 48px !important;
+  max-width: 48px !important;
+  padding: 0.2rem 0 !important;
+  font-size: 0.76rem !important;
+  line-height: 1 !important;
+  border-radius: 12px !important;
+  background-color: #242933 !important;
+  border: 1px solid #3b4252 !important;
+  color: #88c0d0 !important;
+  font-weight: 700 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center !important;
+  flex-shrink: 0 !important;
+  box-sizing: border-box !important;
+  margin-left: 0.35rem !important;
+}
+
+/* Pair 1: Sub-folders toggle & status indicator */
+.sfm-pill-subfolders {
+  width: 175px !important;
+  min-width: 175px !important;
+  max-width: 175px !important;
+  text-align: center !important;
+  justify-content: center !important;
+  margin-left: 0.5rem !important;
+  box-sizing: border-box !important;
+  flex-shrink: 0 !important;
+}
+
+/* Pair 2: Group by folder toggle & status indicator */
+.sfm-pill-foldersort {
+  width: 160px !important;
+  min-width: 160px !important;
+  max-width: 160px !important;
+  text-align: center !important;
+  justify-content: center !important;
+  margin-left: 0.5rem !important;
+  box-sizing: border-box !important;
+  flex-shrink: 0 !important;
+}
+
+/* Toggle 3: Hide empty toggle */
+.sfm-pill-hideempty {
+  width: 110px !important;
+  min-width: 110px !important;
+  max-width: 110px !important;
+  text-align: center !important;
+  justify-content: center !important;
+  margin-left: 0.5rem !important;
+  box-sizing: border-box !important;
+  flex-shrink: 0 !important;
+}
+
+/* Dynamic State Colors for Toggles & Status Indicators */
+.sfm-state-pill.sfm-state-active,
+button.badge.sfm-badge-btn.sfm-state-active,
+span.badge.sfm-state-active {
+  background-color: #1e3a50 !important;
+  border: 1px solid #88c0d0 !important;
+  color: #88c0d0 !important;
+  font-weight: 700 !important;
+  box-shadow: 0 0 6px rgba(136, 192, 208, 0.3) !important;
+  transition: all 0.18s ease;
+}
+
+.sfm-state-pill.sfm-state-active:hover,
+button.badge.sfm-badge-btn.sfm-state-active:hover {
+  background-color: #255272 !important;
+  border-color: #98d6e8 !important;
+  color: #ffffff !important;
+}
+
+.sfm-state-pill.sfm-state-inactive,
+button.badge.sfm-badge-btn.sfm-state-inactive,
+span.badge.sfm-state-inactive {
+  background-color: #181c24 !important;
+  border: 1px solid #2e3440 !important;
+  color: #707e94 !important;
+  font-weight: 600 !important;
+  box-shadow: none !important;
+  transition: all 0.18s ease;
+}
+
+.sfm-state-pill.sfm-state-inactive:hover,
+button.badge.sfm-badge-btn.sfm-state-inactive:hover {
+  background-color: #222834 !important;
+  border-color: #434c5e !important;
+  color: #9daab9 !important;
+}

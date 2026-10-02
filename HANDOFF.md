@@ -1,13 +1,13 @@
 # Project Handoff Document: Stash Path File Manager Plugin
-# Release v3.0.0 & Blueprint for Phase 4 Expansion
+# Release v3.0.2 & Blueprint for Phase 4 Expansion
 
-**Current Release:** `v3.0.0`  
-**Target Milestone:** `v3.1.0` (Phase 4 Continuation: Native Viewport Container Mounting & Advanced Platform Hooks)  
+**Current Release:** `v3.0.2`  
+**Target Milestone:** `v3.1.0` (Phase 4 Continuation: Performer & Studio Directory Aggregation & Advanced Platform Hooks)  
 **Active Repository:** `https://github.com/daailouivan/stash-plugins.git` (`main` branch)  
-**Distribution Package:** `stash_file_manager.zip` (SHA256: `7dae49b5bc3550bf41cf537e379bc3d09ec15b46e9df6bf349ddf7fb3705341e`)  
-**Plugin Manifest:** `stash_file_manager/stash_file_manager.yml` (version `3.0.0`)  
-**Repository Index:** `index.yml` (version `3.0.0`)  
-**Total Release Tags:** `46` (`v1.0.0` through `v3.0.0`)  
+**Distribution Package:** `stash_file_manager.zip` (SHA256: `708b38f02ec03c1567c11d15d5124f85b0b9e19ea09fe210832546522859938a`)  
+**Plugin Manifest:** `stash_file_manager/stash_file_manager.yml` (version `3.0.2`)  
+**Repository Index:** `index.yml` (version `3.0.2`)  
+**Total Release Tags:** `47` (`v1.0.0` through `v3.0.2`)  
 
 ---
 
@@ -21,22 +21,18 @@ git clone https://github.com/daailouivan/stash-plugins.git /tmp/repo/stash-plugi
 cd /tmp/repo/stash-plugins
 
 # 2. Or if using the offline git handoff bundle:
-git clone /working_dir/stash_plugins_v3.0.0_handoff.bundle /tmp/repo/stash-plugins
+git clone /working_dir/stash_plugins_v3.0.2_handoff.bundle /tmp/repo/stash-plugins
 cd /tmp/repo/stash-plugins
 
 # 3. Verify working tree and tags
 git status
 git tag -l "v*" --sort=v:refname | tail -n 10
 
-# 4. Run full test suite (all 8 suites passing)
+# 4. Run full test suite (all suites passing 100%)
 node test_components.js
-node /tmp/test_v2.9.16_explore_directory.js
-node /tmp/test_v2.9.17_pageback_history.js
-node /tmp/test_v2.9.18_explore_scenes_and_goback.js
-node /tmp/test_v2.9.19_profile_nav_and_goback.js
-node /tmp/test_v2.9.21_subfolders_collapse_and_playback.js
-node /tmp/test_v2.9.23_no_stacked_players.js
 node test_v3.0.0_native_card_and_scene_detail.js
+node test_v3.0.0_native_embedded_cards.js
+node test_v3.0.2_title_line_alignment.js
 ```
 
 ---
@@ -108,37 +104,35 @@ stash-plugins/
 
 ---
 
-## 4. Summary of Recent Critical Additions (v3.0.0)
+## 4. Summary of Recent Critical Additions (v3.0.0 & v3.0.2)
 
 | Feature / Fix | Technical Solution & Architecture |
 |---|---|
+| **Title Line Geometry Alignment** | Implemented fixed-width geometry for Section Title Box (`195px`), Section Title Label (`115px`), and Count Badge (`48px`) centered text with high-visibility `#88c0d0` accent, preventing layout shift across varying directory path depths and file counts. |
+| **Synchronized State Toggles** | Paired Line 1 toggles (`.sfm-pill-subfolders` `175px`, `.sfm-pill-foldersort` `160px`, `.sfm-pill-hideempty` `110px`) with Line 2 status indicators with uniform `0.5rem` margin-left. Converted Scenes-line indicators to interactive buttons wired to state handlers with active cyan glow (`.sfm-state-active`) and muted slate (`.sfm-state-inactive`). |
+| **Menu Bar Clearance & View Polish** | Shifted Binge Reel Player backdrop down (`top: 60px !important`, dialog `max-height: calc(100vh - 75px)`, actions column `top: 24px !important`) to permanently clear Stash's native top navigation bar. Applied slim folder list view spacing (`5px` grid gap, `0.35rem 0.65rem` row padding). Modernized UI with SVG vector icons replacing legacy emojis. |
+| **Native Container Mounting (Phase 4)** | Mounted File Manager workspace directly inside Stash's native `.main-container` below top navbar with configurable `workspace_layout_mode` (`native` vs `overlay`). Reproduced native `.card.scene-card` component layout. |
 | **Native Scene Card Integration** | Implemented `NativeSceneCardOverlay` hooked into `PluginApi.patch.instead` & `patch.after` on `SceneCard` and `SceneCard.Details`; injected directory path chip, quick action buttons (Folder, Profile Wall, Reel), and floating hover button with zero DOM layout shift. Supported debounced DOM observer fallback for infinite scroll. |
 | **Scene Detail Page Traversal** | Implemented `NativeSceneDetailDirectoryHierarchy` and `NativeSceneDetailReelButton` hooked into `PluginApi.patch` on `SceneDetails`, `SceneDetails.Sidebar`, and `ScenePlayer`; added clickable breadcrumb chips jumping to any folder depth and a 1-click Binge Reel launcher. |
 | **Catalog Singleton & Caching** | Extracted `ensureCatalog()` singleton with promise deduping and IndexedDB restoration (<50ms) to allow instant directory resolution across native Stash pages prior to workspace mount. |
-| **Deep Link Routing Enhancements** | Extended `openFileManager(targetPath, isBrowserNav, targetView, targetSceneId)` to support direct deep-linking to directory profile walls (`view=profile`) and specific scene reel playback (`scene=ID`). |
-| **CSS Custom Property Parity** | Bound theme custom properties (`--sfm-body-bg`, `--sfm-card-bg`, `--sfm-accent`, `--sfm-text-color`, `--sfm-border-color`) to inherit from Stash community themes (Refract, Nord, Dark, Midnight, Dracula). |
 
 ---
 
-## 5. Automated Test Suite (All 8 Suites Passing)
+## 5. Automated Test Suite (All Suites Passing 100%)
 
 1. `test_components.js`: Core components render test (FolderProfileView, BingeReelPlayerModal, FileManagerView, SceneTableView, SceneNamesTableView, SceneCard, FilenameParserModal, BatchMetadataModal, SettingsAndTasksModal, clearCachedScenes).
-2. `test_v2.9.16_explore_directory.js`: Explore directory resolution, in-player avatar folder title, and breadcrumb navigation.
-3. `test_v2.9.17_pageback_history.js`: Hash construction, multi-step navigation simulation, and step-by-step pageback history.
-4. `test_v2.9.18_explore_scenes_and_goback.js`: Full directory scene counts in explore, and single goback return to profile.
-5. `test_v2.9.19_profile_nav_and_goback.js`: Profile title alignment, non-black video walls on parent folders, and clean player back action.
-6. `test_v2.9.21_subfolders_collapse_and_playback.js`: Collapsible subfolders drawer and z-index modal hierarchy.
-7. `test_v2.9.23_no_stacked_players.js`: Prevention of stacked ghost video players across multi-layer browsing history.
-8. `test_v3.0.0_native_card_and_scene_detail.js`: Phase 4 native card embedding, directory path chips, hover action icons, scene details directory hierarchy breadcrumbs, Reel Mode launcher, and DOM fallbacks.
+2. `test_v3.0.0_native_card_and_scene_detail.js`: Phase 4 native card embedding, directory path chips, hover action icons, scene details directory hierarchy breadcrumbs, Reel Mode launcher, and DOM fallbacks.
+3. `test_v3.0.0_native_embedded_cards.js`: Native `.main-container` mounting, native card reproduction, and CSS embedded layout verification.
+4. `test_v3.0.2_title_line_alignment.js`: Fixed geometry for title boxes/labels/count badges, "Sub-folders" hyphenated naming, interactive two-way status toggles, active/inactive color states, and menu bar clearances.
 
 ---
 
 ## 6. Architecture Blueprint for v3.1.0
 
 The next milestone (**v3.1.0**) expands on Phase 4 with:
-- **Feature 3: Native Viewport Layout Container Mounting:** Mounting the File Manager directly inside Stash's main application layout (`.main-container`) alongside native navigation headers instead of solely as a fullscreen overlay, with user toggle between Embedded and Fullscreen mode.
 - **Performer & Studio Directory Aggregation:** Adding directory path badges to Performer and Studio cards based on dominant directory affinity.
+- **Advanced Platform Filter Hooks:** Direct filtering integration with Stash's native GraphQL filter bar when navigating from File Manager views.
 
 ---
 
-*Handoff updated on September 30, 2026. v3.0.0 successfully completed and verified.*
+*Handoff updated on October 2, 2026. v3.0.2 successfully completed and verified.*

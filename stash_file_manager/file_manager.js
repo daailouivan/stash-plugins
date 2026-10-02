@@ -234,7 +234,7 @@
                 onClick: (e) => e.stopPropagation(),
                 style: { maxWidth: "520px", margin: "10% auto", borderRadius: "8px" },
               },
-              React.createElement("h5", { className: "text-danger" }, "⚠️ Video Player Error"),
+              React.createElement("h5", { className: "text-danger" }, React.createElement(IconAlert, { size: 16, className: "mr-2 text-danger" }), "Video Player Error"),
               React.createElement("p", { className: "text-muted small" }, String(this.state.error?.message || this.state.error)),
               React.createElement(
                 "button",
@@ -587,6 +587,154 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
           style: { display: "inline-block", verticalAlign: "-1px", ...style },
         },
         React.createElement("polygon", { points: "5 3 19 12 5 21 5 3" })
+      );
+    }
+
+
+    function IconSettings({ size = 15, color = "currentColor", className = "", style = {} }) {
+      return React.createElement(
+        "svg",
+        {
+          width: size,
+          height: size,
+          viewBox: "0 0 24 24",
+          fill: "none",
+          stroke: color,
+          strokeWidth: "2",
+          strokeLinecap: "round",
+          strokeLinejoin: "round",
+          className: className || undefined,
+          style: { display: "inline-block", verticalAlign: "-2px", ...style },
+        },
+        React.createElement("circle", { cx: "12", cy: "12", r: "3" }),
+        React.createElement("path", {
+          d: "M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z",
+        })
+      );
+    }
+
+    function IconScissors({ size = 13, color = "currentColor", className = "", style = {} }) {
+      return React.createElement(
+        "svg",
+        {
+          width: size,
+          height: size,
+          viewBox: "0 0 24 24",
+          fill: "none",
+          stroke: color,
+          strokeWidth: "2",
+          strokeLinecap: "round",
+          strokeLinejoin: "round",
+          className: className || undefined,
+          style: { display: "inline-block", verticalAlign: "-2px", ...style },
+        },
+        React.createElement("circle", { cx: "6", cy: "6", r: "3" }),
+        React.createElement("circle", { cx: "6", cy: "18", r: "3" }),
+        React.createElement("line", { x1: "20", y1: "4", x2: "8.12", y2: "15.88" }),
+        React.createElement("line", { x1: "14.47", y1: "14.48", x2: "20", y2: "20" }),
+        React.createElement("line", { x1: "8.12", y1: "8.12", x2: "12", y2: "12" })
+      );
+    }
+
+    function IconGlobe({ size = 14, color = "currentColor", className = "", style = {} }) {
+      return React.createElement(
+        "svg",
+        {
+          width: size,
+          height: size,
+          viewBox: "0 0 24 24",
+          fill: "none",
+          stroke: color,
+          strokeWidth: "2",
+          strokeLinecap: "round",
+          strokeLinejoin: "round",
+          className: className || undefined,
+          style: { display: "inline-block", verticalAlign: "-2px", ...style },
+        },
+        React.createElement("circle", { cx: "12", cy: "12", r: "10" }),
+        React.createElement("line", { x1: "2", y1: "12", x2: "22", y2: "12" }),
+        React.createElement("path", { d: "M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" })
+      );
+    }
+
+    function IconAlert({ size = 14, color = "currentColor", className = "", style = {} }) {
+      return React.createElement(
+        "svg",
+        {
+          width: size,
+          height: size,
+          viewBox: "0 0 24 24",
+          fill: "none",
+          stroke: color,
+          strokeWidth: "2",
+          strokeLinecap: "round",
+          strokeLinejoin: "round",
+          className: className || undefined,
+          style: { display: "inline-block", verticalAlign: "-2px", ...style },
+        },
+        React.createElement("path", { d: "M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" }),
+        React.createElement("line", { x1: "12", y1: "9", x2: "12", y2: "13" }),
+        React.createElement("line", { x1: "12", y1: "17", x2: "12.01", y2: "17" })
+      );
+    }
+
+    function IconCheck({ size = 14, color = "currentColor", className = "", style = {} }) {
+      return React.createElement(
+        "svg",
+        {
+          width: size,
+          height: size,
+          viewBox: "0 0 24 24",
+          fill: "none",
+          stroke: color,
+          strokeWidth: "2.5",
+          strokeLinecap: "round",
+          strokeLinejoin: "round",
+          className: className || undefined,
+          style: { display: "inline-block", verticalAlign: "-2px", ...style },
+        },
+        React.createElement("polyline", { points: "20 6 9 17 4 12" })
+      );
+    }
+
+    function IconRefresh({ size = 14, color = "currentColor", className = "", style = {} }) {
+      return React.createElement(
+        "svg",
+        {
+          width: size,
+          height: size,
+          viewBox: "0 0 24 24",
+          fill: "none",
+          stroke: color,
+          strokeWidth: "2",
+          strokeLinecap: "round",
+          strokeLinejoin: "round",
+          className: className || undefined,
+          style: { display: "inline-block", verticalAlign: "-2px", ...style },
+        },
+        React.createElement("polyline", { points: "23 4 23 10 17 10" }),
+        React.createElement("polyline", { points: "1 20 1 14 7 14" }),
+        React.createElement("path", { d: "M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" })
+      );
+    }
+
+    function IconSparkles({ size = 14, color = "currentColor", className = "", style = {} }) {
+      return React.createElement(
+        "svg",
+        {
+          width: size,
+          height: size,
+          viewBox: "0 0 24 24",
+          fill: "none",
+          stroke: color,
+          strokeWidth: "2",
+          strokeLinecap: "round",
+          strokeLinejoin: "round",
+          className: className || undefined,
+          style: { display: "inline-block", verticalAlign: "-2px", ...style },
+        },
+        React.createElement("path", { d: "M12 3l1.912 5.885L19.798 10.8 13.912 12.715 12 18.6l-1.912-5.885L4.202 10.8l5.886-1.915z" }),
+        React.createElement("path", { d: "M5 3l.7 2.15L7.85 5.85 5.7 6.55 5 8.7 4.3 6.55 2.15 5.85 4.3 5.15z" })
       );
     }
 
@@ -2950,10 +3098,10 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
           if (next) {
             const q = createShuffledQueue(scenes, scene);
             setShuffledQueue(q);
-            setHudNotice("🔀 Shuffle: ON");
+            setHudNotice("Shuffle: ON");
           } else {
             setShuffledQueue([]);
-            setHudNotice("➡️ Sequential");
+            setHudNotice("Sequential");
           }
           setTimeout(() => setHudNotice(""), 1000);
           return next;
@@ -3852,7 +4000,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                       ? `Shuffled Queue (${currentIndex + 1}/${totalScenes}) — Folder: ${folderName || "Current"}`
                       : `Folder: ${folderName || "Current"}`,
                   },
-                  isShuffle ? `🔀 ${currentIndex + 1}/${totalScenes}` : `${currentIndex + 1}/${totalScenes}`
+                  isShuffle ? `[Shuffle] ${currentIndex + 1}/${totalScenes}` : `${currentIndex + 1}/${totalScenes}`
                 ),
                 // 8. Next Video Button
                 React.createElement(
@@ -4205,7 +4353,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
     // ==========================================
     function FilenameParserModal({ currentFolder, currentPath = "", directScenes, onClose, onApplied }) {
       const PRESETS = [
-        { label: "✨ Auto-Detected / Interactive Pattern", pattern: "", caseInsensitive: true },
+        { label: "Auto-Detected / Interactive Pattern", pattern: "", caseInsensitive: true },
         { label: "Code__PERFORMER_Title__hash (e.g. MM2821__BIANNA_ARSON_Shoot...)", pattern: "^(?<code>[A-Za-z0-9]+)__(?<performers>[A-Z]+(?:_[A-Z]+)*)_+(?<title>.+?)__(?:[a-zA-Z0-9]+)(?:\\.[^.]+)?$", caseInsensitive: false },
         { label: "StudioCode__PERFORMER_Title (e.g. MM1566__KENDRA_COLE_Shoot...)", pattern: "^(?<code>[A-Za-z0-9]+)__(?<performers>[A-Z]+(?:_[A-Z]+)*)_+(?<title>.+?)(?:__[a-zA-Z0-9]{4,10})?(?:\\.[^.]+)?$", caseInsensitive: false },
         { label: "Studio - Date - Title: ^(?<studio>[^-_]+)[-_\\s]+(?<date>\\d{4}[-._]\\d{2}[-._]\\d{2})[-_\\s]+(?<title>.+)$", pattern: "^(?<studio>[^-_]+)[-_\\s]+(?<date>\\d{4}[-._]\\d{2}[-._]\\d{2})[-_\\s]+(?<title>.+)$", caseInsensitive: true },
@@ -4763,7 +4911,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
             React.createElement(
               "div",
               { className: "d-flex align-items-center gap-3" },
-              React.createElement("h5", { className: "mb-0" }, "🔍 Customizable Filename & Path Resolver"),
+              React.createElement("h5", { className: "mb-0" }, React.createElement(IconSearch, { size: 16, color: "#88c0d0", className: "mr-2" }), "Customizable Filename & Path Resolver"),
               React.createElement(
                 "div",
                 { className: "btn-group btn-group-sm sfm-builder-mode-tabs ml-3" },
@@ -4774,7 +4922,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                     className: `btn btn-sm ${builderMode === "guided" ? "btn-info font-weight-bold" : "btn-outline-secondary"} py-0 px-3`,
                     onClick: () => setBuilderMode("guided"),
                   },
-                  "✨ Interactive Blocks"
+                  React.createElement(IconSparkles, { size: 13, className: "mr-1 text-info" }), "Interactive Blocks"
                 ),
                 React.createElement(
                   "button",
@@ -4783,7 +4931,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                     className: `btn btn-sm ${builderMode === "raw" ? "btn-info font-weight-bold" : "btn-outline-secondary"} py-0 px-3`,
                     onClick: () => setBuilderMode("raw"),
                   },
-                  "⚙️ Raw Regex"
+                  React.createElement(IconSettings, { size: 13, className: "mr-1 text-info" }), "Raw Regex"
                 )
               )
             ),
@@ -4802,14 +4950,14 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                 React.createElement(
                   "div",
                   { className: "d-flex align-items-center gap-2" },
-                  React.createElement("span", { className: "badge badge-info" }, "📁 Path Clues"),
+                  React.createElement("span", { className: "badge badge-info d-inline-flex align-items-center" }, React.createElement(IconFolder, { size: 11, className: "mr-1" }), "Path Clues"),
                   React.createElement("span", { className: "small text-muted" }, "Folder hierarchy context inferred from filesystem:")
                 ),
                 availableStashBoxes.length > 0 &&
                   React.createElement(
                     "div",
                     { className: "d-flex align-items-center gap-2" },
-                    React.createElement("span", { className: "small text-light" }, "🌐 Stash-box:"),
+                    React.createElement("span", { className: "small text-light" }, React.createElement(IconGlobe, { size: 12, className: "mr-1 text-info" }), "Stash-box:"),
                     React.createElement(
                       "select",
                       {
@@ -4831,7 +4979,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                         onClick: handleQueryStashBox,
                         title: "Query Stash-box using Code and Path clues to fetch canonical metadata",
                       },
-                      isCloudQuerying ? "Querying..." : "🌐 Query Stash-box"
+                      React.createElement(IconGlobe, { size: 13, className: "mr-1" }), isCloudQuerying ? "Querying..." : "Query Stash-box"
                     )
                   )
               ),
@@ -4935,7 +5083,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                             onClick: () => autoDetectFromFilename(sampleWithoutExt),
                             title: "Auto-detect fields using smart heuristics",
                           },
-                          "✨ Auto-Detect"
+                          React.createElement(IconSparkles, { size: 12, className: "mr-1" }), "Auto-Detect"
                         ),
                         React.createElement(
                           "button",
@@ -5004,7 +5152,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                               {
                                 className: "font-weight-bold px-2 py-0",
                                 style: { fontFamily: "monospace", fontSize: "0.88rem", color: "#eceff4" },
-                                title: "Click ✂️ to split this field or change its assignment",
+                                title: "Click to split this field or change its assignment",
                               },
                               chunk.text
                             ),
@@ -5035,7 +5183,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                                 onClick: () => setActiveSplitChunkId(isSplitting ? null : chunk.id),
                                 title: "Break / Split this field into two separate fields",
                               },
-                              "✂️"
+                              React.createElement(IconScissors, { size: 11 })
                             ),
                             // ▶ Merge with next button
                             idx < chunks.length - 1 &&
@@ -5069,7 +5217,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                                 className: "p-2 mt-1 rounded bg-black border border-warning shadow",
                                 style: { minWidth: "220px", zIndex: 10 },
                               },
-                              React.createElement("div", { className: "small font-weight-bold text-warning mb-1" }, `✂️ Break apart "${chunk.text}":`),
+                              React.createElement("div", { className: "small font-weight-bold text-warning mb-1 d-flex align-items-center" }, React.createElement(IconScissors, { size: 12, className: "mr-1" }), `Break apart "${chunk.text}":`),
                               splitSuggestions.map((sug, sIdx) =>
                                 React.createElement(
                                   "button",
@@ -5326,7 +5474,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                               "span",
                               null,
                               displayStudio,
-                              isFromPathStudio && React.createElement("span", { className: "badge badge-dark text-info ml-1 py-0", title: "Resolved from Directory Path Clue" }, "📁 Path")
+                              isFromPathStudio && React.createElement("span", { className: "badge badge-dark text-info ml-1 py-0", title: "Resolved from Directory Path Clue" }, React.createElement(IconFolder, { size: 11, className: "mr-1" }), "Path")
                             )
                           : "—"
                       ),
@@ -5335,9 +5483,9 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                         "td",
                         { style: { textAlign: "center" } },
                         cloud
-                          ? React.createElement("span", { className: "badge badge-primary py-0 px-1" }, "🌐 Stash-box")
+                          ? React.createElement("span", { className: "badge badge-primary py-0 px-1" }, React.createElement(IconGlobe, { size: 11, className: "mr-1" }), "Stash-box")
                           : item.matched
-                          ? React.createElement("span", { className: "badge badge-dark text-muted py-0 px-1" }, "📁 Path+Token")
+                          ? React.createElement("span", { className: "badge badge-dark text-muted py-0 px-1" }, React.createElement(IconFolder, { size: 11, className: "mr-1" }), "Path+Token")
                           : "—"
                       ),
                       React.createElement(
@@ -5492,7 +5640,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
           React.createElement(
             "div",
             { className: "sfm-modal-header" },
-            React.createElement("h5", { className: "mb-0" }, `✏️ Batch Edit: "${currentFolder}"`),
+            React.createElement("h5", { className: "mb-0 d-flex align-items-center" }, React.createElement(IconEdit, { size: 16, color: "#88c0d0", className: "mr-2" }), `Batch Edit: "${currentFolder}"`),
             React.createElement("button", { className: "close text-light", onClick: onClose }, "×")
           ),
           React.createElement(
@@ -5664,7 +5812,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
             const relFolder = currentPath && scene._folderPath.startsWith(currentPath + "/")
               ? scene._folderPath.slice(currentPath.length + 1)
               : (currentPath === scene._folderPath ? "" : scene._folderPath);
-            return relFolder ? React.createElement("div", { className: "text-truncate small text-muted mb-1", title: `Folder: ${scene._folderPath}` }, `📁 ${relFolder}`) : null;
+            return relFolder ? React.createElement("div", { className: "text-truncate small text-muted mb-1 d-flex align-items-center", title: `Folder: ${scene._folderPath}` }, React.createElement(IconFolder, { size: 11, className: "mr-1 text-info" }), relFolder) : null;
           })(),
           React.createElement(
             "div",
@@ -5779,7 +5927,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                     const relFolder = currentPath && scene._folderPath.startsWith(currentPath + "/")
                       ? scene._folderPath.slice(currentPath.length + 1)
                       : (currentPath === scene._folderPath ? "" : scene._folderPath);
-                    return relFolder ? React.createElement("div", { className: "sfm-table-subtext text-muted" }, `📁 ${relFolder}`) : null;
+                    return relFolder ? React.createElement("div", { className: "sfm-table-subtext text-muted d-flex align-items-center" }, React.createElement(IconFolder, { size: 10, className: "mr-1 text-info" }), relFolder) : null;
                   })()
                 ),
                 React.createElement(
@@ -6031,7 +6179,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
           React.createElement(
             "div",
             { className: "sfm-modal-header" },
-            React.createElement("h5", { className: "mb-0" }, "⚙️ Stash File Manager — Settings & Tasks"),
+            React.createElement("h5", { className: "mb-0" }, React.createElement(IconSettings, { size: 18, color: "#88c0d0", className: "mr-2" }), "Stash File Manager — Settings & Tasks"),
             React.createElement("button", { className: "close text-light", onClick: onClose }, "×")
           ),
           React.createElement(
@@ -6045,7 +6193,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
               ),
 
             // Section 1: Video Playback & Transcoding
-            React.createElement("h6", { className: "text-primary border-bottom border-secondary pb-1 mb-3" }, "🎥 Video Playback & Transcoding"),
+            React.createElement("h6", { className: "text-primary border-bottom border-secondary pb-1 mb-3 d-flex align-items-center" }, React.createElement(IconFilm, { size: 15, color: "#88c0d0", className: "mr-2" }), "Video Playback & Transcoding"),
             React.createElement(
               "div",
               { className: "form-group mb-3" },
@@ -6089,7 +6237,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
             ),
 
             // Section 2: Navigation & Root Library Path
-            React.createElement("h6", { className: "text-primary border-bottom border-secondary pb-1 mb-3 mt-4" }, "📁 Navigation & Library Root"),
+            React.createElement("h6", { className: "text-primary border-bottom border-secondary pb-1 mb-3 mt-4 d-flex align-items-center" }, React.createElement(IconFolder, { size: 15, color: "#88c0d0", className: "mr-2" }), "Navigation & Library Root"),
             React.createElement(
               "div",
               { className: "form-group mb-3" },
@@ -6125,7 +6273,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
             ),
 
             // Section 3: View Modes & Card Sizes
-            React.createElement("h6", { className: "text-primary border-bottom border-secondary pb-1 mb-3 mt-4" }, "🎨 View Modes & Layout Preferences"),
+            React.createElement("h6", { className: "text-primary border-bottom border-secondary pb-1 mb-3 mt-4 d-flex align-items-center" }, React.createElement(IconGrid, { size: 15, color: "#88c0d0", className: "mr-2" }), "View Modes & Layout Preferences"),
             React.createElement(
               "div",
               { className: "row" },
@@ -6196,7 +6344,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
             ),
 
             // Section 4: Native Stash Tasks & Troubleshooting
-            React.createElement("h6", { className: "text-primary border-bottom border-secondary pb-1 mb-3 mt-4" }, "⚡ Stash Plugin Tasks & Troubleshooting"),
+            React.createElement("h6", { className: "text-primary border-bottom border-secondary pb-1 mb-3 mt-4 d-flex align-items-center" }, React.createElement(IconRefresh, { size: 15, color: "#88c0d0", className: "mr-2" }), "Stash Plugin Tasks & Troubleshooting"),
             React.createElement(
               "p",
               { className: "small text-muted mb-3" },
@@ -6214,7 +6362,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                   onClick: onTriggerRebuild,
                   title: "Clear all local cache and query Stash for fresh folder hierarchies",
                 },
-                "🔄 Rescan & Rebuild Tree"
+                React.createElement(IconRefresh, { size: 14, className: "mr-1" }), "Rescan & Rebuild Tree"
               ),
               React.createElement(
                 "button",
@@ -6223,7 +6371,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                   onClick: onResetDefaults,
                   title: "Reset all plugin settings back to initial factory defaults",
                 },
-                "⚠️ Reset All Settings to Default"
+                React.createElement(IconAlert, { size: 14, className: "mr-1" }), "Reset All Settings to Default"
               ),
               React.createElement(
                 "a",
@@ -6262,7 +6410,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
               React.createElement(
                 "button",
                 { className: "btn btn-primary btn-sm", onClick: handleSave, disabled: isSaving },
-                isSaving ? "Saving..." : "💾 Save to Stash Config"
+                React.createElement(IconCheck, { size: 14, className: "mr-1" }), isSaving ? "Saving..." : "Save to Stash Config"
               )
             )
           )
@@ -7482,14 +7630,14 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                       { className: "sfm-collapse-chevron mr-2 text-info font-weight-bold" },
                       isSubfoldersCollapsed ? "▶" : "▼"
                     ),
-                    React.createElement("span", { className: "sfm-section-title-label" }, "Subfolders"),
+                    React.createElement("span", { className: "sfm-section-title-label" }, "Sub-folders"),
                     React.createElement(
                       "span",
                       { className: "badge badge-dark sfm-section-count-badge font-weight-normal" },
                       React.createElement("strong", { style: { color: "#88c0d0" } }, filteredAndSortedSubfolders.length)
                     ),
                     isSubfoldersCollapsed &&
-                      React.createElement("span", { className: "text-muted small ml-2 font-italic" }, "(collapsed)")
+                      React.createElement("span", { className: "text-muted small ml-2 font-italic sfm-collapsed-indicator", style: { display: "none" } }, "(collapsed)")
                   ),
                   // Toggle 1: Include Sub-Folders (Bold, 2 color states matching status indicators)
                   React.createElement(
@@ -7822,7 +7970,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                                 },
                                 title: "Trigger Stash filesystem scan for this folder",
                               },
-                              "🔍 Scan"
+                              React.createElement(IconSearch, { size: 12, className: "mr-1" }), "Scan"
                             )
                           )
                         );
@@ -7863,23 +8011,33 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                       React.createElement("strong", { style: { color: "#88c0d0" } }, filteredAndSortedScenes.length)
                     ),
                     isFilesCollapsed &&
-                      React.createElement("span", { className: "text-muted small ml-2 font-italic" }, "(collapsed)")
+                      React.createElement("span", { className: "text-muted small ml-2 font-italic sfm-collapsed-indicator", style: { display: "none" } }, "(collapsed)")
                   ),
-                  // Status Button 1: Sub-Folders Included / Excluded (Bold, 2 color sets for state, matching top file count style)
+                  // Status Button 1: Sub-Folders Included / Excluded (Interactive & aligned with line 1 toggle)
                   React.createElement(
-                    "span",
+                    "button",
                     {
-                      className: `sfm-stat-pill badge badge-dark sfm-badge-indicator sfm-state-pill ml-2 font-weight-bold sfm-pill-subfolders ${includeSubfolders ? "sfm-state-active" : "sfm-state-inactive"}`,
-                      title: includeSubfolders ? "Sub-folders are included in scenes view" : "Sub-folders are excluded from scenes view",
+                      type: "button",
+                      className: `badge sfm-badge-btn sfm-stat-pill sfm-badge-indicator sfm-state-pill ml-2 font-weight-bold sfm-pill-subfolders ${includeSubfolders ? "sfm-state-active" : "sfm-state-inactive"}`,
+                      onClick: (e) => {
+                        e.stopPropagation();
+                        handleToggleIncludeSubfolders(!includeSubfolders);
+                      },
+                      title: includeSubfolders ? "Sub-folders are included in scenes view (Click to exclude)" : "Sub-folders are excluded from scenes view (Click to include)",
                     },
                     includeSubfolders ? "Sub-Folders Included" : "Sub-Folders Excluded"
                   ),
-                  // Status Button 2: Grouped by Folder / Sorted Altogether (Bold, 2 color sets for state, matching top file count style)
+                  // Status Button 2: Grouped by Folder / Sorted Altogether (Interactive & aligned with line 1 toggle)
                   React.createElement(
-                    "span",
+                    "button",
                     {
-                      className: `sfm-stat-pill badge badge-dark sfm-badge-indicator sfm-state-pill ml-2 font-weight-bold sfm-pill-foldersort ${sortByFolderFirst ? "sfm-state-active" : "sfm-state-inactive"}`,
-                      title: sortByFolderFirst ? "Scenes ordered by folder sort first, then sorted within each folder" : "Scenes sorted altogether across all folders flatly",
+                      type: "button",
+                      className: `badge sfm-badge-btn sfm-stat-pill sfm-badge-indicator sfm-state-pill ml-2 font-weight-bold sfm-pill-foldersort ${sortByFolderFirst ? "sfm-state-active" : "sfm-state-inactive"}`,
+                      onClick: (e) => {
+                        e.stopPropagation();
+                        handleToggleSortByFolderFirst(!sortByFolderFirst);
+                      },
+                      title: sortByFolderFirst ? "Scenes ordered by folder sort first (Click to sort altogether)" : "Scenes sorted altogether across all folders (Click to group by folder)",
                     },
                     sortByFolderFirst ? "Grouped by Folder" : "Sorted Altogether"
                   )
