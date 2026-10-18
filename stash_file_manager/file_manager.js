@@ -8858,6 +8858,9 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
         if (node.props && (node.props["data-sfm-card-chip"] || node.props["data-sfm-hierarchy"] || node.props["data-sfm-reel-btn"])) {
           return true;
         }
+        if (node.props && node.props.details && hasSfmAddon(node.props.details, key)) {
+          return true;
+        }
         return hasSfmAddon(node.props && node.props.children, key);
       }
       return false;
@@ -8865,9 +8868,13 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
 
     function patchNativeSceneCard(props, res) {
       try {
-        if (!props || !res) return res;
+        if (!props || !res || !React.isValidElement(res)) return res;
         const scene = props.scene || (props.id ? props : props.item || null);
         if (!scene || !scene.id) return res;
+        // If res is GridCard and already has details with SceneCardDetails, avoid duplicate overlay on outer card
+        if (res.props && res.props.details && React.isValidElement(res.props.details)) {
+          return res;
+        }
         if (hasSfmAddon(res, "sfm-native-card-addon")) return res;
         const folderPath = resolveSceneFolder(scene);
         const addon = React.createElement(NativeSceneCardOverlay, {
@@ -8884,7 +8891,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
 
     function patchNativeSceneDetails(props, res) {
       try {
-        if (!props || !res) return res;
+        if (!props || !res || !React.isValidElement(res)) return res;
         const scene = props.scene || (props.id ? props : props.item || null);
         if (!scene || !scene.id) return res;
         if (hasSfmAddon(res, "sfm-scene-hierarchy-addon")) return res;
@@ -8903,7 +8910,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
 
     function patchNativeScenePlayer(props, res) {
       try {
-        if (!props || !res) return res;
+        if (!props || !res || !React.isValidElement(res)) return res;
         const scene = props.scene || (props.id ? props : props.item || null);
         if (!scene || !scene.id) return res;
         if (hasSfmAddon(res, "sfm-scene-reel-btn-addon")) return res;
@@ -8980,100 +8987,72 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
     // Helper: recursively append a React element into the correct children container
     function appendNavChild(node, item) {
       if (!node) return item;
+      if (!item) return node;
       if (Array.isArray(node)) {
         return node.concat(item);
       }
-      if (React.isValidElement(node)) {
-        const children = node.props && node.props.children;
-        if (children !== undefined && children !== null) {
-          if (Array.isArray(children)) {
-            return React.cloneElement(node, null, ...children, item);
-          }
-          if (React.isValidElement(children)) {
-            if (children.props && children.props.children !== undefined) {
-              return React.cloneElement(node, null, appendNavChild(children, item));
-            }
-            return React.cloneElement(node, null, children, item);
-          }
+      if (!React.isValidElement(node)) {
+        if (typeof node === "string" || typeof node === "number") {
+          return React.createElement(React.Fragment, null, node, item);
         }
+        // Safeguard: Never render non-renderable objects (like plain {}) as React children!
+        return item;
+      }
+
+      const children = node.props && node.props.children;
+      if (children === undefined || children === null) {
         return React.cloneElement(node, null, item);
       }
-      return React.createElement(React.Fragment, null, node, item);
+      if (Array.isArray(children)) {
+        return React.cloneElement(node, null, ...children, item);
+      }
+      return React.cloneElement(node, null, children, item);
+    }
+
+    // Adaptor helpers for Stash PluginApi.patch hooks
+    function makeAfterPatch(handler) {
+      return function () {
+        const props = arguments[0];
+        const res = arguments.length > 1 ? arguments[arguments.length - 1] : null;
+        return handler(props, res);
+      };
+    }
+
+    function makeInsteadPatch(handler) {
+      return function () {
+        const next = arguments[arguments.length - 1];
+        const originalArgs = Array.prototype.slice.call(arguments, 0, -1);
+        const props = arguments[0];
+        const res = typeof next === "function" ? next.apply(this, originalArgs) : null;
+        return handler(props, res);
+      };
     }
 
     // Method 1: Official PluginApi.patch.instead & patch.after
     if (window.PluginApi.patch) {
       try {
+        function patchNav(props, res) {
+          return appendNavChild(res, React.createElement(FilesNavButton, { key: "sfm-files-nav-item" }));
+        }
+
         if (window.PluginApi.patch.instead) {
-          window.PluginApi.patch.instead("MainNavBar.MenuItems", function (props) {
-            const next = arguments[arguments.length - 1];
-            const res = typeof next === "function" ? next(props) : null;
-            return appendNavChild(res, React.createElement(FilesNavButton, { key: "sfm-files-nav-item" }));
-          });
+          window.PluginApi.patch.instead("MainNavBar.MenuItems", makeInsteadPatch(patchNav));
+          window.PluginApi.patch.instead("SceneCard.Details", makeInsteadPatch(patchNativeSceneCard));
+          window.PluginApi.patch.instead("SceneCard", makeInsteadPatch(patchNativeSceneCard));
+          window.PluginApi.patch.instead("ScenePage", makeInsteadPatch(patchNativeSceneDetails));
+          window.PluginApi.patch.instead("SceneDetails", makeInsteadPatch(patchNativeSceneDetails));
+          window.PluginApi.patch.instead("SceneDetails.Sidebar", makeInsteadPatch(patchNativeSceneDetails));
+          window.PluginApi.patch.instead("SceneFileInfoPanel", makeInsteadPatch(patchNativeSceneDetails));
+          window.PluginApi.patch.instead("ScenePlayer", makeInsteadPatch(patchNativeScenePlayer));
         } else if (window.PluginApi.patch.after) {
-          window.PluginApi.patch.after("MainNavBar.MenuItems", function (props, res) {
-            return appendNavChild(res, React.createElement(FilesNavButton, { key: "sfm-files-nav-item" }));
-          });
-        }
-
-        // Phase 4: Patch SceneCard, SceneCard.Details, SceneCard.Overlays, ScenePage, SceneFileInfoPanel, ScenePlayer
-        const patchSceneCard = function (props, res) {
-          return patchNativeSceneCard(props, res);
-        };
-        const patchSceneDetails = function (props, res) {
-          return patchNativeSceneDetails(props, res);
-        };
-        const patchScenePlayer = function (props, res) {
-          return patchNativeScenePlayer(props, res);
-        };
-
-        if (window.PluginApi.patch.after) {
-          window.PluginApi.patch.after("SceneCard.Details", patchSceneCard);
-          window.PluginApi.patch.after("SceneCard.Overlays", patchSceneCard);
-          window.PluginApi.patch.after("SceneCard", patchSceneCard);
-          window.PluginApi.patch.after("ScenePage", patchSceneDetails);
-          window.PluginApi.patch.after("SceneDetails", patchSceneDetails);
-          window.PluginApi.patch.after("SceneDetails.Sidebar", patchSceneDetails);
-          window.PluginApi.patch.after("SceneFileInfoPanel", patchSceneDetails);
-          window.PluginApi.patch.after("ScenePlayer", patchScenePlayer);
-        }
-
-        if (window.PluginApi.patch.instead) {
-          window.PluginApi.patch.instead("SceneCard.Details", function (props) {
-            const next = arguments[arguments.length - 1];
-            const res = typeof next === "function" ? next(props) : null;
-            return patchNativeSceneCard(props, res);
-          });
-          window.PluginApi.patch.instead("SceneCard", function (props) {
-            const next = arguments[arguments.length - 1];
-            const res = typeof next === "function" ? next(props) : null;
-            return patchNativeSceneCard(props, res);
-          });
-          window.PluginApi.patch.instead("ScenePage", function (props) {
-            const next = arguments[arguments.length - 1];
-            const res = typeof next === "function" ? next(props) : null;
-            return patchNativeSceneDetails(props, res);
-          });
-          window.PluginApi.patch.instead("SceneDetails", function (props) {
-            const next = arguments[arguments.length - 1];
-            const res = typeof next === "function" ? next(props) : null;
-            return patchNativeSceneDetails(props, res);
-          });
-          window.PluginApi.patch.instead("SceneDetails.Sidebar", function (props) {
-            const next = arguments[arguments.length - 1];
-            const res = typeof next === "function" ? next(props) : null;
-            return patchNativeSceneDetails(props, res);
-          });
-          window.PluginApi.patch.instead("SceneFileInfoPanel", function (props) {
-            const next = arguments[arguments.length - 1];
-            const res = typeof next === "function" ? next(props) : null;
-            return patchNativeSceneDetails(props, res);
-          });
-          window.PluginApi.patch.instead("ScenePlayer", function (props) {
-            const next = arguments[arguments.length - 1];
-            const res = typeof next === "function" ? next(props) : null;
-            return patchNativeScenePlayer(props, res);
-          });
+          window.PluginApi.patch.after("MainNavBar.MenuItems", makeAfterPatch(patchNav));
+          window.PluginApi.patch.after("SceneCard.Details", makeAfterPatch(patchNativeSceneCard));
+          window.PluginApi.patch.after("SceneCard", makeAfterPatch(patchNativeSceneCard));
+          window.PluginApi.patch.after("ScenePage", makeAfterPatch(patchNativeSceneDetails));
+          window.PluginApi.patch.after("SceneDetails", makeAfterPatch(patchNativeSceneDetails));
+          window.PluginApi.patch.after("SceneDetails.Sidebar", makeAfterPatch(patchNativeSceneDetails));
+          window.PluginApi.patch.after("SceneFileInfoPanel", makeAfterPatch(patchNativeSceneDetails));
+          window.PluginApi.patch.after("ScenePlayer", makeAfterPatch(patchNativeScenePlayer));
         }
 
 

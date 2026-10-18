@@ -4,6 +4,6 @@
   version: "3.0.2"
   date: "2026-10-02 07:55:00"
   path: stash_file_manager.zip
-  sha256: 708b38f02ec03c1567c11d15d5124f85b0b9e19ea09fe210832546522859938a
+  sha256: 1f61e940030fe9c58c69d0aa02b3cd52cd9f7c1fb1e9bbe605b0662c3cb2e185
   metadata:
     description: Hierarchical directory file-manager navigation for Stash with customizable folder views, Binge-style reel player, draggable PIP player, regex metadata parser, and native tasks.

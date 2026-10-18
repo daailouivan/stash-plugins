@@ -4,7 +4,7 @@
 **Current Release:** `v3.0.2`  
 **Target Milestone:** `v3.1.0` (Phase 4 Continuation: Performer & Studio Directory Aggregation & Advanced Platform Hooks)  
 **Active Repository:** `https://github.com/daailouivan/stash-plugins.git` (`main` branch)  
-**Distribution Package:** `stash_file_manager.zip` (SHA256: `708b38f02ec03c1567c11d15d5124f85b0b9e19ea09fe210832546522859938a`)  
+**Distribution Package:** `stash_file_manager.zip` (SHA256: `1f61e940030fe9c58c69d0aa02b3cd52cd9f7c1fb1e9bbe605b0662c3cb2e185`)  
 **Plugin Manifest:** `stash_file_manager/stash_file_manager.yml` (version `3.0.2`)  
 **Repository Index:** `index.yml` (version `3.0.2`)  
 **Total Release Tags:** `47` (`v1.0.0` through `v3.0.2`)  
@@ -33,6 +33,7 @@ node test_components.js
 node test_v3.0.0_native_card_and_scene_detail.js
 node test_v3.0.0_native_embedded_cards.js
 node test_v3.0.2_title_line_alignment.js
+node test_react_error_31_regression.js
 ```
 
 ---
