@@ -176,6 +176,13 @@ Eliminate wasted vertical space with compact folder layouts tailored to any libr
 
 ## 📋 Changelog & Development History
 
+### [v3.0.3] — 2026-10-18 18:40:00
+* **Critical Fix: Resolve Minified React Error #31 on Scene and List Pages:**
+  * Fixed argument order in Stash `PluginApi.patch.after` hooks where React components passed `(props, context, result)`. Handlers now safely extract the rendered element from the last argument rather than React's empty `context` object (`{}`).
+  * Switched component patching to prioritized conditional registration (`patch.instead` with fallback to `patch.after`), preventing simultaneous dual-registration and hook collisions on scene cards and detail pages.
+  * Hardened `appendNavChild` and `patchNative*` handlers with strict React element type checks to ensure non-renderable objects are never inserted into the JSX tree.
+  * Added regression test suite `test_react_error_31_regression.js` covering both `patch.instead` and `patch.after` execution environments.
+
 ### [v3.0.2] — 2026-10-02 07:55:00
 * **Title Line Geometry Alignment, Synchronized Two-Way State Toggles & UI Modernization:**
   * **Section Headers & Count Badges Geometry Alignment:**
