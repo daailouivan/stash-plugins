@@ -4673,6 +4673,13 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
         let cursor = 0;
         let regex = "^";
         let hasUppercaseOnlyGroup = false;
+        const usedGroups = new Set();
+
+        const namedOrNonCap = (groupName, inner) => {
+          if (usedGroups.has(groupName)) return `(?:${inner})`;
+          usedGroups.add(groupName);
+          return `(?<${groupName}>${inner})`;
+        };
 
         currentChunks.forEach((chunk, idx) => {
           const isLast = idx === currentChunks.length - 1;
@@ -4687,7 +4694,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
               regex += "_+";
             } else if (sepText.includes(" - ")) {
               regex += "\\s*-\\s*";
-            } else if (/^\\s+$/.test(sepText)) {
+            } else if (/^\s+$/.test(sepText)) {
               regex += "\\s+";
             } else {
               regex += escapeRegex(sepText);
@@ -4698,29 +4705,29 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
             regex += isLast ? "(?:.+)" : "(?:[a-zA-Z0-9]+)";
           } else if (chunk.fieldId === "code") {
             if (/^\d+$/.test(chunkText)) {
-              regex += "(?<code>\\d+)";
+              regex += namedOrNonCap("code", "\\d+");
             } else {
-              regex += "(?<code>[A-Za-z0-9]+)";
+              regex += namedOrNonCap("code", "[A-Za-z0-9]+");
             }
           } else if (chunk.fieldId === "studio") {
             if (/^[A-Za-z]+$/.test(chunkText)) {
-              regex += "(?<studio>[A-Za-z]+)";
+              regex += namedOrNonCap("studio", "[A-Za-z]+");
             } else {
-              regex += "(?<studio>[A-Za-z0-9]+)";
+              regex += namedOrNonCap("studio", "[A-Za-z0-9]+");
             }
           } else if (chunk.fieldId === "performers") {
             if (/^[A-Z_]+$/.test(chunkText)) {
               hasUppercaseOnlyGroup = true;
-              regex += "(?<performers>[A-Z]+(?:_[A-Z]+)*)";
+              regex += namedOrNonCap("performers", "[A-Z]+(?:_[A-Z]+)*");
             } else {
-              regex += "(?<performers>[A-Za-z]+(?:[\\s_][A-Za-z]+)*)";
+              regex += namedOrNonCap("performers", "[A-Za-z]+(?:[\\s_][A-Za-z]+)*");
             }
           } else if (chunk.fieldId === "title") {
-            regex += isLast ? "(?<title>.+)" : "(?<title>.+?)";
+            regex += namedOrNonCap("title", isLast ? ".+" : ".+?");
           } else if (chunk.fieldId === "date") {
-            regex += "(?<date>\\d{4}[-._]\\d{2}[-._]\\d{2}|\\d{6,8})";
+            regex += namedOrNonCap("date", "\\d{4}[-._]\\d{2}[-._]\\d{2}|\\d{6,8}");
           } else if (chunk.fieldId === "duration") {
-            regex += "(?<duration>\\d+(?:m|min|s|sec)?|\\d+:\\d+(?::\\d+)?)";
+            regex += namedOrNonCap("duration", "\\d+(?:m|min|s|sec)?|\\d+:\\d+(?::\\d+)?");
           }
 
           cursor = pos >= 0 ? pos + chunkText.length : cursor;
@@ -4846,14 +4853,20 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
 
       const parsedResults = React.useMemo(() => {
         let re = null;
-        try {
-          re = new RegExp(pattern, caseInsensitive ? "i" : "");
-        } catch (e) {
-          return { error: e.message, items: [] };
+        let regexError = null;
+        if (pattern && pattern.trim()) {
+          try {
+            re = new RegExp(pattern, caseInsensitive ? "i" : "");
+          } catch (e) {
+            regexError = e.message;
+          }
         }
 
         const items = directScenes.map((scene) => {
           const rawBasename = scene.files?.[0]?.basename || "";
+          if (!re) {
+            return { scene, rawBasename, matched: false, groups: {} };
+          }
           const nameWithoutExt = rawBasename.replace(/\.[^/.]+$/, "");
           const match = re.exec(nameWithoutExt) || re.exec(rawBasename);
 
@@ -4863,7 +4876,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
           return { scene, rawBasename, matched: true, groups: match.groups };
         });
 
-        return { error: null, items };
+        return { error: regexError, items };
       }, [pattern, caseInsensitive, directScenes]);
 
       const getSceneBestQuery = (scene, matchedGroups) => {
