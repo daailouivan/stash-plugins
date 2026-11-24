@@ -1291,7 +1291,9 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
         if (filePath) {
           const derived = deriveFolderFromPath(filePath);
           if (derived) {
-            sceneOrId._folderPath = derived;
+            if (Object.isExtensible(sceneOrId)) {
+              sceneOrId._folderPath = derived;
+            }
             return derived;
           }
         }
@@ -5479,7 +5481,9 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
 
       const isItemMatched = (item) => {
         const sId = String(item.scene.id);
-        return Boolean(item.matched || cloudMatches[sId] || cloudMatches[item.scene.id]);
+        const hasCloud = Boolean(cloudMatches[sId] || cloudMatches[item.scene.id]);
+        if (activeTab === "scrape") return hasCloud;
+        return Boolean(item.matched || hasCloud);
       };
 
       const matchedCount = parsedResults.items.filter(isItemMatched).length;
@@ -5494,10 +5498,25 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
       };
 
       const filteredItems = React.useMemo(() => {
-        if (previewFilter === "matched") return parsedResults.items.filter(isItemMatched);
-        if (previewFilter === "unmatched") return parsedResults.items.filter((i) => !isItemMatched(i));
-        return parsedResults.items;
-      }, [parsedResults, previewFilter, cloudMatches]);
+        let list = parsedResults.items;
+        if (previewFilter === "matched") list = list.filter(isItemMatched);
+        else if (previewFilter === "unmatched") list = list.filter((i) => !isItemMatched(i));
+
+        if (activeTab === "scrape") {
+          const rank = (item) => {
+            const sId = String(item.scene.id);
+            const hasCloud = Boolean(cloudMatches[sId] || cloudMatches[item.scene.id]);
+            const st = (scrapeStates[sId] || scrapeStates[item.scene.id])?.status || "idle";
+            if (hasCloud && st !== "done" && st !== "skipped") return 0; // Ready to review/apply at very top
+            if (st === "scraping") return 1;
+            if (hasCloud && st === "done") return 2;
+            if (hasCloud && st === "skipped") return 3;
+            return 4;
+          };
+          list = [...list].sort((a, b) => rank(a) - rank(b));
+        }
+        return list;
+      }, [parsedResults, previewFilter, cloudMatches, scrapeStates, activeTab]);
 
       // Apply metadata updates to Stash
       const handleExecute = async () => {
@@ -6882,7 +6901,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                               "button",
                               {
                                 type: "button",
-                                className: `btn btn-xs ${isInlineOpen ? "btn-warning" : "btn-outline-secondary"} py-0 px-2 mr-1`,
+                                className: `btn btn-xs ${isInlineOpen ? "btn-warning" : "btn-secondary text-light"} py-0 px-2 mr-1`,
                                 onClick: () => handleOpenInlineSearch(item.scene),
                                 title: "Search this scene by custom title/query across scrapers",
                               },
@@ -7078,7 +7097,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                                       "button",
                                       {
                                         type: "button",
-                                        className: "btn btn-xs btn-outline-secondary py-0 px-2",
+                                        className: "btn btn-xs btn-secondary text-light py-0 px-2",
                                         onClick: () => handleToggleExpandRow(item.scene.id),
                                       },
                                       "▲ Collapse"
@@ -7250,7 +7269,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
               React.createElement(
                 "div",
                 { className: "d-flex align-items-center flex-wrap gap-3 small text-muted" },
-                React.createElement("span", { className: "font-weight-bold text-light" }, "Fields to apply:"),
+                React.createElement("span", { className: "font-weight-bold text-light mr-2" }, "Fields to apply:"),
                 [
                   ["title", "Title"],
                   ["date", "Date"],
@@ -7263,7 +7282,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                 ].map(([key, label]) =>
                   React.createElement(
                     "div",
-                    { key, className: "d-flex align-items-center gap-1 cursor-pointer" },
+                    { key, className: "d-flex align-items-center mr-3 cursor-pointer" },
                     React.createElement("input", {
                       type: "checkbox",
                       id: `sfm-apply-${key}`,
