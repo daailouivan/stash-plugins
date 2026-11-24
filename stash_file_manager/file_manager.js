@@ -4427,10 +4427,25 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
         tags: true,
         details: true,
         code: true,
+        cover: true,
       });
+
+      const [expandedRowIds, setExpandedRowIds] = React.useState(() => new Set());
+      const resolvedStudiosRef = React.useRef({});
+      const resolvedPerformersRef = React.useRef({});
+      const resolvedTagsRef = React.useRef({});
 
       const handleToggleFieldToApply = (field) => {
         setFieldsToApply((prev) => ({ ...prev, [field]: !prev[field] }));
+      };
+
+      const handleToggleExpandRow = (sceneId) => {
+        setExpandedRowIds((prev) => {
+          const next = new Set(prev);
+          if (next.has(sceneId)) next.delete(sceneId);
+          else next.add(sceneId);
+          return next;
+        });
       };
 
       const sampleScene = directScenes[sampleIndex] || directScenes[0];
@@ -4966,6 +4981,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
             if (res?.scraped) {
               setCloudMatches((prev) => ({ ...prev, [scene.id]: res.scraped }));
               setScrapeStates((prev) => ({ ...prev, [scene.id]: { status: "scraped", sourceName: res.sourceName } }));
+              setExpandedRowIds((prev) => new Set(prev).add(scene.id));
             } else {
               setScrapeStates((prev) => ({ ...prev, [scene.id]: { status: "nomatch", sourceName: "" } }));
             }
@@ -5012,6 +5028,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
             if (res?.scraped) {
               setCloudMatches((prev) => ({ ...prev, [scene.id]: res.scraped }));
               setScrapeStates((prev) => ({ ...prev, [scene.id]: { status: "scraped", sourceName: res.sourceName } }));
+              setExpandedRowIds((prev) => new Set(prev).add(scene.id));
             } else {
               setScrapeStates((prev) => ({ ...prev, [scene.id]: { status: "nomatch", sourceName: "" } }));
             }
@@ -5047,6 +5064,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
           if (res?.scraped) {
             setCloudMatches((prev) => ({ ...prev, [scene.id]: res.scraped }));
             setScrapeStates((prev) => ({ ...prev, [scene.id]: { status: "scraped", sourceName: res.sourceName } }));
+            setExpandedRowIds((prev) => new Set(prev).add(scene.id));
           } else {
             setScrapeStates((prev) => ({ ...prev, [scene.id]: { status: "nomatch", sourceName: "" } }));
           }
@@ -5110,15 +5128,273 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
         }
       };
 
-      const handleSelectCandidate = (sceneId, candidate) => {
+      const handleSelectCandidate = (sceneId, candidate, applyImmediately = false) => {
         const sourceObj = availableSources.find((s) => s.key === inlineSearchSource) || { name: "Manual Search" };
         setCloudMatches((prev) => ({ ...prev, [sceneId]: candidate }));
         setScrapeStates((prev) => ({
           ...prev,
           [sceneId]: { status: "scraped", sourceName: `${sourceObj.name} (Selected)` },
         }));
+        setExpandedRowIds((prev) => new Set(prev).add(sceneId));
         setInlineSearchRowId(null);
         setInlineSearchResults([]);
+        if (applyImmediately) {
+          const scene = directScenes.find((s) => String(s.id) === String(sceneId));
+          if (scene) {
+            setTimeout(() => handleApplySingle(scene, candidate), 50);
+          }
+        }
+      };
+
+      const resolveOrCreateStudio = async (name) => {
+        if (!name) return null;
+        if (resolvedStudiosRef.current[name]) return resolvedStudiosRef.current[name];
+        const sRes = await gqlFetch(
+          `query FindStudio($name: String!) {
+            findStudios(studio_filter: { name: { value: $name, modifier: EQUALS } }) {
+              studios { id name }
+            }
+          }`,
+          { name }
+        );
+        let foundId = sRes?.findStudios?.studios?.[0]?.id;
+        if (!foundId) {
+          try {
+            const cRes = await gqlFetch(
+              `mutation CreateStudio($name: String!) {
+                studioCreate(input: { name: $name }) { id }
+              }`,
+              { name }
+            );
+            foundId = cRes?.studioCreate?.id;
+          } catch (e) {
+            const sRes2 = await gqlFetch(
+              `query FindStudio2($name: String!) {
+                findStudios(studio_filter: { name: { value: $name, modifier: EQUALS } }) {
+                  studios { id name }
+                }
+              }`,
+              { name }
+            );
+            foundId = sRes2?.findStudios?.studios?.[0]?.id;
+          }
+        }
+        if (foundId) resolvedStudiosRef.current[name] = foundId;
+        return foundId || null;
+      };
+
+      const resolveOrCreatePerformer = async (name) => {
+        if (!name) return null;
+        if (resolvedPerformersRef.current[name]) return resolvedPerformersRef.current[name];
+        const pRes = await gqlFetch(
+          `query FindPerformer($name: String!) {
+            findPerformers(performer_filter: { name: { value: $name, modifier: EQUALS } }) {
+              performers { id name }
+            }
+          }`,
+          { name }
+        );
+        let foundId = pRes?.findPerformers?.performers?.[0]?.id;
+        if (!foundId) {
+          try {
+            const cRes = await gqlFetch(
+              `mutation CreatePerformer($name: String!) {
+                performerCreate(input: { name: $name }) { id }
+              }`,
+              { name }
+            );
+            foundId = cRes?.performerCreate?.id;
+          } catch (e) {
+            const pRes2 = await gqlFetch(
+              `query FindPerformer2($name: String!) {
+                findPerformers(performer_filter: { name: { value: $name, modifier: EQUALS } }) {
+                  performers { id name }
+                }
+              }`,
+              { name }
+            );
+            foundId = pRes2?.findPerformers?.performers?.[0]?.id;
+          }
+        }
+        if (foundId) resolvedPerformersRef.current[name] = foundId;
+        return foundId || null;
+      };
+
+      const resolveOrCreateTag = async (name) => {
+        if (!name) return null;
+        if (resolvedTagsRef.current[name]) return resolvedTagsRef.current[name];
+        const tRes = await gqlFetch(
+          `query FindTag($name: String!) {
+            findTags(tag_filter: { name: { value: $name, modifier: EQUALS } }) {
+              tags { id name }
+            }
+          }`,
+          { name }
+        );
+        let foundId = tRes?.findTags?.tags?.[0]?.id;
+        if (!foundId) {
+          try {
+            const cRes = await gqlFetch(
+              `mutation CreateTag($name: String!) {
+                tagCreate(input: { name: $name }) { id }
+              }`,
+              { name }
+            );
+            foundId = cRes?.tagCreate?.id;
+          } catch (e) {
+            const tRes2 = await gqlFetch(
+              `query FindTag2($name: String!) {
+                findTags(tag_filter: { name: { value: $name, modifier: EQUALS } }) {
+                  tags { id name }
+                }
+              }`,
+              { name }
+            );
+            foundId = tRes2?.findTags?.tags?.[0]?.id;
+          }
+        }
+        if (foundId) resolvedTagsRef.current[name] = foundId;
+        return foundId || null;
+      };
+
+      const applySceneMetadata = async (scene, cloud, parsed, fields) => {
+        const updateInput = { id: scene.id };
+
+        if (fields.title) {
+          const finalTitle = cloud?.title || cleanExtracted("title", parsed?.title);
+          if (finalTitle) updateInput.title = finalTitle;
+        }
+
+        if (fields.date) {
+          const finalDate = cloud?.date || cleanExtracted("date", parsed?.date);
+          if (finalDate && /^\d{4}-\d{2}-\d{2}$/.test(finalDate)) {
+            updateInput.date = finalDate;
+          }
+        }
+
+        if (fields.code) {
+          const finalCode = cloud?.code || (parsed?.code || "").trim();
+          if (finalCode) updateInput.code = finalCode;
+        }
+
+        if (fields.details && cloud?.details) {
+          updateInput.details = cloud.details;
+        }
+
+        if (fields.cover && cloud?.image) {
+          updateInput.cover_image = cloud.image;
+        }
+
+        if (cloud?.url) {
+          updateInput.urls = [cloud.url];
+        }
+
+        if (fields.studio) {
+          const studioName = cloud?.studio?.name || cleanExtracted("studio", parsed?.studio) || activeStudioClue;
+          if (studioName) {
+            let studioId = cloud?.studio?.stored_id;
+            if (!studioId) {
+              studioId = await resolveOrCreateStudio(studioName);
+            }
+            if (studioId) updateInput.studio_id = studioId;
+          }
+        }
+
+        if (fields.performers) {
+          const pNames = cloud?.performers
+            ? cloud.performers.map((p) => p.name)
+            : (cleanExtracted("performers", parsed?.performers) || activePerformerClue)
+                .split(/,|&|\band\b/i).map((s) => s.trim()).filter(Boolean);
+
+          const pIds = [];
+          for (const pName of pNames) {
+            if (!pName) continue;
+            const pId = await resolveOrCreatePerformer(pName);
+            if (pId) pIds.push(pId);
+          }
+          if (pIds.length > 0) updateInput.performer_ids = pIds;
+        }
+
+        if (fields.tags && cloud?.tags?.length > 0) {
+          const tIds = [];
+          for (const tag of cloud.tags) {
+            const tName = tag.name?.trim();
+            if (!tName) continue;
+            const tId = await resolveOrCreateTag(tName);
+            if (tId) tIds.push(tId);
+          }
+          if (tIds.length > 0) updateInput.tag_ids = tIds;
+        }
+
+        await gqlFetch(
+          `mutation UpdateScene($input: SceneUpdateInput!) {
+            sceneUpdate(input: $input) { id }
+          }`,
+          { input: updateInput }
+        );
+        return true;
+      };
+
+      const handleApplySingle = async (scene, overrideCloud = null) => {
+        const cloud = overrideCloud || cloudMatches[scene.id];
+        const parsed = parsedResults.items.find((it) => it.scene.id === scene.id)?.groups || {};
+        setScrapeStates((prev) => ({
+          ...prev,
+          [scene.id]: { status: "applying", sourceName: prev[scene.id]?.sourceName || "" },
+        }));
+        try {
+          await applySceneMetadata(scene, cloud, parsed, fieldsToApply);
+          setScrapeStates((prev) => ({
+            ...prev,
+            [scene.id]: { status: "done", sourceName: prev[scene.id]?.sourceName || "Applied" },
+          }));
+          setSelectedSceneIds((prev) => {
+            const next = new Set(prev);
+            next.delete(scene.id);
+            return next;
+          });
+          clearCachedScenes();
+        } catch (err) {
+          setScrapeStates((prev) => ({
+            ...prev,
+            [scene.id]: { status: "error", error: err.message || String(err) },
+          }));
+        }
+      };
+
+      const handleSkipSingle = (sceneId) => {
+        setScrapeStates((prev) => {
+          const current = prev[sceneId]?.status;
+          return {
+            ...prev,
+            [sceneId]: {
+              status: current === "skipped" ? (cloudMatches[sceneId] ? "scraped" : "idle") : "skipped",
+              sourceName: prev[sceneId]?.sourceName || "",
+            },
+          };
+        });
+        setSelectedSceneIds((prev) => {
+          const next = new Set(prev);
+          next.delete(sceneId);
+          return next;
+        });
+      };
+
+      const handleClearSingle = (sceneId) => {
+        setCloudMatches((prev) => {
+          const next = { ...prev };
+          delete next[sceneId];
+          return next;
+        });
+        setScrapeStates((prev) => ({
+          ...prev,
+          [sceneId]: { status: "idle", sourceName: "" },
+        }));
+        setExpandedRowIds((prev) => {
+          const next = new Set(prev);
+          next.delete(sceneId);
+          return next;
+        });
       };
 
       const handleToggleSelectScene = (sceneId) => {
@@ -5152,180 +5428,19 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
         setIsExecuting(true);
         setProgressText(`Starting updates for ${scenesToUpdate.length} scenes...`);
 
-        const resolvedStudios = {};
-        const resolvedPerformers = {};
-        const resolvedTags = {};
-
         try {
           let success = 0;
-
           for (let i = 0; i < scenesToUpdate.length; i++) {
             const scene = scenesToUpdate[i];
             const cloud = cloudMatches[scene.id];
             const parsed = parsedResults.items.find((it) => it.scene.id === scene.id)?.groups || {};
             setProgressText(`Updating scene ${i + 1}/${scenesToUpdate.length}: ${scene.files?.[0]?.basename || scene.title || ""}...`);
 
-            const updateInput = { id: scene.id };
-
-            if (fieldsToApply.title) {
-              const finalTitle = cloud?.title || cleanExtracted("title", parsed.title);
-              if (finalTitle) updateInput.title = finalTitle;
-            }
-
-            if (fieldsToApply.date) {
-              const finalDate = cloud?.date || cleanExtracted("date", parsed.date);
-              if (finalDate && /^\d{4}-\d{2}-\d{2}$/.test(finalDate)) {
-                updateInput.date = finalDate;
-              }
-            }
-
-            if (fieldsToApply.code) {
-              const finalCode = cloud?.code || (parsed.code || "").trim();
-              if (finalCode) updateInput.code = finalCode;
-            }
-
-            if (fieldsToApply.details && cloud?.details) {
-              updateInput.details = cloud.details;
-            }
-
-            if (fieldsToApply.studio) {
-              const studioName = cloud?.studio?.name || cleanExtracted("studio", parsed.studio) || activeStudioClue;
-              if (studioName) {
-                if (!resolvedStudios[studioName]) {
-                  const sRes = await gqlFetch(
-                    `query FindStudio($name: String!) {
-                      findStudios(studio_filter: { name: { value: $name, modifier: EQUALS } }) {
-                        studios { id name }
-                      }
-                    }`,
-                    { name: studioName }
-                  );
-                  let foundId = sRes?.findStudios?.studios?.[0]?.id;
-                  if (!foundId) {
-                    try {
-                      const cRes = await gqlFetch(
-                        `mutation CreateStudio($name: String!) {
-                          studioCreate(input: { name: $name }) { id }
-                        }`,
-                        { name: studioName }
-                      );
-                      foundId = cRes?.studioCreate?.id;
-                    } catch (e) {
-                      const sRes2 = await gqlFetch(
-                        `query FindStudio2($name: String!) {
-                          findStudios(studio_filter: { name: { value: $name, modifier: EQUALS } }) {
-                            studios { id name }
-                          }
-                        }`,
-                        { name: studioName }
-                      );
-                      foundId = sRes2?.findStudios?.studios?.[0]?.id;
-                    }
-                  }
-                  if (foundId) resolvedStudios[studioName] = foundId;
-                }
-                if (resolvedStudios[studioName]) {
-                  updateInput.studio_id = resolvedStudios[studioName];
-                }
-              }
-            }
-
-            if (fieldsToApply.performers) {
-              const perfNames = cloud?.performers
-                ? cloud.performers.map((p) => p.name)
-                : (cleanExtracted("performers", parsed.performers) || activePerformerClue)
-                    .split(/,|&|\band\b/i).map((s) => s.trim()).filter(Boolean);
-
-              const pIds = [];
-              for (const pName of perfNames) {
-                if (!pName) continue;
-                if (!resolvedPerformers[pName]) {
-                  const pRes = await gqlFetch(
-                    `query FindPerformer($name: String!) {
-                      findPerformers(performer_filter: { name: { value: $name, modifier: EQUALS } }) {
-                        performers { id name }
-                      }
-                    }`,
-                    { name: pName }
-                  );
-                  let foundId = pRes?.findPerformers?.performers?.[0]?.id;
-                  if (!foundId) {
-                    try {
-                      const cRes = await gqlFetch(
-                        `mutation CreatePerformer($name: String!) {
-                          performerCreate(input: { name: $name }) { id }
-                        }`,
-                        { name: pName }
-                      );
-                      foundId = cRes?.performerCreate?.id;
-                    } catch (e) {
-                      const pRes2 = await gqlFetch(
-                        `query FindPerformer2($name: String!) {
-                          findPerformers(performer_filter: { name: { value: $name, modifier: EQUALS } }) {
-                            performers { id name }
-                          }
-                        }`,
-                        { name: pName }
-                      );
-                      foundId = pRes2?.findPerformers?.performers?.[0]?.id;
-                    }
-                  }
-                  if (foundId) resolvedPerformers[pName] = foundId;
-                }
-                if (resolvedPerformers[pName]) pIds.push(resolvedPerformers[pName]);
-              }
-              if (pIds.length > 0) updateInput.performer_ids = pIds;
-            }
-
-            if (fieldsToApply.tags && cloud?.tags?.length > 0) {
-              const tIds = [];
-              for (const tag of cloud.tags) {
-                const tName = tag.name?.trim();
-                if (!tName) continue;
-                if (!resolvedTags[tName]) {
-                  const tRes = await gqlFetch(
-                    `query FindTag($name: String!) {
-                      findTags(tag_filter: { name: { value: $name, modifier: EQUALS } }) {
-                        tags { id name }
-                      }
-                    }`,
-                    { name: tName }
-                  );
-                  let foundId = tRes?.findTags?.tags?.[0]?.id;
-                  if (!foundId) {
-                    try {
-                      const cRes = await gqlFetch(
-                        `mutation CreateTag($name: String!) {
-                          tagCreate(input: { name: $name }) { id }
-                        }`,
-                        { name: tName }
-                      );
-                      foundId = cRes?.tagCreate?.id;
-                    } catch (e) {
-                      const tRes2 = await gqlFetch(
-                        `query FindTag2($name: String!) {
-                          findTags(tag_filter: { name: { value: $name, modifier: EQUALS } }) {
-                            tags { id name }
-                          }
-                        }`,
-                        { name: tName }
-                      );
-                      foundId = tRes2?.findTags?.tags?.[0]?.id;
-                    }
-                  }
-                  if (foundId) resolvedTags[tName] = foundId;
-                }
-                if (resolvedTags[tName]) tIds.push(resolvedTags[tName]);
-              }
-              if (tIds.length > 0) updateInput.tag_ids = tIds;
-            }
-
-            await gqlFetch(
-              `mutation UpdateScene($input: SceneUpdateInput!) {
-                sceneUpdate(input: $input) { id }
-              }`,
-              { input: updateInput }
-            );
+            await applySceneMetadata(scene, cloud, parsed, fieldsToApply);
+            setScrapeStates((prev) => ({
+              ...prev,
+              [scene.id]: { status: "done", sourceName: prev[scene.id]?.sourceName || "Applied" },
+            }));
             success++;
           }
 
@@ -5887,6 +6002,8 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                     const posterUrl = item.scene.paths?.screenshot || `/scene/${item.scene.id}/screenshot`;
                     const isInlineOpen = inlineSearchRowId === item.scene.id;
 
+                    const isExpanded = expandedRowIds.has(item.scene.id) || (!!cloud && sState.status !== "skipped");
+
                     return [
                       React.createElement(
                         "tr",
@@ -5946,9 +6063,17 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                         React.createElement(
                           "td",
                           { style: { textAlign: "center" } },
-                          sState.status === "scraping"
+                          sState.status === "applying"
+                            ? React.createElement("span", { className: "badge badge-info" }, "Applying...")
+                            : sState.status === "done"
+                            ? React.createElement("span", { className: "badge badge-success" }, "✓ Applied")
+                            : sState.status === "skipped"
+                            ? React.createElement("span", { className: "badge badge-warning" }, "Skipped")
+                            : sState.status === "scraping"
                             ? React.createElement("span", { className: "badge badge-info" }, "Scraping...")
-                            : cloud || item.matched
+                            : cloud
+                            ? React.createElement("span", { className: "badge badge-info font-weight-bold" }, "Scraped")
+                            : item.matched
                             ? React.createElement("span", { className: "badge badge-success" }, "Matched")
                             : sState.status === "nomatch"
                             ? React.createElement("span", { className: "badge badge-warning" }, "No Result")
@@ -5974,16 +6099,213 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                               "button",
                               {
                                 type: "button",
-                                className: `btn btn-xs ${isInlineOpen ? "btn-warning" : "btn-outline-secondary"} py-0 px-2`,
+                                className: `btn btn-xs ${isInlineOpen ? "btn-warning" : "btn-outline-secondary"} py-0 px-2 mr-1`,
                                 onClick: () => handleOpenInlineSearch(item.scene),
                                 title: "Search this scene by custom title/query across scrapers",
                               },
                               React.createElement(IconSearch, { size: 10, className: "mr-1" }),
                               "Search"
-                            )
+                            ),
+                            cloud &&
+                              React.createElement(
+                                "button",
+                                {
+                                  type: "button",
+                                  className: `btn btn-xs ${isExpanded ? "btn-dark text-info" : "btn-outline-info"} py-0 px-1`,
+                                  onClick: () => handleToggleExpandRow(item.scene.id),
+                                  title: isExpanded ? "Collapse scraped details" : "Expand scraped details",
+                                },
+                                isExpanded ? "▲" : "▼"
+                              )
                           )
                         )
                       ),
+                      // Scraped Metadata Detailed Info Card (SceneTagger-style)
+                      cloud && isExpanded &&
+                        React.createElement(
+                          "tr",
+                          { key: `scraped-card-${item.scene.id}`, className: "bg-black" },
+                          React.createElement(
+                            "td",
+                            { colSpan: 10, className: "p-0 border-0" },
+                            React.createElement(
+                              "div",
+                              {
+                                className: `sfm-scraped-detail-card p-3 rounded bg-dark border ${
+                                  sState.status === "done" ? "border-success sfm-status-done" : sState.status === "skipped" ? "border-warning sfm-status-skipped" : "border-secondary"
+                                } mb-2 mx-2`,
+                                style: { backgroundColor: "#151922" },
+                              },
+                              React.createElement(
+                                "div",
+                                { className: "d-flex gap-3 flex-wrap flex-md-nowrap" },
+                                // Left: Scraped Cover Thumbnail Preview
+                                React.createElement(
+                                  "div",
+                                  { className: "d-flex flex-column align-items-center flex-shrink-0" },
+                                  React.createElement("img", {
+                                    src: cloud.image || posterUrl,
+                                    className: "sfm-scraped-cover mb-1",
+                                    alt: "Scraped Cover",
+                                    loading: "lazy",
+                                    onError: (e) => { e.target.src = posterUrl; },
+                                  }),
+                                  cloud.image && React.createElement("span", { className: "badge badge-success py-0 px-1 mt-1", style: { fontSize: "0.68rem" } }, "New Cover Image"),
+                                  cloud.code && React.createElement("span", { className: "badge badge-dark text-warning mt-1 py-0 px-1", style: { fontSize: "0.72rem" } }, `Code: ${cloud.code}`)
+                                ),
+                                // Right: Detailed Metadata Breakdown
+                                React.createElement(
+                                  "div",
+                                  { className: "flex-grow-1 overflow-hidden" },
+                                  // Title & Source Info
+                                  React.createElement(
+                                    "div",
+                                    { className: "d-flex justify-content-between align-items-start gap-2 mb-1" },
+                                    React.createElement(
+                                      "h6",
+                                      { className: "mb-0 font-weight-bold text-info", style: { fontSize: "1.05rem" } },
+                                      cloud.title || displayTitle
+                                    ),
+                                    React.createElement(
+                                      "div",
+                                      { className: "d-flex align-items-center gap-1 flex-shrink-0" },
+                                      sState.sourceName && React.createElement("span", { className: "badge badge-primary py-1 px-2" }, sState.sourceName),
+                                      sState.status === "done" && React.createElement("span", { className: "badge badge-success py-1 px-2" }, "✓ Applied to Stash"),
+                                      sState.status === "skipped" && React.createElement("span", { className: "badge badge-warning py-1 px-2" }, "Skipped")
+                                    )
+                                  ),
+                                  // Studio, Date, and URL
+                                  React.createElement(
+                                    "div",
+                                    { className: "d-flex align-items-center gap-3 mb-2 flex-wrap small" },
+                                    displayStudio !== "—" &&
+                                      React.createElement(
+                                        "div",
+                                        { className: "d-inline-flex align-items-center" },
+                                        React.createElement("strong", { className: "text-muted mr-1" }, "Studio:"),
+                                        React.createElement("span", { className: "badge badge-secondary py-1 px-2 font-weight-bold" }, displayStudio)
+                                      ),
+                                    displayDate !== "—" &&
+                                      React.createElement(
+                                        "div",
+                                        { className: "d-inline-flex align-items-center" },
+                                        React.createElement("strong", { className: "text-muted mr-1" }, "Date:"),
+                                        React.createElement("span", { className: "text-light" }, displayDate)
+                                      ),
+                                    cloud.url &&
+                                      React.createElement(
+                                        "a",
+                                        {
+                                          href: cloud.url,
+                                          target: "_blank",
+                                          rel: "noopener noreferrer",
+                                          className: "text-info small ml-auto text-truncate",
+                                          style: { maxWidth: "240px" },
+                                        },
+                                        "Scraped Source Page ↗"
+                                      )
+                                  ),
+                                  // Performers Pills
+                                  cloud.performers?.length > 0 &&
+                                    React.createElement(
+                                      "div",
+                                      { className: "d-flex align-items-center flex-wrap gap-1 mb-2" },
+                                      React.createElement("span", { className: "small text-muted mr-1 font-weight-bold" }, "Performers:"),
+                                      cloud.performers.map((p, pIdx) =>
+                                        React.createElement(
+                                          "span",
+                                          {
+                                            key: pIdx,
+                                            className: `badge ${p.gender === "FEMALE" ? "badge-info" : p.gender === "MALE" ? "badge-secondary" : "badge-dark"} py-1 px-2`,
+                                            style: { fontSize: "0.78rem" },
+                                          },
+                                          p.name,
+                                          p.disambiguation ? ` (${p.disambiguation})` : ""
+                                        )
+                                      )
+                                    ),
+                                  // Tags Pills
+                                  cloud.tags?.length > 0 &&
+                                    React.createElement(
+                                      "div",
+                                      { className: "d-flex align-items-center flex-wrap gap-1 mb-2" },
+                                      React.createElement("span", { className: "small text-muted mr-1 font-weight-bold" }, "Tags:"),
+                                      cloud.tags.map((t, tIdx) =>
+                                        React.createElement(
+                                          "span",
+                                          {
+                                            key: tIdx,
+                                            className: "badge badge-dark text-info py-0 px-2",
+                                            style: { border: "1px solid #434c5e", fontSize: "0.74rem" },
+                                          },
+                                          `#${t.name}`
+                                        )
+                                      )
+                                    ),
+                                  // Synopsis / Details snippet
+                                  cloud.details &&
+                                    React.createElement(
+                                      "div",
+                                      {
+                                        className: "small text-muted font-italic p-2 rounded mb-2",
+                                        style: { backgroundColor: "rgba(0,0,0,0.3)", maxHeight: "65px", overflowY: "auto", borderLeft: "2px solid #88c0d0" },
+                                      },
+                                      cloud.details
+                                    ),
+                                  // Row Action Controls: Apply, Skip, Clear
+                                  React.createElement(
+                                    "div",
+                                    { className: "d-flex align-items-center justify-content-between pt-2 border-top border-secondary flex-wrap gap-2" },
+                                    React.createElement(
+                                      "div",
+                                      { className: "d-flex align-items-center gap-2" },
+                                      React.createElement(
+                                        "button",
+                                        {
+                                          type: "button",
+                                          className: `btn btn-sm ${sState.status === "done" ? "btn-outline-success disabled" : "btn-success font-weight-bold"} py-1 px-3`,
+                                          disabled: sState.status === "applying" || sState.status === "done",
+                                          onClick: () => handleApplySingle(item.scene),
+                                          title: "Apply this scene's scraped metadata immediately to Stash",
+                                        },
+                                        sState.status === "applying" ? "Applying..." : sState.status === "done" ? "✓ Applied" : "Apply"
+                                      ),
+                                      React.createElement(
+                                        "button",
+                                        {
+                                          type: "button",
+                                          className: `btn btn-sm ${sState.status === "skipped" ? "btn-warning font-weight-bold" : "btn-outline-warning"} py-1 px-3`,
+                                          onClick: () => handleSkipSingle(item.scene.id),
+                                          title: sState.status === "skipped" ? "Unskip scene" : "Skip this scene from updates",
+                                        },
+                                        sState.status === "skipped" ? "Unskip" : "Skip"
+                                      ),
+                                      React.createElement(
+                                        "button",
+                                        {
+                                          type: "button",
+                                          className: "btn btn-sm btn-outline-danger py-1 px-3",
+                                          onClick: () => handleClearSingle(item.scene.id),
+                                          title: "Clear scraped result and reset back to idle",
+                                        },
+                                        "Clear"
+                                      )
+                                    ),
+                                    React.createElement(
+                                      "button",
+                                      {
+                                        type: "button",
+                                        className: "btn btn-xs btn-outline-secondary py-0 px-2",
+                                        onClick: () => handleToggleExpandRow(item.scene.id),
+                                      },
+                                      "▲ Collapse"
+                                    )
+                                  )
+                                )
+                              )
+                            )
+                          )
+                        ),
                       // Inline Search Expansion Row
                       isInlineOpen &&
                         React.createElement(
@@ -6075,13 +6397,28 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                                         )
                                       ),
                                       React.createElement(
-                                        "button",
-                                        {
-                                          type: "button",
-                                          className: "btn btn-xs btn-success font-weight-bold py-1 px-2 ml-2",
-                                          onClick: () => handleSelectCandidate(item.scene.id, cand),
-                                        },
-                                        "Select"
+                                        "div",
+                                        { className: "d-flex align-items-center gap-1 ml-2" },
+                                        React.createElement(
+                                          "button",
+                                          {
+                                            type: "button",
+                                            className: "btn btn-xs btn-outline-info font-weight-bold py-1 px-2",
+                                            onClick: () => handleSelectCandidate(item.scene.id, cand, false),
+                                            title: "Select this candidate to inspect, edit, or apply below",
+                                          },
+                                          "Select"
+                                        ),
+                                        React.createElement(
+                                          "button",
+                                          {
+                                            type: "button",
+                                            className: "btn btn-xs btn-success font-weight-bold py-1 px-2",
+                                            onClick: () => handleSelectCandidate(item.scene.id, cand, true),
+                                            title: "Immediately apply this match to Stash",
+                                          },
+                                          "Apply Directly"
+                                        )
                                       )
                                     )
                                   )
@@ -6113,6 +6450,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                 ["tags", "Tags"],
                 ["details", "Details"],
                 ["code", "Code"],
+                ["cover", "Cover Image"],
               ].map(([key, label]) =>
                 React.createElement(
                   "div",
@@ -9473,6 +9811,79 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
       );
     }
 
+    // Feature 3: Native Scene Detail Scrape & Parse Button
+    function NativeSceneDetailScrapeButton({ scene, folderPath }) {
+      const [loading, setLoading] = useState(false);
+
+      const handleLaunchScrape = useCallback(async (e) => {
+        if (e) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+        setLoading(true);
+        try {
+          let targetScene = scene;
+          if (!targetScene?.stash_ids || !targetScene?.files || targetScene.files.length === 0) {
+            const res = await gqlFetch(
+              `query FindSceneFull($id: ID!) {
+                findScene(id: $id) {
+                  id
+                  title
+                  details
+                  url
+                  date
+                  rating100
+                  studio { id name }
+                  performers { id name }
+                  tags { id name }
+                  stash_ids { endpoint stash_id }
+                  urls
+                  files { id path basename size duration }
+                  paths { screenshot preview stream }
+                }
+              }`,
+              { id: scene?.id }
+            );
+            if (res?.findScene) targetScene = res.findScene;
+          }
+          if (window.__SFM_OPEN_PARSER__) {
+            window.__SFM_OPEN_PARSER__([targetScene], targetScene.title || targetScene.files?.[0]?.basename || `Scene #${targetScene.id}`);
+          }
+        } catch (err) {
+          console.warn("Failed to fetch scene for parser modal:", err);
+          if (window.__SFM_OPEN_PARSER__) {
+            window.__SFM_OPEN_PARSER__([scene], scene.title || `Scene #${scene.id}`);
+          }
+        } finally {
+          setLoading(false);
+        }
+      }, [scene]);
+
+      return React.createElement(
+        "button",
+        {
+          type: "button",
+          className: "btn btn-secondary sfm-scene-scrape-btn",
+          id: "sfm-scene-scrape-btn",
+          "data-sfm-scrape-btn": "true",
+          title: "Parse & Scrape this scene with smart metadata matcher",
+          disabled: loading,
+          onClick: handleLaunchScrape,
+          style: {
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "5px",
+            fontSize: "0.85rem",
+            fontWeight: "600",
+            padding: "4px 10px",
+            marginLeft: "6px",
+          },
+        },
+        React.createElement(IconGlobe, { size: 14, color: "#88c0d0" }),
+        React.createElement("span", null, loading ? "Loading..." : "Parse & Scrape")
+      );
+    }
+
     // Helper: Detect whether a node already contains our SFM addons
     function hasSfmAddon(node, key) {
       if (!node) return false;
@@ -9481,7 +9892,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
       }
       if (React.isValidElement(node)) {
         if (node.key === key) return true;
-        if (node.props && (node.props["data-sfm-card-chip"] || node.props["data-sfm-hierarchy"] || node.props["data-sfm-reel-btn"])) {
+        if (node.props && (node.props["data-sfm-card-chip"] || node.props["data-sfm-hierarchy"] || node.props["data-sfm-reel-btn"] || node.props["data-sfm-scrape-btn"])) {
           return true;
         }
         if (node.props && node.props.details && hasSfmAddon(node.props.details, key)) {
@@ -9547,7 +9958,13 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
           scene: scene,
           folderPath: folderPath,
         });
-        return appendNavChild(res, reelBtn);
+        const scrapeBtn = React.createElement(NativeSceneDetailScrapeButton, {
+          key: "sfm-scene-scrape-btn-addon",
+          scene: scene,
+          folderPath: folderPath,
+        });
+        const updated = appendNavChild(res, reelBtn);
+        return appendNavChild(updated, scrapeBtn);
       } catch (err) {
         console.warn("[PathFileManager] patchNativeScenePlayer error:", err);
         return res;
@@ -9837,7 +10254,143 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
           );
         }
       }
+
+      // 3. Parse & Scrape Scene Button
+      if (!document.getElementById("sfm-scene-scrape-btn")) {
+        const toolbar = document.querySelector(".scene-toolbar, .scene-header .btn-toolbar, .scene-header .btn-group, .video-player-container, .scene-player, .scene-header");
+        if (toolbar && !toolbar.querySelector("[data-sfm-scrape-btn]")) {
+          const cachedScene = window.__SFM_GLOBAL_CACHE__?.scenes?.find((s) => String(s.id) === String(sceneId)) || { id: sceneId };
+          const folderPath = resolveSceneFolder(cachedScene);
+          const mountDiv = document.createElement("div");
+          mountDiv.id = "sfm-scene-scrape-btn-container";
+          mountDiv.style.display = "inline-block";
+          mountDiv.style.marginLeft = "6px";
+          toolbar.appendChild(mountDiv);
+
+          ReactDOM.render(
+            React.createElement(NativeSceneDetailScrapeButton, { scene: cachedScene, folderPath }),
+            mountDiv
+          );
+        }
+      }
     }
+
+    function injectSceneListDOMFallback() {
+      if (typeof document === "undefined" || !document.querySelector) return;
+      if (typeof window !== "undefined" && (window.location?.hash?.startsWith("#file-manager") || window.location?.pathname?.match(/\/scenes\/[a-zA-Z0-9_-]+/))) return;
+      if (!window.location?.pathname?.startsWith("/scenes")) return;
+      if (document.getElementById("sfm-scene-list-scrape-btn")) return;
+
+      const toolbar =
+        document.querySelector(".filtered-list-toolbar.btn-toolbar") ||
+        document.querySelector(".filtered-list-toolbar") ||
+        document.querySelector(".btn-toolbar");
+      if (!toolbar) return;
+
+      const btn = document.createElement("button");
+      btn.id = "sfm-scene-list-scrape-btn";
+      btn.type = "button";
+      btn.className = "btn btn-secondary sfm-scene-scrape-btn";
+      btn.style.cssText = "margin-left:8px;font-size:12px;padding:4px 10px;white-space:nowrap;font-weight:600;display:inline-flex;align-items:center;gap:4px;";
+      btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#88c0d0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg> <span>Parse & Scrape</span>`;
+      btn.title = "Parse & Scrape visible scenes on current page";
+
+      btn.addEventListener("click", async () => {
+        btn.disabled = true;
+        const originalHtml = btn.innerHTML;
+        btn.textContent = "Loading scenes...";
+        try {
+          const cardLinks = Array.from(document.querySelectorAll('.scene-card a[href*="/scenes/"], .card a[href*="/scenes/"], [class*="SceneCard"] a[href*="/scenes/"]'));
+          const sceneIds = Array.from(
+            new Set(
+              cardLinks
+                .map((el) => {
+                  const href = el.getAttribute("href") || "";
+                  const m = href.match(/\/scenes\/([a-zA-Z0-9_-]+)/);
+                  return m ? parseInt(m[1], 10) : null;
+                })
+                .filter((n) => n && !isNaN(n))
+            )
+          );
+
+          if (sceneIds.length > 0) {
+            const res = await gqlFetch(
+              `query GetScenesByIds($ids: [Int!]) {
+                findScenes(scene_ids: $ids, filter: { per_page: -1 }) {
+                  scenes {
+                    id
+                    title
+                    details
+                    url
+                    date
+                    rating100
+                    studio { id name }
+                    performers { id name }
+                    tags { id name }
+                    stash_ids { endpoint stash_id }
+                    urls
+                    files { id path basename size duration }
+                    paths { screenshot preview stream }
+                  }
+                }
+              }`,
+              { ids: sceneIds }
+            );
+            const scenes = res?.findScenes?.scenes || [];
+            if (scenes.length > 0 && window.__SFM_OPEN_PARSER__) {
+              window.__SFM_OPEN_PARSER__(scenes, `Scene List (${scenes.length} scenes)`);
+            } else {
+              alert("No scenes found to scrape on this page.");
+            }
+          } else {
+            alert("No visible scene cards detected on current page.");
+          }
+        } catch (err) {
+          console.warn("Failed to load scenes for list scrape:", err);
+          alert("Error loading scenes: " + (err.message || String(err)));
+        } finally {
+          btn.disabled = false;
+          btn.innerHTML = originalHtml;
+        }
+      });
+
+      toolbar.appendChild(btn);
+    }
+
+    // Global Modal Launcher for Outside of File Manager
+    window.__SFM_OPEN_PARSER__ = function (directScenes, currentFolder = "Scene View") {
+      let rootEl = document.getElementById("sfm-global-modal-root");
+      if (!rootEl) {
+        rootEl = document.createElement("div");
+        rootEl.id = "sfm-global-modal-root";
+        document.body.appendChild(rootEl);
+      }
+
+      const handleClose = () => {
+        ReactDOM.unmountComponentAtNode(rootEl);
+      };
+
+      const handleApplied = () => {
+        // Refresh single scene view if currently on /scenes/<id>
+        const m = typeof window !== "undefined" && window.location?.pathname?.match(/\/scenes\/([a-zA-Z0-9_-]+)/);
+        if (m) {
+          setTimeout(() => {
+            window.location.reload();
+          }, 400);
+        }
+      };
+
+      ReactDOM.render(
+        React.createElement(FilenameParserModal, {
+          currentFolder,
+          currentPath: directScenes?.[0]?.files?.[0]?.path || "",
+          directScenes,
+          onClose: handleClose,
+          onApplied: handleApplied,
+        }),
+        rootEl
+      );
+    };
 
     let sfmMutationTimer = null;
     function scheduleNativeDomScan() {
@@ -9847,6 +10400,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
         sfmMutationTimer = null;
         injectSceneCardsDOMFallback();
         injectSceneDetailDOMFallback();
+        injectSceneListDOMFallback();
       }, 150);
     }
 
@@ -9890,14 +10444,17 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
     window.__SFM_GLOBAL_CACHE__.NativeSceneCardOverlay = NativeSceneCardOverlay;
     window.__SFM_GLOBAL_CACHE__.NativeSceneDetailDirectoryHierarchy = NativeSceneDetailDirectoryHierarchy;
     window.__SFM_GLOBAL_CACHE__.NativeSceneDetailReelButton = NativeSceneDetailReelButton;
+    window.__SFM_GLOBAL_CACHE__.NativeSceneDetailScrapeButton = NativeSceneDetailScrapeButton;
     window.__SFM_GLOBAL_CACHE__.patchNativeSceneCard = patchNativeSceneCard;
     window.__SFM_GLOBAL_CACHE__.patchNativeSceneDetails = patchNativeSceneDetails;
     window.__SFM_GLOBAL_CACHE__.patchNativeScenePlayer = patchNativeScenePlayer;
     window.__SFM_GLOBAL_CACHE__.resolveSceneFolder = resolveSceneFolder;
     window.__SFM_GLOBAL_CACHE__.ensureCatalog = ensureCatalog;
     window.__SFM_GLOBAL_CACHE__.openFileManager = openFileManager;
+    window.__SFM_GLOBAL_CACHE__.openParser = window.__SFM_OPEN_PARSER__;
     window.__SFM_GLOBAL_CACHE__.injectSceneCardsDOMFallback = injectSceneCardsDOMFallback;
     window.__SFM_GLOBAL_CACHE__.injectSceneDetailDOMFallback = injectSceneDetailDOMFallback;
+    window.__SFM_GLOBAL_CACHE__.injectSceneListDOMFallback = injectSceneListDOMFallback;
     if (window.PluginApi) {
       window.PluginApi.Filemanager = window.__SFM_GLOBAL_CACHE__;
     }
