@@ -4704,3 +4704,47 @@ button.badge.sfm-badge-btn.sfm-state-inactive:hover {
   border-color: #434c5e !important;
   color: #9daab9 !important;
 }
+
+/* Bulk Rename Files Section */
+.sfm-rename-card {
+  background-color: #171b26;
+  border: 1px solid #3b4252;
+  border-radius: 6px;
+}
+
+.sfm-tag-chip {
+  transition: transform 0.12s ease, opacity 0.12s ease;
+  font-family: monospace;
+  font-size: 0.78rem;
+  letter-spacing: 0.2px;
+}
+
+.sfm-tag-chip:hover {
+  transform: translateY(-1px);
+  opacity: 0.9;
+}
+
+.sfm-scheme-input {
+  background-color: #12151c !important;
+  color: #88c0d0 !important;
+  border-color: #434c5e !important;
+}
+
+.sfm-scheme-input:focus {
+  border-color: #88c0d0 !important;
+  box-shadow: 0 0 0 2px rgba(136, 192, 208, 0.25) !important;
+}
+
+.sfm-rename-preview-banner {
+  background-color: #10131a;
+  border: 1px solid #2e3440;
+}
+
+.sfm-proposed-name {
+  word-break: break-all;
+}
+
+.sfm-rename-table td {
+  vertical-align: middle !important;
+}
+

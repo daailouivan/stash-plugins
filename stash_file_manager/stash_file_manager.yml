@@ -1,6 +1,6 @@
 name: Path File Manager
-description: Hierarchical directory file-manager navigation for Stash with customizable folder views, Binge-style reel player, draggable PIP player, unified scene scraper & metadata parser, and native tasks.
-version: "3.1.1"
+description: Hierarchical directory file-manager navigation for Stash with customizable folder views, Binge-style reel player, draggable PIP player, unified scene scraper & metadata parser, bulk tag-based file renamer, and native tasks.
+version: "3.2.0"
 ui:
   javascript:
     - file_manager.js
@@ -25,6 +25,10 @@ tasks:
     description: Validates Stash library paths and initializes default plugin settings.
     execArgs:
       - "init"
+  - name: Bulk Rename Files
+    description: Bulk renames scene files on disk and updates Stash database records to preserve scene associations.
+    execArgs:
+      - "rename"
 
 settings:
   default_transcode_method:

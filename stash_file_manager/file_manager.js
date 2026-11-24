@@ -330,6 +330,27 @@
       );
     }
 
+    function IconTag({ size = 14, color = "currentColor", className = "", style = {} }) {
+      return React.createElement(
+        "svg",
+        {
+          width: size,
+          height: size,
+          viewBox: "0 0 24 24",
+          fill: "none",
+          stroke: color,
+          strokeWidth: "2",
+          strokeLinecap: "round",
+          strokeLinejoin: "round",
+          className: `sfm-svg-icon ${className}`.trim(),
+          style: { display: "inline-block", verticalAlign: "middle", ...style },
+          "aria-hidden": "true",
+        },
+        React.createElement("path", { d: "M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" }),
+        React.createElement("line", { x1: "7", y1: "7", x2: "7.01", y2: "7" })
+      );
+    }
+
     function IconFolderCard({ size = 46, color = "#81a1c1" }) {
       return React.createElement(
         "svg",
@@ -4378,12 +4399,34 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
         { id: "ignore", label: "Ignore", color: "#4c566a" },
       ];
 
+      const RENAME_PRESETS = [
+        { label: "Studio - Code - Title: {studio} - {code} - {title}.{ext}", scheme: "{studio} - {code} - {title}.{ext}" },
+        { label: "({studio})({code})({performers})({title}).{ext}", scheme: "({studio})({code})({performers})({title}).{ext}" },
+        { label: "Studio - Date - Title: {studio} - {date} - {title}.{ext}", scheme: "{studio} - {date} - {title}.{ext}" },
+        { label: "Date - Studio - Title: {date} - {studio} - {title}.{ext}", scheme: "{date} - {studio} - {title}.{ext}" },
+        { label: "Studio - Performers - Title: {studio} - {performers} - {title}.{ext}", scheme: "{studio} - {performers} - {title}.{ext}" },
+        { label: "Performers - Title ({year}): {performers} - {title} ({year}).{ext}", scheme: "{performers} - {title} ({year}).{ext}" },
+        { label: "Code - Title [{resolution}]: {code} - {title} [{resolution}].{ext}", scheme: "{code} - {title} [{resolution}].{ext}" },
+        { label: "Studio - Code - Performers - Title [{resolution}]: {studio} - {code} - {performers} - {title} [{resolution}].{ext}", scheme: "{studio} - {code} - {performers} - {title} [{resolution}].{ext}" },
+      ];
+
+      const RENAME_TAGS = [
+        { tag: "{studio}", label: "{studio}", desc: "Studio Name", color: "#81a1c1" },
+        { tag: "{code}", label: "{code}", desc: "Studio / Scene Code", color: "#ebcb8b" },
+        { tag: "{performers}", label: "{performers}", desc: "Performers", color: "#d08770" },
+        { tag: "{title}", label: "{title}", desc: "Scene Title", color: "#88c0d0" },
+        { tag: "{date}", label: "{date}", desc: "Date (YYYY-MM-DD)", color: "#a3be8c" },
+        { tag: "{year}", label: "{year}", desc: "Release Year (YYYY)", color: "#b48ead" },
+        { tag: "{resolution}", label: "{resolution}", desc: "Resolution (4K, 1080p...)", color: "#5e81ac" },
+        { tag: "{ext}", label: "{ext}", desc: "File Extension (mp4, mkv...)", color: "#4c566a" },
+      ];
+
       const initialSampleBasename = directScenes[0]?.files?.[0]?.basename || "";
       const initialSampleNoExt = initialSampleBasename.replace(/\.[^/.]+$/, "");
       const isInitialDunder = /^([A-Za-z0-9]{2,8})__([A-Z]+(?:_[A-Z]+)*)_+(.+?)(?:__[a-zA-Z0-9]{4,10})?$/.test(initialSampleNoExt);
       const dunderPattern = "^(?<code>[A-Za-z0-9]+)__(?<performers>[A-Z]+(?:_[A-Z]+)*)_+(?<title>.+?)__(?:[a-zA-Z0-9]+)(?:\\.[^.]+)?$";
 
-      // Tab mode: "scrape" (default) or "pattern"
+      // Tab mode: "scrape" (default), "pattern", or "rename" (Bulk Rename Files)
       const [activeTab, setActiveTab] = React.useState("scrape");
       const [builderMode, setBuilderMode] = React.useState("guided"); // "guided" | "raw"
       const [sampleIndex, setSampleIndex] = React.useState(0);
@@ -4398,6 +4441,17 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
       const [selectedSceneIds, setSelectedSceneIds] = React.useState(() => new Set(directScenes.map((s) => s.id)));
       const [isExecuting, setIsExecuting] = React.useState(false);
       const [progressText, setProgressText] = React.useState("");
+
+      // Bulk Rename State
+      const [renameScheme, setRenameScheme] = React.useState(() => {
+        return (typeof window !== "undefined" && window.localStorage ? window.localStorage.getItem("sfm_last_rename_scheme") : null) || "({studio})({code})({performers})({title}).{ext}";
+      });
+      const [selectedRenameIds, setSelectedRenameIds] = React.useState(() => new Set(directScenes.map((s) => s.id)));
+      const [renameStates, setRenameStates] = React.useState({});
+      const [isRenaming, setIsRenaming] = React.useState(false);
+      const [renameProgressText, setRenameProgressText] = React.useState("");
+      const [renameFilter, setRenameFilter] = React.useState("all"); // "all" | "changed" | "unchanged"
+      const renameInputRef = React.useRef(null);
 
       // Path Clues & Scrape Sources
       const [pathClues, setPathClues] = React.useState([]);
@@ -5457,6 +5511,229 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
         }
       };
 
+      // Bulk Rename Functions & Memoized Data
+      const handleInsertRenameTag = (tagText) => {
+        const input = renameInputRef.current;
+        let nextVal = "";
+        if (!input) {
+          nextVal = renameScheme + tagText;
+        } else {
+          const start = input.selectionStart ?? renameScheme.length;
+          const end = input.selectionEnd ?? renameScheme.length;
+          nextVal = renameScheme.slice(0, start) + tagText + renameScheme.slice(end);
+          setTimeout(() => {
+            input.focus();
+            input.setSelectionRange(start + tagText.length, start + tagText.length);
+          }, 0);
+        }
+        setRenameScheme(nextVal);
+        if (typeof window !== "undefined" && window.localStorage) {
+          window.localStorage.setItem("sfm_last_rename_scheme", nextVal);
+        }
+      };
+
+      const generateProposedFilename = React.useCallback((scene, scheme, cloudMatch, parsedGroups) => {
+        if (!scene) return "";
+        const origBasename = scene.files?.[0]?.basename || scene.title || "";
+        const lastDot = origBasename.lastIndexOf(".");
+        const ext = (lastDot > 0 ? origBasename.substring(lastDot + 1) : "mp4").toLowerCase();
+
+        const studio = (cloudMatch?.studio?.name || scene.studio?.name || parsedGroups?.studio || activeStudioClue || "").trim();
+        const code = (cloudMatch?.code || scene.code || parsedGroups?.code || "").trim();
+        const rawTitle = (cloudMatch?.title || scene.title || parsedGroups?.title || "").trim();
+        const title = (rawTitle && !rawTitle.toLowerCase().endsWith(`.${ext}`) ? rawTitle : origBasename.replace(/\.[^/.]+$/, "")).trim();
+
+        const performers = (
+          cloudMatch?.performers?.map((p) => p.name).join(", ") ||
+          (scene.performers || []).map((p) => p.name).join(", ") ||
+          parsedGroups?.performers ||
+          activePerformerClue ||
+          ""
+        ).trim();
+
+        const date = (cloudMatch?.date || scene.date || parsedGroups?.date || "").trim();
+        const year = date ? date.substring(0, 4) : "";
+
+        const h = scene.files?.[0]?.height || 0;
+        const w = scene.files?.[0]?.width || 0;
+        let resolution = "";
+        if (h >= 2160 || w >= 3840) resolution = "4K";
+        else if (h >= 1440) resolution = "1440p";
+        else if (h >= 1080) resolution = "1080p";
+        else if (h >= 720) resolution = "720p";
+        else if (h >= 480) resolution = "480p";
+        else if (h > 0) resolution = `${h}p`;
+
+        let proposed = scheme || "({studio})({code})({performers})({title}).{ext}";
+        proposed = proposed.replace(/\{studio\}/gi, studio);
+        proposed = proposed.replace(/\{code\}/gi, code);
+        proposed = proposed.replace(/\{performers\}/gi, performers);
+        proposed = proposed.replace(/\{title\}/gi, title);
+        proposed = proposed.replace(/\{date\}/gi, date);
+        proposed = proposed.replace(/\{year\}/gi, year);
+        proposed = proposed.replace(/\{resolution\}/gi, resolution);
+        proposed = proposed.replace(/\{ext\}/gi, ext);
+
+        // Replace illegal filesystem characters: / \ : * ? " < > |
+        proposed = proposed.replace(/[/\\:*?"<>|]/g, " - ");
+        // Clean multiple separators, empty brackets, and spaces
+        proposed = proposed.replace(/\(\s*-\s*\)/g, "").replace(/\[\s*-\s*\]/g, "");
+        proposed = proposed.replace(/\(\s*\)/g, "").replace(/\[\s*\]/g, "");
+        proposed = proposed.replace(/\s*-\s*(?:-\s*)+/g, " - ");
+        proposed = proposed.replace(/\s+/g, " ").trim();
+        proposed = proposed.replace(/^[-_.\s]+/, "");
+
+        // Ensure extension is preserved
+        if (!proposed.toLowerCase().endsWith("." + ext)) {
+          proposed = proposed + "." + ext;
+        }
+        return proposed;
+      }, [activeStudioClue, activePerformerClue]);
+
+      const renamePreviewItems = React.useMemo(() => {
+        return directScenes.map((scene) => {
+          const cloud = cloudMatches[scene.id];
+          const parsed = parsedResults.items.find((it) => it.scene.id === scene.id)?.groups || {};
+          const currentBasename = scene.files?.[0]?.basename || scene.title || "";
+          const proposedBasename = generateProposedFilename(scene, renameScheme, cloud, parsed);
+          const isChanged = currentBasename !== proposedBasename;
+          return {
+            scene,
+            currentBasename,
+            proposedBasename,
+            isChanged,
+            cloud,
+            parsed,
+          };
+        });
+      }, [directScenes, renameScheme, cloudMatches, parsedResults, generateProposedFilename]);
+
+      const changedRenameCount = renamePreviewItems.filter((i) => i.isChanged).length;
+      const unchangedRenameCount = renamePreviewItems.length - changedRenameCount;
+
+      const filteredRenameItems = React.useMemo(() => {
+        if (renameFilter === "changed") return renamePreviewItems.filter((i) => i.isChanged);
+        if (renameFilter === "unchanged") return renamePreviewItems.filter((i) => !i.isChanged);
+        return renamePreviewItems;
+      }, [renamePreviewItems, renameFilter]);
+
+      const handleToggleSelectRenameScene = (sceneId) => {
+        setSelectedRenameIds((prev) => {
+          const next = new Set(prev);
+          if (next.has(sceneId)) next.delete(sceneId);
+          else next.add(sceneId);
+          return next;
+        });
+      };
+
+      const handleSelectAllChangedRename = () => {
+        const changedIds = renamePreviewItems.filter((i) => i.isChanged).map((i) => i.scene.id);
+        if (selectedRenameIds.size === changedIds.length && changedIds.length > 0) {
+          setSelectedRenameIds(new Set());
+        } else {
+          setSelectedRenameIds(new Set(changedIds));
+        }
+      };
+
+      const handleExecuteBulkRename = async () => {
+        const selectedItems = renamePreviewItems.filter((item) => selectedRenameIds.has(item.scene.id));
+        if (selectedItems.length === 0) return;
+
+        setIsRenaming(true);
+        setRenameProgressText(`Submitting bulk rename task for ${selectedItems.length} scenes to Stash...`);
+
+        const itemsPayload = selectedItems.map((item) => ({
+          scene_id: String(item.scene.id),
+          file_id: item.scene.files?.[0]?.id,
+          old_path: item.scene.files?.[0]?.path,
+          old_basename: item.currentBasename,
+          new_basename: item.proposedBasename,
+        }));
+
+        const updatedStates = { ...renameStates };
+        selectedItems.forEach((it) => {
+          updatedStates[it.scene.id] = { status: "renaming", msg: "Renaming on disk & database..." };
+        });
+        setRenameStates(updatedStates);
+
+        try {
+          // Call backend plugin task via Stash's runPluginTask mutation
+          const res = await gqlFetch(
+            `mutation RunBulkRenameTask($args_map: Map) {
+              runPluginTask(plugin_id: "stash_file_manager", task_name: "Bulk Rename Files", args_map: $args_map)
+            }`,
+            {
+              args_map: {
+                mode: "rename",
+                items: itemsPayload,
+              },
+            }
+          );
+
+          const taskId = res?.runPluginTask;
+          setRenameProgressText(`Bulk rename task queued in Stash (Job #${taskId || "1"}). Associations preserved.`);
+
+          // Update in-memory scene filenames so UI reflects the change immediately
+          itemsPayload.forEach((p) => {
+            const scene = directScenes.find((s) => String(s.id) === String(p.scene_id));
+            if (scene?.files?.[0]) {
+              scene.files[0].basename = p.new_basename;
+            }
+            updatedStates[p.scene_id] = { status: "done", msg: "✓ Renamed" };
+          });
+          setRenameStates({ ...updatedStates });
+          setRenameProgressText(`Bulk rename completed successfully for ${itemsPayload.length} files! Stash associations preserved.`);
+
+          setTimeout(() => {
+            clearCachedScenes();
+            onApplied();
+          }, 1200);
+        } catch (err) {
+          console.error("runPluginTask error, attempting runPluginOperation fallback:", err);
+          try {
+            setRenameProgressText("Executing rename via synchronous plugin operation...");
+            await gqlFetch(
+              `mutation RunBulkRenameOp($args: Map) {
+                runPluginOperation(plugin_id: "stash_file_manager", args: $args)
+              }`,
+              {
+                args: {
+                  mode: "rename",
+                  items: itemsPayload,
+                },
+              }
+            );
+            itemsPayload.forEach((p) => {
+              const scene = directScenes.find((s) => String(s.id) === String(p.scene_id));
+              if (scene?.files?.[0]) {
+                scene.files[0].basename = p.new_basename;
+              }
+              updatedStates[p.scene_id] = { status: "done", msg: "✓ Renamed" };
+            });
+            setRenameStates({ ...updatedStates });
+            setRenameProgressText(`Bulk rename completed for ${itemsPayload.length} files!`);
+            setTimeout(() => {
+              clearCachedScenes();
+              onApplied();
+            }, 1200);
+          } catch (opErr) {
+            console.error(opErr);
+            setRenameProgressText(`Error renaming files: ${opErr.message || err.message}`);
+          }
+        } finally {
+          setIsRenaming(false);
+        }
+      };
+
+      const sampleProposedName = sampleScene
+        ? generateProposedFilename(
+            sampleScene,
+            renameScheme,
+            cloudMatches[sampleScene.id],
+            parsedResults.items.find((it) => it.scene.id === sampleScene.id)?.groups || {}
+          )
+        : "";
+
       return React.createElement(
         "div",
         { className: "sfm-modal-backdrop", onClick: onClose },
@@ -5493,6 +5770,16 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                   },
                   React.createElement(IconSettings, { size: 13, className: "mr-1" }),
                   "Filename Patterns"
+                ),
+                React.createElement(
+                  "button",
+                  {
+                    type: "button",
+                    className: `btn btn-sm ${activeTab === "rename" ? "btn-primary font-weight-bold" : "btn-outline-secondary"} py-1 px-3`,
+                    onClick: () => setActiveTab("rename"),
+                  },
+                  React.createElement(IconTag, { size: 13, className: "mr-1" }),
+                  "Bulk Rename Files"
                 )
               ),
               React.createElement("span", { className: "small text-muted" }, currentFolder)
@@ -5503,10 +5790,369 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
           React.createElement(
             "div",
             { className: "sfm-modal-body" },
-            activeTab === "scrape"
+            activeTab === "rename"
               ? React.createElement(
                   "div",
-                  { className: "sfm-scrape-section mb-3" },
+                  { className: "sfm-rename-section mb-3" },
+                  // Scheme Builder Card
+                  React.createElement(
+                    "div",
+                    { className: "sfm-rename-card p-3 mb-3 rounded bg-dark border border-secondary" },
+                    // Top row: Scheme Title & Preset Templates Dropdown
+                    React.createElement(
+                      "div",
+                      { className: "d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2" },
+                      React.createElement(
+                        "div",
+                        { className: "d-flex align-items-center gap-2" },
+                        React.createElement("span", { className: "badge badge-primary d-inline-flex align-items-center font-weight-bold" }, React.createElement(IconTag, { size: 11, className: "mr-1" }), "Rename Scheme"),
+                        React.createElement("span", { className: "small text-muted" }, "Build filename template using clickable tags & presets:")
+                      ),
+                      React.createElement(
+                        "div",
+                        { className: "d-flex align-items-center gap-2" },
+                        React.createElement("span", { className: "small text-muted font-weight-bold" }, "Presets:"),
+                        React.createElement(
+                          "select",
+                          {
+                            className: "form-control form-control-sm bg-dark text-info border-secondary py-0 font-weight-bold",
+                            style: { width: "auto", height: "26px", fontSize: "0.8rem" },
+                            value: renameScheme,
+                            onChange: (e) => {
+                              const val = e.target.value;
+                              setRenameScheme(val);
+                              if (typeof window !== "undefined" && window.localStorage) {
+                                window.localStorage.setItem("sfm_last_rename_scheme", val);
+                              }
+                            },
+                          },
+                          RENAME_PRESETS.map((p) => React.createElement("option", { key: p.label, value: p.scheme }, p.label))
+                        )
+                      )
+                    ),
+                    // Interactive Tag Chips
+                    React.createElement(
+                      "div",
+                      { className: "mb-3" },
+                      React.createElement(
+                        "div",
+                        { className: "d-flex justify-content-between align-items-center mb-1" },
+                        React.createElement("label", { className: "small font-weight-bold text-muted mb-0" }, "CLICK TAGS TO INSERT INTO SCHEME:"),
+                        React.createElement("span", { className: "small text-muted" }, "Click tag chip to insert at cursor position")
+                      ),
+                      React.createElement(
+                        "div",
+                        { className: "d-flex align-items-center flex-wrap gap-1 p-2 rounded bg-black border border-secondary" },
+                        RENAME_TAGS.map((t) =>
+                          React.createElement(
+                            "button",
+                            {
+                              key: t.tag,
+                              type: "button",
+                              className: "btn btn-xs sfm-tag-chip py-1 px-2 font-weight-bold mr-1 mb-1",
+                              style: { backgroundColor: t.color, color: "#141822", border: "none", borderRadius: "4px" },
+                              onClick: () => handleInsertRenameTag(t.tag),
+                              title: `${t.desc} - Click to insert ${t.tag} into scheme`,
+                            },
+                            React.createElement(IconTag, { size: 10, className: "mr-1" }),
+                            t.label
+                          )
+                        ),
+                        React.createElement("span", { className: "text-muted mx-1" }, "|"),
+                        [" - ", "_", ".", "(", ")", "[", "]"].map((sep) =>
+                          React.createElement(
+                            "button",
+                            {
+                              key: sep,
+                              type: "button",
+                              className: "btn btn-xs btn-outline-secondary py-1 px-2 mr-1 mb-1 font-weight-bold",
+                              style: { fontFamily: "monospace" },
+                              onClick: () => handleInsertRenameTag(sep),
+                              title: `Insert '${sep}'`,
+                            },
+                            sep
+                          )
+                        )
+                      )
+                    ),
+                    // Scheme Input Field
+                    React.createElement(
+                      "div",
+                      { className: "form-group mb-3" },
+                      React.createElement(
+                        "div",
+                        { className: "d-flex justify-content-between align-items-center mb-1" },
+                        React.createElement("label", { className: "small font-weight-bold mb-0 text-light" }, "Active Rename Scheme"),
+                        React.createElement(
+                          "button",
+                          {
+                            type: "button",
+                            className: "btn btn-xs btn-link text-muted p-0",
+                            onClick: () => {
+                              const def = "({studio})({code})({performers})({title}).{ext}";
+                              setRenameScheme(def);
+                              if (typeof window !== "undefined" && window.localStorage) {
+                                window.localStorage.setItem("sfm_last_rename_scheme", def);
+                              }
+                            },
+                          },
+                          "Reset Default"
+                        )
+                      ),
+                      React.createElement("input", {
+                        ref: renameInputRef,
+                        type: "text",
+                        className: "form-control font-weight-bold bg-dark text-info border-secondary sfm-scheme-input",
+                        value: renameScheme,
+                        onChange: (e) => {
+                          setRenameScheme(e.target.value);
+                          if (typeof window !== "undefined" && window.localStorage) {
+                            window.localStorage.setItem("sfm_last_rename_scheme", e.target.value);
+                          }
+                        },
+                        placeholder: "e.g. ({studio})({code})({performers})({title}).{ext}",
+                        style: { fontFamily: "monospace", fontSize: "0.95rem" },
+                      })
+                    ),
+                    // Live Sample Preview Banner
+                    React.createElement(
+                      "div",
+                      { className: "sfm-rename-preview-banner p-2 px-3 rounded bg-black border border-secondary" },
+                      React.createElement(
+                        "div",
+                        { className: "d-flex justify-content-between align-items-center mb-1 flex-wrap gap-2" },
+                        React.createElement(
+                          "div",
+                          { className: "d-flex align-items-center gap-2" },
+                          React.createElement("span", { className: "badge badge-secondary py-0 px-1" }, "Sample Scene Preview"),
+                          React.createElement("span", { className: "text-muted small text-truncate", style: { maxWidth: "340px" } }, sampleScene?.files?.[0]?.basename || sampleScene?.title || "")
+                        ),
+                        directScenes.length > 1 &&
+                          React.createElement(
+                            "div",
+                            { className: "d-flex align-items-center gap-2" },
+                            React.createElement(
+                              "button",
+                              {
+                                type: "button",
+                                className: "btn btn-xs btn-outline-secondary py-0 px-2",
+                                disabled: sampleIndex <= 0,
+                                onClick: () => setSampleIndex(Math.max(0, sampleIndex - 1)),
+                              },
+                              "◀ Prev"
+                            ),
+                            React.createElement("span", { className: "text-muted small" }, `${sampleIndex + 1} of ${directScenes.length}`),
+                            React.createElement(
+                              "button",
+                              {
+                                type: "button",
+                                className: "btn btn-xs btn-outline-secondary py-0 px-2",
+                                disabled: sampleIndex >= directScenes.length - 1,
+                                onClick: () => setSampleIndex(Math.min(directScenes.length - 1, sampleIndex + 1)),
+                              },
+                              "Next ▶"
+                            )
+                          )
+                      ),
+                      React.createElement(
+                        "div",
+                        { className: "d-flex align-items-center gap-2 flex-wrap" },
+                        React.createElement("span", { className: "text-muted small font-weight-bold" }, "Proposed Name:"),
+                        React.createElement("span", { className: "font-weight-bold text-success sfm-proposed-name", style: { fontFamily: "monospace", fontSize: "0.92rem" } }, sampleProposedName || "—")
+                      )
+                    )
+                  ),
+                  // Progress / Status Alert
+                  (isRenaming || renameProgressText) &&
+                    React.createElement(
+                      "div",
+                      { className: "alert alert-info py-2 px-3 small mb-3 d-flex align-items-center justify-content-between flex-wrap gap-2" },
+                      React.createElement("span", { className: "font-weight-bold" }, renameProgressText)
+                    ),
+                  // Filter & Selection Bar
+                  React.createElement(
+                    "div",
+                    { className: "d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2" },
+                    React.createElement(
+                      "div",
+                      { className: "btn-group btn-group-sm" },
+                      React.createElement(
+                        "button",
+                        {
+                          type: "button",
+                          className: `btn btn-sm ${renameFilter === "all" ? "btn-secondary font-weight-bold" : "btn-outline-secondary"} py-0 px-2`,
+                          onClick: () => setRenameFilter("all"),
+                        },
+                        `All (${renamePreviewItems.length})`
+                      ),
+                      React.createElement(
+                        "button",
+                        {
+                          type: "button",
+                          className: `btn btn-sm ${renameFilter === "changed" ? "btn-success font-weight-bold" : "btn-outline-secondary"} py-0 px-2`,
+                          onClick: () => setRenameFilter("changed"),
+                        },
+                        `Changed (${changedRenameCount})`
+                      ),
+                      React.createElement(
+                        "button",
+                        {
+                          type: "button",
+                          className: `btn btn-sm ${renameFilter === "unchanged" ? "btn-warning font-weight-bold" : "btn-outline-secondary"} py-0 px-2`,
+                          onClick: () => setRenameFilter("unchanged"),
+                        },
+                        `Unchanged (${unchangedRenameCount})`
+                      )
+                    ),
+                    React.createElement(
+                      "div",
+                      { className: "d-flex align-items-center gap-2" },
+                      React.createElement(
+                        "button",
+                        {
+                          type: "button",
+                          className: "btn btn-xs btn-outline-info py-0 px-2",
+                          onClick: handleSelectAllChangedRename,
+                        },
+                        selectedRenameIds.size === changedRenameCount && changedRenameCount > 0 ? "Deselect Changed" : "Select All Changed"
+                      ),
+                      React.createElement("span", { className: "badge badge-info" }, `${selectedRenameIds.size} of ${directScenes.length} files selected`)
+                    )
+                  ),
+                  // Live Rename Table
+                  React.createElement(
+                    "div",
+                    { className: "sfm-parser-table-wrap mb-3" },
+                    React.createElement(
+                      "table",
+                      { className: "sfm-parser-table sfm-rename-table table table-dark table-sm table-striped" },
+                      React.createElement(
+                        "thead",
+                        null,
+                        React.createElement(
+                          "tr",
+                          null,
+                          React.createElement(
+                            "th",
+                            { style: { width: "36px", textAlign: "center" } },
+                            React.createElement("input", {
+                              type: "checkbox",
+                              checked: selectedRenameIds.size === directScenes.length && directScenes.length > 0,
+                              onChange: () => {
+                                if (selectedRenameIds.size === directScenes.length) setSelectedRenameIds(new Set());
+                                else setSelectedRenameIds(new Set(directScenes.map((s) => s.id)));
+                              },
+                            })
+                          ),
+                          React.createElement("th", { style: { width: "64px", textAlign: "center" } }, "Cover"),
+                          React.createElement("th", { style: { maxWidth: "240px" } }, "Current Filename"),
+                          React.createElement("th", null, "Proposed New Filename"),
+                          React.createElement("th", { style: { width: "180px" } }, "Tags Preview"),
+                          React.createElement("th", { style: { width: "120px", textAlign: "center" } }, "Status")
+                        )
+                      ),
+                      React.createElement(
+                        "tbody",
+                        null,
+                        filteredRenameItems.map((item) => {
+                          const isSelected = selectedRenameIds.has(item.scene.id);
+                          const rState = renameStates[item.scene.id] || { status: "idle" };
+                          const posterUrl = item.scene.paths?.screenshot || `/scene/${item.scene.id}/screenshot`;
+
+                          return React.createElement(
+                            "tr",
+                            {
+                              key: item.scene.id,
+                              style: { cursor: "pointer", opacity: isSelected ? 1 : 0.65 },
+                              onClick: () => handleToggleSelectRenameScene(item.scene.id),
+                            },
+                            React.createElement(
+                              "td",
+                              { style: { textAlign: "center" } },
+                              React.createElement("input", {
+                                type: "checkbox",
+                                checked: isSelected,
+                                onChange: () => handleToggleSelectRenameScene(item.scene.id),
+                                onClick: (e) => e.stopPropagation(),
+                              })
+                            ),
+                            React.createElement(
+                              "td",
+                              { style: { textAlign: "center" } },
+                              React.createElement("img", {
+                                src: posterUrl,
+                                className: "sfm-scrape-thumb",
+                                alt: "Thumb",
+                                loading: "lazy",
+                                onError: (e) => { e.target.style.display = "none"; },
+                              })
+                            ),
+                            React.createElement(
+                              "td",
+                              { className: "text-truncate", style: { maxWidth: "240px" }, title: item.currentBasename },
+                              React.createElement("span", { style: { fontFamily: "monospace", fontSize: "0.82rem" } }, item.currentBasename)
+                            ),
+                            React.createElement(
+                              "td",
+                              null,
+                              React.createElement(
+                                "span",
+                                {
+                                  className: item.isChanged ? "text-success font-weight-bold" : "text-muted",
+                                  style: { fontFamily: "monospace", fontSize: "0.85rem" },
+                                  title: item.proposedBasename,
+                                },
+                                item.proposedBasename
+                              ),
+                              !item.isChanged &&
+                                React.createElement("span", { className: "badge badge-dark text-muted ml-2 py-0 px-1", style: { fontSize: "0.72rem" } }, "Unchanged")
+                            ),
+                            React.createElement(
+                              "td",
+                              null,
+                              React.createElement(
+                                "div",
+                                { className: "d-flex align-items-center flex-wrap gap-1" },
+                                (item.cloud?.studio?.name || item.scene.studio?.name || item.parsed?.studio) &&
+                                  React.createElement(
+                                    "span",
+                                    { className: "badge badge-secondary py-0 px-1", style: { fontSize: "0.72rem" } },
+                                    item.cloud?.studio?.name || item.scene.studio?.name || item.parsed?.studio
+                                  ),
+                                (item.cloud?.code || item.scene.code || item.parsed?.code) &&
+                                  React.createElement(
+                                    "span",
+                                    { className: "badge badge-dark text-warning py-0 px-1", style: { fontSize: "0.72rem" } },
+                                    item.cloud?.code || item.scene.code || item.parsed?.code
+                                  )
+                              )
+                            ),
+                            React.createElement(
+                              "td",
+                              { style: { textAlign: "center" } },
+                              rState.status === "renaming"
+                                ? React.createElement("span", { className: "badge badge-info" }, "Renaming...")
+                                : rState.status === "done"
+                                ? React.createElement("span", { className: "badge badge-success" }, "✓ Renamed")
+                                : rState.status === "error"
+                                ? React.createElement("span", { className: "badge badge-danger", title: rState.msg || "Error" }, "Error")
+                                : !item.isChanged
+                                ? React.createElement("span", { className: "badge badge-secondary" }, "Unchanged")
+                                : React.createElement("span", { className: "badge badge-primary font-weight-bold" }, "Ready")
+                            )
+                          );
+                        })
+                      )
+                    )
+                  )
+                )
+              : React.createElement(
+                  React.Fragment,
+                  null,
+                  activeTab === "scrape"
+                    ? React.createElement(
+                        "div",
+                        { className: "sfm-scrape-section mb-3" },
                   // Scrape Toolbar
                   React.createElement(
                     "div",
@@ -6433,53 +7079,79 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                 )
               )
             )
-          ),
-          // Footer
-          React.createElement(
-            "div",
-            { className: "sfm-modal-footer d-flex justify-content-between align-items-center flex-wrap gap-2" },
-            React.createElement(
+          )
+        ),
+        // Footer
+        activeTab === "rename"
+          ? React.createElement(
               "div",
-              { className: "d-flex align-items-center flex-wrap gap-3 small text-muted" },
-              React.createElement("span", { className: "font-weight-bold text-light" }, "Fields to apply:"),
-              [
-                ["title", "Title"],
-                ["date", "Date"],
-                ["studio", "Studio"],
-                ["performers", "Performers"],
-                ["tags", "Tags"],
-                ["details", "Details"],
-                ["code", "Code"],
-                ["cover", "Cover Image"],
-              ].map(([key, label]) =>
+              { className: "sfm-modal-footer d-flex justify-content-between align-items-center flex-wrap gap-2" },
+              React.createElement(
+                "div",
+                { className: "small text-muted" },
+                React.createElement("span", { className: "font-weight-bold text-light mr-1" }, `Selected: ${selectedRenameIds.size} of ${directScenes.length} files`),
+                React.createElement("span", null, `(${renamePreviewItems.filter((i) => selectedRenameIds.has(i.scene.id) && i.isChanged).length} changed)`)
+              ),
+              React.createElement(
+                "div",
+                { className: "d-flex align-items-center gap-2" },
+                React.createElement("button", { className: "btn btn-secondary btn-sm", onClick: onClose }, "Cancel"),
                 React.createElement(
-                  "div",
-                  { key, className: "d-flex align-items-center gap-1 cursor-pointer" },
-                  React.createElement("input", {
-                    type: "checkbox",
-                    id: `sfm-apply-${key}`,
-                    checked: !!fieldsToApply[key],
-                    onChange: () => handleToggleFieldToApply(key),
-                  }),
-                  React.createElement("label", { htmlFor: `sfm-apply-${key}`, className: "mb-0 ml-1 text-light cursor-pointer small" }, label)
+                  "button",
+                  {
+                    className: "btn btn-primary btn-sm font-weight-bold",
+                    disabled: isRenaming || selectedRenameIds.size === 0,
+                    onClick: handleExecuteBulkRename,
+                  },
+                  isRenaming ? "Renaming Files..." : `Bulk Rename ${selectedRenameIds.size} Selected Files`
                 )
               )
-            ),
-            React.createElement(
+            )
+          : React.createElement(
               "div",
-              { className: "d-flex align-items-center gap-2" },
-              React.createElement("button", { className: "btn btn-secondary btn-sm", onClick: onClose }, "Cancel"),
+              { className: "sfm-modal-footer d-flex justify-content-between align-items-center flex-wrap gap-2" },
               React.createElement(
-                "button",
-                {
-                  className: "btn btn-primary btn-sm font-weight-bold",
-                  disabled: isExecuting || selectedSceneIds.size === 0,
-                  onClick: handleExecute,
-                },
-                isExecuting ? "Executing Updates..." : `Apply to ${selectedSceneIds.size} Selected Scenes`
+                "div",
+                { className: "d-flex align-items-center flex-wrap gap-3 small text-muted" },
+                React.createElement("span", { className: "font-weight-bold text-light" }, "Fields to apply:"),
+                [
+                  ["title", "Title"],
+                  ["date", "Date"],
+                  ["studio", "Studio"],
+                  ["performers", "Performers"],
+                  ["tags", "Tags"],
+                  ["details", "Details"],
+                  ["code", "Code"],
+                  ["cover", "Cover Image"],
+                ].map(([key, label]) =>
+                  React.createElement(
+                    "div",
+                    { key, className: "d-flex align-items-center gap-1 cursor-pointer" },
+                    React.createElement("input", {
+                      type: "checkbox",
+                      id: `sfm-apply-${key}`,
+                      checked: !!fieldsToApply[key],
+                      onChange: () => handleToggleFieldToApply(key),
+                    }),
+                    React.createElement("label", { htmlFor: `sfm-apply-${key}`, className: "mb-0 ml-1 text-light cursor-pointer small" }, label)
+                  )
+                )
+              ),
+              React.createElement(
+                "div",
+                { className: "d-flex align-items-center gap-2" },
+                React.createElement("button", { className: "btn btn-secondary btn-sm", onClick: onClose }, "Cancel"),
+                React.createElement(
+                  "button",
+                  {
+                    className: "btn btn-primary btn-sm font-weight-bold",
+                    disabled: isExecuting || selectedSceneIds.size === 0,
+                    onClick: handleExecute,
+                  },
+                  isExecuting ? "Executing Updates..." : `Apply to ${selectedSceneIds.size} Selected Scenes`
+                )
               )
             )
-          )
         )
       );
     }

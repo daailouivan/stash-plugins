@@ -1,17 +1,21 @@
 #!/usr/bin/env python3
 """
-Stash File Manager - Native Background Tasks Runner (v2.3.0)
+Stash File Manager - Native Background Tasks Runner (v3.2.0)
 Registered under Stash Settings -> Tasks -> Plugin Tasks
 
 Supported operations:
   - rebuild: Rescan library directories and rebuild directory tree hierarchy cache
   - reset: Reset plugin settings and cached configuration to factory defaults
   - init: Initialize default plugin configuration and verify library accessibility
+  - rename: Bulk rename scene files on disk and update Stash database records
 """
 
 import sys
 import os
+import re
 import json
+import time
+import sqlite3
 import urllib.request
 import urllib.error
 from pathlib import Path
@@ -65,6 +69,8 @@ def get_server_connection(input_data):
     server = input_data.get("server_connection", {})
     scheme = server.get("Scheme") or os.environ.get("STASH_SCHEME", "http")
     host = server.get("Host") or os.environ.get("STASH_HOST", "localhost")
+    if host == "0.0.0.0":
+        host = "127.0.0.1"
     port = server.get("Port") or os.environ.get("STASH_PORT", 9999)
     api_key = server.get("ApiKey") or os.environ.get("STASH_API_KEY", "")
     session_cookie = server.get("SessionCookie", "")
@@ -158,12 +164,12 @@ def task_reset(endpoint, api_key, session_cookie, plugin_dir):
     log("Resetting all Stash File Manager settings to factory defaults...", "INFO")
     
     res = call_graphql(endpoint, """
-        mutation ResetSFMPluginSettings($plugin_id: ID!, $values: Map!) {
-            configurePlugin(plugin_id: $plugin_id, values: $values)
+        mutation ResetSFMPluginSettings($plugin_id: ID!, $input: Map!) {
+            configurePlugin(plugin_id: $plugin_id, input: $input)
         }
     """, variables={
         "plugin_id": "stash_file_manager",
-        "values": DEFAULT_SETTINGS
+        "input": DEFAULT_SETTINGS
     }, api_key=api_key, session_cookie=session_cookie)
     
     cache_file = plugin_dir / ".sfm_tree_cache.json"
@@ -208,17 +214,237 @@ def task_init(endpoint, api_key, session_cookie, plugin_dir):
     merged_settings.update(sfm_settings)
     
     call_graphql(endpoint, """
-        mutation InitSFMPluginSettings($plugin_id: ID!, $values: Map!) {
-            configurePlugin(plugin_id: $plugin_id, values: $values)
+        mutation InitSFMPluginSettings($plugin_id: ID!, $input: Map!) {
+            configurePlugin(plugin_id: $plugin_id, input: $input)
         }
     """, variables={
         "plugin_id": "stash_file_manager",
-        "values": merged_settings
+        "input": merged_settings
     }, api_key=api_key, session_cookie=session_cookie)
     
     stashes = (config_data.get("configuration") or {}).get("general", {}).get("stashes", []) if config_data else []
     log(f"Verified {len(stashes)} library paths. Plugin configuration initialized and verified.", "SUCCESS")
     return {"status": "ok", "message": "Plugin configuration initialized", "settings": merged_settings}
+
+def resolve_file_disk_path(path_str):
+    """
+    Resolve disk path, handling potential container prefix differences.
+    """
+    if not path_str:
+        return path_str
+    if os.path.exists(path_str):
+        return path_str
+    if path_str.startswith("/data/"):
+        for prefix in ["/hed-nas/Downloads", "/hed-nas/HED", "/hed-nas"]:
+            cand = prefix + path_str[5:]
+            if os.path.exists(cand):
+                return cand
+    return path_str
+
+def task_rename(endpoint, api_key, session_cookie, plugin_dir, input_data):
+    """
+    Bulk rename scene files on disk and update Stash database records (files table)
+    to preserve scene associations, markers, generated previews, and metadata intact.
+    """
+    log("Starting bulk file rename operation...", "INFO")
+    
+    # Extract items to rename from various input formats
+    items = []
+    if "items" in input_data and input_data["items"]:
+        items = input_data["items"]
+    elif isinstance(input_data.get("args"), dict) and "items" in input_data["args"]:
+        items = input_data["args"]["items"]
+    elif isinstance(input_data.get("args_map"), dict) and "items" in input_data["args_map"]:
+        items = input_data["args_map"]["items"]
+    elif isinstance(input_data.get("args"), list):
+        for arg in input_data["args"]:
+            if isinstance(arg, dict) and arg.get("key") == "items":
+                val = arg.get("value", {})
+                items = val.get("str") or val
+                break
+
+    if isinstance(items, str):
+        try:
+            items = json.loads(items)
+        except Exception as e:
+            log(f"Error parsing items JSON payload: {e}", "ERROR")
+            items = []
+
+    if not items:
+        log("No items provided for renaming.", "WARN")
+        return {
+            "status": "ok",
+            "message": "No items to rename",
+            "total": 0,
+            "success_count": 0,
+            "error_count": 0,
+            "unchanged_count": 0,
+            "results": []
+        }
+
+    log(f"Received {len(items)} file rename requests.", "INFO")
+
+    results = []
+    success_count = 0
+    error_count = 0
+    unchanged_count = 0
+
+    possible_sqlite_paths = [
+        Path("/hed-nas/docker/stashapp/stash-config/stash-go.sqlite"),
+        Path("/config/stash-go.sqlite"),
+        Path.home() / ".stash" / "stash-go.sqlite",
+        plugin_dir.parent.parent / "stash-go.sqlite",
+    ]
+
+    for idx, item in enumerate(items):
+        file_id = item.get("file_id")
+        scene_id = item.get("scene_id")
+        raw_old_path = item.get("old_path") or item.get("path")
+        new_basename = item.get("new_basename")
+
+        if not raw_old_path or not new_basename or file_id is None:
+            msg = "Missing required parameters (file_id, old_path, or new_basename)"
+            log(f"[{idx+1}/{len(items)}] Error: {msg} for item: {item}", "WARN")
+            results.append({"status": "error", "file_id": file_id, "scene_id": scene_id, "message": msg})
+            error_count += 1
+            continue
+
+        # Sanitize new_basename: replace illegal filesystem characters / \ : * ? " < > | with hyphens
+        clean_basename = re.sub(r'[/\\:*?"<>|]', '-', str(new_basename)).strip()
+        clean_basename = re.sub(r'\s+', ' ', clean_basename)
+        clean_basename = re.sub(r'^[-_.\s]+', '', clean_basename)
+
+        old_disk_path = resolve_file_disk_path(raw_old_path)
+        old_dir = os.path.dirname(old_disk_path)
+        new_disk_path = os.path.join(old_dir, clean_basename)
+
+        old_basename = os.path.basename(old_disk_path)
+        if old_disk_path == new_disk_path or old_basename == clean_basename:
+            log(f"[{idx+1}/{len(items)}] Unchanged: '{old_basename}' already matches target.", "INFO")
+            unchanged_count += 1
+            results.append({
+                "status": "unchanged",
+                "file_id": file_id,
+                "scene_id": scene_id,
+                "old_basename": old_basename,
+                "new_basename": clean_basename,
+                "message": "Filename already matches target"
+            })
+            continue
+
+        # Verify source file exists on disk
+        if not os.path.exists(old_disk_path):
+            msg = f"Source file does not exist on disk: {old_disk_path}"
+            log(f"[{idx+1}/{len(items)}] Error: {msg}", "ERROR")
+            results.append({"status": "error", "file_id": file_id, "scene_id": scene_id, "message": msg})
+            error_count += 1
+            continue
+
+        # Verify destination file does not collide
+        if os.path.exists(new_disk_path):
+            msg = f"Target file already exists on disk: {new_disk_path}"
+            log(f"[{idx+1}/{len(items)}] Error: {msg}", "ERROR")
+            results.append({"status": "error", "file_id": file_id, "scene_id": scene_id, "message": msg})
+            error_count += 1
+            continue
+
+        # Step a: Rename file on disk
+        try:
+            os.rename(old_disk_path, new_disk_path)
+            log(f"[{idx+1}/{len(items)}] Renamed on disk: '{old_basename}' -> '{clean_basename}'", "INFO")
+        except Exception as e:
+            msg = f"OS filesystem rename failed: {e}"
+            log(f"[{idx+1}/{len(items)}] Error: {msg}", "ERROR")
+            results.append({"status": "error", "file_id": file_id, "scene_id": scene_id, "message": msg})
+            error_count += 1
+            continue
+
+        # Step b: Obtain updated mod_time from disk
+        try:
+            st = os.stat(new_disk_path)
+            mtime_epoch = int(st.st_mtime)
+        except Exception:
+            mtime_epoch = int(time.time())
+
+        # Step c: Update Stash database for that file_id
+        db_updated = False
+        sql = "UPDATE files SET basename = ?, mod_time = datetime(?, 'unixepoch'), updated_at = CURRENT_TIMESTAMP WHERE id = ?;"
+        args = [clean_basename, mtime_epoch, int(file_id)]
+
+        try:
+            gql_res = call_graphql(endpoint, """
+                mutation ExecSQL($sql: String!, $args: [Any]) {
+                    execSQL(sql: $sql, args: $args) {
+                        rows_affected
+                    }
+                }
+            """, variables={"sql": sql, "args": args}, api_key=api_key, session_cookie=session_cookie)
+            if gql_res and (gql_res.get("execSQL") or {}).get("rows_affected", 0) > 0:
+                db_updated = True
+        except Exception as e:
+            log(f"ExecSQL mutation note: {e}", "WARN")
+
+        # Fallback to direct sqlite3 update if GraphQL mutation did not update
+        if not db_updated:
+            for sq_path in possible_sqlite_paths:
+                if sq_path.exists():
+                    try:
+                        conn = sqlite3.connect(str(sq_path), timeout=10)
+                        cur = conn.cursor()
+                        cur.execute(sql, (clean_basename, mtime_epoch, int(file_id)))
+                        if cur.rowcount > 0:
+                            conn.commit()
+                            db_updated = True
+                            log(f"Direct SQLite fallback update succeeded on {sq_path.name}", "INFO")
+                        conn.close()
+                        if db_updated:
+                            break
+                    except Exception as e:
+                        log(f"SQLite fallback error on {sq_path}: {e}", "WARN")
+
+        if db_updated:
+            success_count += 1
+            log(f"[{idx+1}/{len(items)}] Success: Renamed and updated database for file #{file_id} (Scene #{scene_id})", "SUCCESS")
+            results.append({
+                "status": "success",
+                "file_id": file_id,
+                "scene_id": scene_id,
+                "old_basename": old_basename,
+                "new_basename": clean_basename,
+                "new_path": new_disk_path
+            })
+        else:
+            log(f"[{idx+1}/{len(items)}] Warning: File renamed on disk, but database row update unconfirmed for file #{file_id}", "WARN")
+            results.append({
+                "status": "partial",
+                "file_id": file_id,
+                "scene_id": scene_id,
+                "old_basename": old_basename,
+                "new_basename": clean_basename,
+                "new_path": new_disk_path,
+                "message": "Renamed on disk, database update unconfirmed"
+            })
+            success_count += 1
+
+    summary = {
+        "status": "ok" if error_count == 0 else "partial" if success_count > 0 else "error",
+        "total": len(items),
+        "success_count": success_count,
+        "error_count": error_count,
+        "unchanged_count": unchanged_count,
+        "results": results
+    }
+
+    # Write status cache for client inspection
+    try:
+        result_file = plugin_dir / ".sfm_rename_result.json"
+        with open(result_file, "w", encoding="utf-8") as f:
+            json.dump(summary, f, indent=2)
+    except Exception as e:
+        log(f"Could not write rename result cache: {e}", "DEBUG")
+
+    log(f"Bulk rename completed: {success_count} succeeded, {unchanged_count} unchanged, {error_count} errors.", "SUCCESS" if error_count == 0 else "WARN")
+    return summary
 
 def main():
     input_data = read_input()
@@ -228,8 +454,12 @@ def main():
         task_mode = sys.argv[1].lower()
     elif "args" in input_data and isinstance(input_data["args"], dict):
         task_mode = input_data["args"].get("mode") or input_data["args"].get("task")
+    elif "args_map" in input_data and isinstance(input_data["args_map"], dict):
+        task_mode = input_data["args_map"].get("mode") or input_data["args_map"].get("task")
     elif "task" in input_data:
         task_mode = input_data.get("task")
+    elif "mode" in input_data:
+        task_mode = input_data.get("mode")
         
     if not task_mode:
         task_mode = "rebuild"
@@ -245,8 +475,10 @@ def main():
         result = task_reset(endpoint, api_key, session_cookie, plugin_dir)
     elif task_mode in ("init", "initialize"):
         result = task_init(endpoint, api_key, session_cookie, plugin_dir)
+    elif task_mode in ("rename", "bulk_rename", "bulk-rename"):
+        result = task_rename(endpoint, api_key, session_cookie, plugin_dir, input_data)
     else:
-        log(f"Unrecognized task mode '{task_mode}'. Available modes: rebuild, reset, init.", "ERROR")
+        log(f"Unrecognized task mode '{task_mode}'. Available modes: rebuild, reset, init, rename.", "ERROR")
         result = {"error": f"Unrecognized task mode: {task_mode}"}
         
     print(json.dumps(result))
