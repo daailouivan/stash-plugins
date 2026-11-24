@@ -6765,15 +6765,15 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                         },
                       })
                     ),
-                    React.createElement("th", { style: { width: "64px", textAlign: "center" } }, "Cover"),
-                    React.createElement("th", null, "Filename"),
-                    React.createElement("th", null, "Title"),
-                    React.createElement("th", null, "Date"),
-                    React.createElement("th", null, "Studio"),
-                    React.createElement("th", null, "Performers"),
-                    React.createElement("th", { style: { width: "115px", textAlign: "center" } }, "Source"),
-                    React.createElement("th", { style: { width: "85px", textAlign: "center" } }, "Status"),
-                    React.createElement("th", { style: { width: "135px", textAlign: "center" } }, "Actions")
+                    React.createElement("th", { style: { width: "60px", textAlign: "center" } }, "Cover"),
+                    React.createElement("th", { style: { maxWidth: "130px" } }, "Filename"),
+                    React.createElement("th", { style: { maxWidth: "190px" } }, "Title"),
+                    React.createElement("th", { style: { width: "86px" } }, "Date"),
+                    React.createElement("th", { style: { maxWidth: "110px" } }, "Studio"),
+                    React.createElement("th", { style: { maxWidth: "115px" } }, "Performers"),
+                    React.createElement("th", { style: { width: "96px", textAlign: "center" } }, "Source"),
+                    React.createElement("th", { style: { width: "76px", textAlign: "center" } }, "Status"),
+                    React.createElement("th", { style: { width: "1%", whiteSpace: "nowrap", textAlign: "center" } }, "Actions")
                   )
                 ),
                 React.createElement(
@@ -6831,17 +6831,17 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                             onError: (e) => { e.target.src = posterUrl; },
                           })
                         ),
-                        React.createElement("td", { className: "text-truncate", style: { maxWidth: "160px" }, title: item.rawBasename }, item.rawBasename),
+                        React.createElement("td", { className: "text-truncate", style: { maxWidth: "130px" }, title: item.rawBasename }, item.rawBasename),
                         React.createElement(
                           "td",
-                          { className: cloud ? "text-success font-weight-bold" : "text-info font-weight-bold" },
-                          cloud && React.createElement("span", { className: "badge badge-success mr-1 py-0 px-1", style: { fontSize: "0.68rem" } }, "✓ MATCH"),
+                          { className: `text-truncate ${cloud ? "text-success font-weight-bold" : "text-info font-weight-bold"}`, style: { maxWidth: "190px" }, title: displayTitle },
+                          cloud && React.createElement("span", { className: "badge badge-success mr-1 py-0 px-1", style: { fontSize: "0.68rem" } }, "✓"),
                           displayTitle
                         ),
-                        React.createElement("td", null, displayDate),
+                        React.createElement("td", { style: { whiteSpace: "nowrap" } }, displayDate),
                         React.createElement(
                           "td",
-                          null,
+                          { className: "text-truncate", style: { maxWidth: "110px" }, title: displayStudio },
                           displayStudio !== "—"
                             ? React.createElement(
                                 "span",
@@ -6851,7 +6851,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                               )
                             : "—"
                         ),
-                        React.createElement("td", { className: "text-truncate", style: { maxWidth: "140px" }, title: displayPerformers }, displayPerformers),
+                        React.createElement("td", { className: "text-truncate", style: { maxWidth: "115px" }, title: displayPerformers }, displayPerformers),
                         React.createElement(
                           "td",
                           { style: { textAlign: "center" } },

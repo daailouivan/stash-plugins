@@ -666,9 +666,15 @@ body.sfm-body-locked {
   border: 1px solid #434c5e;
   border-left: 4px solid #88c0d0;
   border-radius: 6px;
-  padding: 0.85rem 1rem;
+  padding: 0.75rem 0.9rem;
   margin: 0.35rem 0;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.sfm-scraped-detail-card .flex-grow-1 {
+  min-width: 0;
 }
 
 .sfm-scraped-detail-card.sfm-status-done {
@@ -681,8 +687,8 @@ body.sfm-body-locked {
 }
 
 .sfm-scraped-cover {
-  width: 140px;
-  height: 94px;
+  width: 132px;
+  height: 88px;
   object-fit: cover;
   border-radius: 4px;
   border: 1px solid #3b4252;
@@ -723,12 +729,12 @@ body.sfm-body-locked {
   border: 1px solid #3b4252;
   border-radius: 6px;
   overflow-x: auto;
-  max-height: 440px;
+  max-height: 450px;
 }
 
 .sfm-parser-table {
   width: 100%;
-  font-size: 0.82rem;
+  font-size: 0.8rem;
   margin-bottom: 0;
   border-collapse: collapse;
 }
@@ -739,14 +745,15 @@ body.sfm-body-locked {
   position: sticky;
   top: 0;
   z-index: 1;
-  padding: 0.5rem 0.65rem;
+  padding: 0.45rem 0.45rem;
   border-bottom: 2px solid #3b4252;
   font-weight: 600;
   text-align: left;
+  white-space: nowrap;
 }
 
 .sfm-parser-table td {
-  padding: 0.45rem 0.65rem;
+  padding: 0.4rem 0.45rem;
   border-bottom: 1px solid #2a303c;
   color: #eceff4;
   vertical-align: middle;
