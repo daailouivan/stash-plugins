@@ -4395,16 +4395,18 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
       const [isExecuting, setIsExecuting] = useState(false);
       const [progressText, setProgressText] = useState("");
 
-      // --- PATH CLUES & STASH-BOX STATE ---
+      // --- PATH CLUES & SCRAPE SOURCES STATE ---
       const [pathClues, setPathClues] = useState([]);
-      const [availableStashBoxes, setAvailableStashBoxes] = useState([]);
-      const [selectedStashBox, setSelectedStashBox] = useState("");
+      const [availableSources, setAvailableSources] = useState([]);
+      const [selectedSourceKey, setSelectedSourceKey] = useState(() => {
+        return (typeof window !== "undefined" && window.localStorage ? window.localStorage.getItem("sfm_last_scrape_source") : null) || "auto";
+      });
       const [isCloudQuerying, setIsCloudQuerying] = useState(false);
       const [cloudMatches, setCloudMatches] = useState({});
 
       const sampleScene = directScenes[sampleIndex] || directScenes[0];
       const sampleRawBasename = sampleScene?.files?.[0]?.basename || "";
-      const sampleWithoutExt = sampleRawBasename.replace(/\\.[^/.]+$/, "");
+      const sampleWithoutExt = sampleRawBasename.replace(/\.[^/.]+$/, "");
 
       // Helper: escape regex literal
       const escapeRegex = (s) => s.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&");
@@ -4451,7 +4453,8 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
             .catch(() => {});
         }
 
-        gqlFetch(`query GetStashBoxesConfig {
+        // Fetch Scrape Sources: Stash-boxes and Site scrapers
+        gqlFetch(`query GetScrapeSources {
           configuration {
             general {
               stashBoxes {
@@ -4461,15 +4464,91 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
               }
             }
           }
+          listScrapers(types: [SCENE]) {
+            id
+            name
+            scene {
+              supported_scrapes
+            }
+          }
         }`)
           .then((res) => {
             const boxes = res?.configuration?.general?.stashBoxes || [];
-            setAvailableStashBoxes(boxes);
-            if (boxes.length > 0) {
-              setSelectedStashBox(boxes[0].endpoint);
+            const scrapers = res?.listScrapers || [];
+
+            // Sort sources: Stash-box FIRST, then Sites
+            const stashboxSources = boxes.map((box) => ({
+              key: `stashbox:${box.endpoint}`,
+              type: "stashbox",
+              endpoint: box.endpoint,
+              name: box.name || box.endpoint,
+              label: `stash-box: ${box.name || box.endpoint}`,
+            }));
+
+            const siteSources = scrapers.map((s) => ({
+              key: `site:${s.id}`,
+              type: "site",
+              scraperId: s.id,
+              name: s.name,
+              label: `site: ${s.name}`,
+            }));
+
+            const combined = [
+              { key: "auto", type: "auto", name: "Auto (Stash-box first)", label: "Auto (Stash-box first)" },
+              ...stashboxSources,
+              ...siteSources,
+            ];
+
+            setAvailableSources(combined);
+
+            // Restore saved preference if valid; otherwise default to Stash-box first (or auto)
+            const saved = (typeof window !== "undefined" && window.localStorage ? window.localStorage.getItem("sfm_last_scrape_source") : null) || "";
+            if (saved && combined.some((s) => s.key === saved)) {
+              setSelectedSourceKey(saved);
+            } else if (stashboxSources.length > 0) {
+              setSelectedSourceKey(stashboxSources[0].key);
+            } else {
+              setSelectedSourceKey("auto");
             }
           })
-          .catch(() => {});
+          .catch(() => {
+            // Fallback query for environments with classic StashBox schema
+            gqlFetch(`query GetStashBoxesFallback {
+              configuration {
+                general {
+                  stashBoxes {
+                    name
+                    endpoint
+                  }
+                }
+              }
+            }`)
+              .then((res) => {
+                const boxes = res?.configuration?.general?.stashBoxes || [];
+                const stashboxSources = boxes.map((box) => ({
+                  key: `stashbox:${box.endpoint}`,
+                  type: "stashbox",
+                  endpoint: box.endpoint,
+                  name: box.name || box.endpoint,
+                  label: `stash-box: ${box.name || box.endpoint}`,
+                }));
+                const combined = [
+                  { key: "auto", type: "auto", name: "Auto (Stash-box first)", label: "Auto (Stash-box first)" },
+                  ...stashboxSources,
+                ];
+                setAvailableSources(combined);
+
+                const saved = (typeof window !== "undefined" && window.localStorage ? window.localStorage.getItem("sfm_last_scrape_source") : null) || "";
+                if (saved && combined.some((s) => s.key === saved)) {
+                  setSelectedSourceKey(saved);
+                } else if (stashboxSources.length > 0) {
+                  setSelectedSourceKey(stashboxSources[0].key);
+                } else {
+                  setSelectedSourceKey("auto");
+                }
+              })
+              .catch(() => {});
+          });
       }, [sampleIndex, currentPath]);
 
       const handleSetPathClueRole = (segmentName, newRole) => {
@@ -4733,54 +4812,158 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
         return { error: null, items };
       }, [pattern, caseInsensitive, directScenes]);
 
-      // Query Stash-box for all matched scenes
+      // Query Stash-box / Scrapers for all matched scenes with parallel workload
       const handleQueryStashBox = async () => {
-        if (!selectedStashBox) return;
-        setIsCloudQuerying(true);
-        setProgressText("Querying Stash-box for scene metadata...");
-
-        const newCloudMatches = { ...cloudMatches };
         const matchedItems = parsedResults.items.filter((i) => i.matched);
+        if (matchedItems.length === 0) return;
 
-        for (let i = 0; i < matchedItems.length; i++) {
-          const item = matchedItems[i];
-          const queryCode = item.groups.code || item.groups.title || "";
-          if (!queryCode) continue;
+        setIsCloudQuerying(true);
+        const CONCURRENCY = 4;
+        let completed = 0;
+        const total = matchedItems.length;
+        const newCloudMatches = { ...cloudMatches };
 
-          setProgressText(`Querying Stash-box (${i + 1}/${matchedItems.length}): ${queryCode}...`);
+        setProgressText(`Starting parallel scrape (0/${total})...`);
+
+        const executeItem = async (item) => {
+          const queryCode = item.groups.code || item.groups.title || item.rawBasename || "";
+          if (!queryCode) {
+            completed++;
+            return;
+          }
 
           try {
-            const sRes = await gqlFetch(
-              `query ScrapeSceneFromBox($source: ScraperSourceInput!, $input: ScrapeSingleSceneInput!) {
-                scrapeSingleScene(source: $source, input: $input) {
-                  title
-                  details
-                  url
-                  date
-                  code
-                  studio { name }
-                  performers { name }
-                  tags { name }
-                }
-              }`,
-              {
-                source: { stash_box_endpoint: selectedStashBox },
-                input: { query: queryCode.trim() },
-              }
-            );
+            let scraped = null;
 
-            const scraped = sRes?.scrapeSingleScene?.[0];
+            if (selectedSourceKey === "auto") {
+              // Auto mode: Try Stash-box first, then site scrapers fallback
+              const stashBoxes = availableSources.filter((s) => s.type === "stashbox");
+              const siteScrapers = availableSources.filter((s) => s.type === "site");
+
+              for (const box of stashBoxes) {
+                try {
+                  const sRes = await gqlFetch(
+                    `query ScrapeSceneFromBox($source: ScraperSourceInput!, $input: ScrapeSingleSceneInput!) {
+                      scrapeSingleScene(source: $source, input: $input) {
+                        title
+                        details
+                        url
+                        date
+                        code
+                        studio { name }
+                        performers { name }
+                        tags { name }
+                      }
+                    }`,
+                    {
+                      source: { stash_box_endpoint: box.endpoint },
+                      input: { query: queryCode.trim() },
+                    }
+                  );
+                  if (sRes?.scrapeSingleScene?.[0]) {
+                    scraped = sRes.scrapeSingleScene[0];
+                    break;
+                  }
+                } catch (e) {}
+              }
+
+              if (!scraped && siteScrapers.length > 0) {
+                for (const site of siteScrapers) {
+                  try {
+                    const sRes = await gqlFetch(
+                      `query ScrapeSceneFromSite($source: ScraperSourceInput!, $input: ScrapeSingleSceneInput!) {
+                        scrapeSingleScene(source: $source, input: $input) {
+                          title
+                          details
+                          url
+                          date
+                          code
+                          studio { name }
+                          performers { name }
+                          tags { name }
+                        }
+                      }`,
+                      {
+                        source: { scraper_id: site.scraperId },
+                        input: { query: queryCode.trim() },
+                      }
+                    );
+                    if (sRes?.scrapeSingleScene?.[0]) {
+                      scraped = sRes.scrapeSingleScene[0];
+                      break;
+                    }
+                  } catch (e) {}
+                }
+              }
+            } else if (selectedSourceKey.startsWith("site:")) {
+              const scraperId = selectedSourceKey.replace("site:", "");
+              const sRes = await gqlFetch(
+                `query ScrapeSceneFromSite($source: ScraperSourceInput!, $input: ScrapeSingleSceneInput!) {
+                  scrapeSingleScene(source: $source, input: $input) {
+                    title
+                    details
+                    url
+                    date
+                    code
+                    studio { name }
+                    performers { name }
+                    tags { name }
+                  }
+                }`,
+                {
+                  source: { scraper_id: scraperId },
+                  input: { query: queryCode.trim() },
+                }
+              );
+              scraped = sRes?.scrapeSingleScene?.[0] || null;
+            } else {
+              const endpoint = selectedSourceKey.replace("stashbox:", "");
+              const sRes = await gqlFetch(
+                `query ScrapeSceneFromBox($source: ScraperSourceInput!, $input: ScrapeSingleSceneInput!) {
+                  scrapeSingleScene(source: $source, input: $input) {
+                    title
+                    details
+                    url
+                    date
+                    code
+                    studio { name }
+                    performers { name }
+                    tags { name }
+                  }
+                }`,
+                {
+                  source: { stash_box_endpoint: endpoint },
+                  input: { query: queryCode.trim() },
+                }
+              );
+              scraped = sRes?.scrapeSingleScene?.[0] || null;
+            }
+
             if (scraped) {
               newCloudMatches[item.scene.id] = scraped;
+              setCloudMatches((prev) => ({ ...prev, [item.scene.id]: scraped }));
             }
           } catch (err) {
-            console.warn(`Stash-box scrape error for ${queryCode}:`, err);
+            console.warn(`Scrape error for ${queryCode}:`, err);
+          } finally {
+            completed++;
+            setProgressText(`Scraping in parallel (${completed}/${total}): ${queryCode}...`);
           }
-        }
+        };
 
-        setCloudMatches(newCloudMatches);
+        let queueIdx = 0;
+        const workers = Array.from({ length: Math.min(CONCURRENCY, matchedItems.length) }, async () => {
+          while (queueIdx < matchedItems.length) {
+            const currentItem = matchedItems[queueIdx++];
+            await executeItem(currentItem);
+          }
+        });
+
+        await Promise.all(workers);
+
+        setCloudMatches({ ...newCloudMatches });
         setIsCloudQuerying(false);
-        setProgressText(`Completed Stash-box resolution. Found ${Object.keys(newCloudMatches).length} verified matches.`);
+        setProgressText(`Completed parallel scrape. Found ${Object.keys(newCloudMatches).length} verified matches.`);
       };
 
       useEffect(() => {
@@ -4953,21 +5136,32 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                   React.createElement("span", { className: "badge badge-info d-inline-flex align-items-center" }, React.createElement(IconFolder, { size: 11, className: "mr-1" }), "Path Clues"),
                   React.createElement("span", { className: "small text-muted" }, "Folder hierarchy context inferred from filesystem:")
                 ),
-                availableStashBoxes.length > 0 &&
+                availableSources.length > 0 &&
                   React.createElement(
                     "div",
                     { className: "d-flex align-items-center gap-2" },
-                    React.createElement("span", { className: "small text-light" }, React.createElement(IconGlobe, { size: 12, className: "mr-1 text-info" }), "Stash-box:"),
+                    React.createElement(
+                      "span",
+                      { className: "small text-light" },
+                      React.createElement(IconGlobe, { size: 12, className: "mr-1 text-info" }),
+                      "Scrape from:"
+                    ),
                     React.createElement(
                       "select",
                       {
                         className: "form-control form-control-sm bg-dark text-info border-secondary py-0",
                         style: { width: "auto", height: "24px", fontSize: "0.78rem" },
-                        value: selectedStashBox,
-                        onChange: (e) => setSelectedStashBox(e.target.value),
+                        value: selectedSourceKey,
+                        onChange: (e) => {
+                          const val = e.target.value;
+                          setSelectedSourceKey(val);
+                          if (typeof window !== "undefined" && window.localStorage) {
+                            window.localStorage.setItem("sfm_last_scrape_source", val);
+                          }
+                        },
                       },
-                      availableStashBoxes.map((box) =>
-                        React.createElement("option", { key: box.endpoint, value: box.endpoint }, `${box.name} (${box.endpoint})`)
+                      availableSources.map((src) =>
+                        React.createElement("option", { key: src.key, value: src.key }, src.label)
                       )
                     ),
                     React.createElement(
@@ -4977,9 +5171,10 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                         className: "btn btn-xs btn-primary font-weight-bold py-0 px-2",
                         disabled: isCloudQuerying || matchedCount === 0,
                         onClick: handleQueryStashBox,
-                        title: "Query Stash-box using Code and Path clues to fetch canonical metadata",
+                        title: "Query scene metadata in parallel using code and title clues",
                       },
-                      React.createElement(IconGlobe, { size: 13, className: "mr-1" }), isCloudQuerying ? "Querying..." : "Query Stash-box"
+                      React.createElement(IconGlobe, { size: 13, className: "mr-1" }),
+                      isCloudQuerying ? "Scraping (Parallel)..." : "Auto Scrape (Parallel)"
                     )
                   )
               ),
@@ -8869,6 +9064,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
     function patchNativeSceneCard(props, res) {
       try {
         if (!props || !res || !React.isValidElement(res)) return res;
+        if (typeof window !== "undefined" && (window.location?.pathname?.includes("/tagger") || window.location?.hash?.includes("tagger"))) return res;
         const scene = props.scene || (props.id ? props : props.item || null);
         if (!scene || !scene.id) return res;
         // If res is GridCard and already has details with SceneCardDetails, avoid duplicate overlay on outer card
@@ -9134,7 +9330,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
     // ==========================================================================
     function injectSceneCardsDOMFallback() {
       if (typeof document === "undefined" || !document.querySelectorAll || !document.querySelector) return;
-      if (typeof window !== "undefined" && window.location?.hash?.startsWith("#file-manager")) return;
+      if (typeof window !== "undefined" && (window.location?.hash?.startsWith("#file-manager") || window.location?.pathname?.includes("/tagger") || window.location?.hash?.includes("tagger"))) return;
       const cardEls = document.querySelectorAll(".scene-card, .card.scene-card, .scene-cards-grid .card, .scene-card-grid .card, [class*='SceneCard']");
       if (!cardEls || cardEls.length === 0) return;
 

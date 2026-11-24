@@ -1,13 +1,13 @@
 # Project Handoff Document: Stash Path File Manager Plugin
-# Release v3.0.3 & Blueprint for Phase 4 Expansion
+# Release v3.0.4 & Blueprint for Phase 4 Expansion
 
-**Current Release:** `v3.0.3`  
+**Current Release:** `v3.0.4`  
 **Target Milestone:** `v3.1.0` (Phase 4 Continuation: Performer & Studio Directory Aggregation & Advanced Platform Hooks)  
 **Active Repository:** `https://github.com/daailouivan/stash-plugins.git` (`main` branch)  
-**Distribution Package:** `stash_file_manager.zip` (SHA256: `c09cc4ce6288b35a5e7b5e695c1aeb5dd005c1393a481d5068777dce65de625f`)  
-**Plugin Manifest:** `stash_file_manager/stash_file_manager.yml` (version `3.0.3`)  
-**Repository Index:** `index.yml` (version `3.0.3`)  
-**Total Release Tags:** `48` (`v1.0.0` through `v3.0.3`)  
+**Distribution Package:** `stash_file_manager.zip` (SHA256: `fcd47114598f56f1b4ac13ee6a9bae00bf5ef629c3ece7a7f8b34b3614a55964`)  
+**Plugin Manifest:** `stash_file_manager/stash_file_manager.yml` (version `3.0.4`)  
+**Repository Index:** `index.yml` (version `3.0.4`)  
+**Total Release Tags:** `49` (`v1.0.0` through `v3.0.4`)  
 
 ---
 

@@ -176,6 +176,14 @@ Eliminate wasted vertical space with compact folder layouts tailored to any libr
 
 ## 📋 Changelog & Development History
 
+### [v3.0.4] — 2026-11-24 03:47:00
+* **Parallel Scrape Workflow & Enhanced Scraper Source Ordering:**
+  * **Parallel Scraping Worker Queue:** Replaced sequential single-threaded scraping loop in the File Manager's scene metadata parser (`FilenameParserModal`) with a concurrent worker pool (`CONCURRENCY = 4`). Scenes are scraped simultaneously in parallel with live real-time progress updates and progressive UI result rendering.
+  * **Sorted Scrape Sources (Stash-box First, then Sites):** Integrated both Stash-box endpoints (`configuration.general.stashBoxes`) and configured site scrapers (`listScrapers(types: [SCENE])`). Scrape source list strictly prioritizes Stash-box endpoints first, followed by Site scrapers.
+  * **Remember Last-Used Scrape Source State:** Persists user selection (Auto, specific Stash-box instance, or chosen manual site scraper) to `localStorage` (`sfm_last_scrape_source`). On reload/modal open, safely restores the remembered source and defaults to Stash-box first (never defaulting to sites).
+  * **Native Tagger Bypass Safeguards:** Added route checks to bypass DOM card decoration observers and React patch overlays when visiting `/tagger`, preventing any observer thrashing during native Stash scene tagging.
+  * **Unit Test Suite:** Added `test_parallel_scrape_and_sources.js` verifying parallel execution concurrency, source sorting, persistence, and tagger safeguards.
+
 ### [v3.0.3] — 2026-10-18 18:40:00
 * **Critical Fix: Resolve Minified React Error #31 on Scene and List Pages:**
   * Fixed argument order in Stash `PluginApi.patch.after` hooks where React components passed `(props, context, result)`. Handlers now safely extract the rendered element from the last argument rather than React's empty `context` object (`{}`).
