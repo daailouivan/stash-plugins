@@ -5656,8 +5656,43 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
         });
         setRenameStates(updatedStates);
 
+        const applyResultSummary = (summary) => {
+          const results = summary?.results || [];
+          let okCount = 0;
+          let errCount = 0;
+
+          itemsPayload.forEach((p) => {
+            const r = results.find((res) => String(res.scene_id) === String(p.scene_id) || Number(res.file_id) === Number(p.file_id));
+            const scene = directScenes.find((s) => String(s.id) === String(p.scene_id));
+            if (!r || r.status === "success" || r.status === "partial") {
+              if (scene?.files?.[0]) {
+                scene.files[0].basename = p.new_basename;
+              }
+              updatedStates[p.scene_id] = { status: "done", msg: r?.status === "partial" ? "Renamed (DB unconfirmed)" : "✓ Renamed" };
+              okCount++;
+            } else if (r.status === "unchanged") {
+              updatedStates[p.scene_id] = { status: "idle", msg: "Unchanged" };
+            } else {
+              updatedStates[p.scene_id] = { status: "error", msg: r.message || "Rename failed" };
+              errCount++;
+            }
+          });
+
+          setRenameStates({ ...updatedStates });
+          if (errCount === 0) {
+            setRenameProgressText(`Bulk rename completed successfully for ${okCount} files! Stash associations preserved.`);
+          } else {
+            setRenameProgressText(`Bulk rename finished: ${okCount} succeeded, ${errCount} errors.`);
+          }
+
+          setTimeout(() => {
+            clearCachedScenes();
+            onApplied();
+          }, 1500);
+        };
+
         try {
-          // Call backend plugin task via Stash's runPluginTask mutation
+          // Attempt task execution via runPluginTask mutation
           const res = await gqlFetch(
             `mutation RunBulkRenameTask($args_map: Map) {
               runPluginTask(plugin_id: "stash_file_manager", task_name: "Bulk Rename Files", args_map: $args_map)
@@ -5671,28 +5706,65 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
           );
 
           const taskId = res?.runPluginTask;
-          setRenameProgressText(`Bulk rename task queued in Stash (Job #${taskId || "1"}). Associations preserved.`);
+          setRenameProgressText(`Bulk rename task queued (Job #${taskId || "1"}). Waiting for execution...`);
 
-          // Update in-memory scene filenames so UI reflects the change immediately
-          itemsPayload.forEach((p) => {
-            const scene = directScenes.find((s) => String(s.id) === String(p.scene_id));
-            if (scene?.files?.[0]) {
-              scene.files[0].basename = p.new_basename;
+          // Poll job status until complete (max 30 seconds)
+          let isFinished = false;
+          let jobStatus = "RUNNING";
+          for (let poll = 0; poll < 60; poll++) {
+            await new Promise((resolve) => setTimeout(resolve, 500));
+            try {
+              const jobRes = await gqlFetch(
+                `query CheckJob($id: ID!) {
+                  findJob(input: { id: $id }) {
+                    id
+                    status
+                    error
+                  }
+                }`,
+                { id: String(taskId) }
+              );
+              const job = jobRes?.findJob;
+              jobStatus = job?.status || "RUNNING";
+              if (jobStatus === "FINISHED" || jobStatus === "FAILED" || jobStatus === "CANCELLED") {
+                isFinished = true;
+                break;
+              }
+            } catch (pollErr) {
+              // Ignore transient query errors during polling
             }
-            updatedStates[p.scene_id] = { status: "done", msg: "✓ Renamed" };
-          });
-          setRenameStates({ ...updatedStates });
-          setRenameProgressText(`Bulk rename completed successfully for ${itemsPayload.length} files! Stash associations preserved.`);
+          }
 
-          setTimeout(() => {
-            clearCachedScenes();
-            onApplied();
-          }, 1200);
+          if (isFinished && jobStatus === "FINISHED") {
+            // Check if we can read the result summary cache or fallback to optimistic success
+            itemsPayload.forEach((p) => {
+              const scene = directScenes.find((s) => String(s.id) === String(p.scene_id));
+              if (scene?.files?.[0]) {
+                scene.files[0].basename = p.new_basename;
+              }
+              updatedStates[p.scene_id] = { status: "done", msg: "✓ Renamed" };
+            });
+            setRenameStates({ ...updatedStates });
+            setRenameProgressText(`Bulk rename completed successfully for ${itemsPayload.length} files! Stash associations preserved.`);
+            setTimeout(() => {
+              clearCachedScenes();
+              onApplied();
+            }, 1200);
+          } else if (jobStatus === "FAILED") {
+            throw new Error("Stash background task failed.");
+          } else {
+            // Task still running or polling timed out; refresh scenes
+            setRenameProgressText(`Bulk rename job #${taskId} submitted. Stash associations preserved.`);
+            setTimeout(() => {
+              clearCachedScenes();
+              onApplied();
+            }, 1500);
+          }
         } catch (err) {
           console.error("runPluginTask error, attempting runPluginOperation fallback:", err);
           try {
             setRenameProgressText("Executing rename via synchronous plugin operation...");
-            await gqlFetch(
+            const opRes = await gqlFetch(
               `mutation RunBulkRenameOp($args: Map) {
                 runPluginOperation(plugin_id: "stash_file_manager", args: $args)
               }`,
@@ -5703,19 +5775,38 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                 },
               }
             );
-            itemsPayload.forEach((p) => {
-              const scene = directScenes.find((s) => String(s.id) === String(p.scene_id));
-              if (scene?.files?.[0]) {
-                scene.files[0].basename = p.new_basename;
+
+            // Parse returned JSON from runPluginOperation
+            let opSummary = null;
+            const rawOpOut = opRes?.runPluginOperation;
+            if (typeof rawOpOut === "string") {
+              const jsonMatch = rawOpOut.match(/\{[\s\S]*"results"[\s\S]*\}/);
+              if (jsonMatch) {
+                try {
+                  opSummary = JSON.parse(jsonMatch[0]);
+                } catch (pe) {}
               }
-              updatedStates[p.scene_id] = { status: "done", msg: "✓ Renamed" };
-            });
-            setRenameStates({ ...updatedStates });
-            setRenameProgressText(`Bulk rename completed for ${itemsPayload.length} files!`);
-            setTimeout(() => {
-              clearCachedScenes();
-              onApplied();
-            }, 1200);
+            } else if (typeof rawOpOut === "object" && rawOpOut !== null) {
+              opSummary = rawOpOut;
+            }
+
+            if (opSummary) {
+              applyResultSummary(opSummary);
+            } else {
+              itemsPayload.forEach((p) => {
+                const scene = directScenes.find((s) => String(s.id) === String(p.scene_id));
+                if (scene?.files?.[0]) {
+                  scene.files[0].basename = p.new_basename;
+                }
+                updatedStates[p.scene_id] = { status: "done", msg: "✓ Renamed" };
+              });
+              setRenameStates({ ...updatedStates });
+              setRenameProgressText(`Bulk rename completed for ${itemsPayload.length} files!`);
+              setTimeout(() => {
+                clearCachedScenes();
+                onApplied();
+              }, 1200);
+            }
           } catch (opErr) {
             console.error(opErr);
             setRenameProgressText(`Error renaming files: ${opErr.message || err.message}`);

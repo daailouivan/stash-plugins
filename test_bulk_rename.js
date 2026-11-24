@@ -383,6 +383,39 @@ console.log(`  • ${path.basename(testFile1)} -> ${path.basename(expectedNew1)}
 console.log(`  • ${path.basename(testFile2)} -> ${path.basename(expectedNew2)}`);
 console.log("✓ Error path cleanly handled for non-existent file.");
 
+// Test Case 4: Case-only rename support
+const testCaseOnly = path.join(tmpDir, "lower_case_name.mp4");
+fs.writeFileSync(testCaseOnly, "video content case test");
+const casePayload = JSON.stringify({
+  task: "rename",
+  items: [
+    {
+      file_id: 99994,
+      scene_id: "8884",
+      old_path: testCaseOnly,
+      new_basename: "LOWER_CASE_NAME.mp4",
+    },
+  ],
+});
+const caseOut = execSync(`python3 "${pythonScript}" rename`, {
+  input: casePayload,
+  encoding: "utf-8",
+});
+const caseResult = JSON.parse(caseOut.trim().split("\n").pop());
+assert.strictEqual(caseResult.success_count, 1, "Case-only rename must succeed");
+assert.strictEqual(fs.existsSync(path.join(tmpDir, "LOWER_CASE_NAME.mp4")), true, "Case renamed file must exist on disk");
+console.log("✓ Case-only rename handled successfully on disk.");
+
+// Test Case 5: Path resolution check for NAS container prefix
+const pyResolveCheck = `
+from stash_file_manager.sfm_tasks import resolve_file_disk_path
+p = "/data/FemOrgas/ATK/ATK-Exotics(HD)/ATK Exotics - 191114_dai027WRE_373760001_hd [1080p].mp4"
+resolved = resolve_file_disk_path(p)
+assert "/hed-nas/HED/Media/Corn_Archives" in resolved, f"Expected Corn_Archives in {resolved}"
+print("✓ resolve_file_disk_path correctly resolves container path to NAS path.")
+`;
+execSync(`python3 -c '${pyResolveCheck.trim()}'`, { stdio: "inherit" });
+
 // Cleanup tmpDir
 fs.rmSync(tmpDir, { recursive: true, force: true });
 

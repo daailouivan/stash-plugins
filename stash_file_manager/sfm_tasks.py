@@ -40,12 +40,12 @@ DEFAULT_SETTINGS = {
 
 def log(msg, level="INFO"):
     """
-    Log formatted progress to stderr (captured by Stash logger) and stdout.
-    Stash plugin logger parses stderr lines for real-time task queue updates.
+    Log formatted progress to stderr (captured by Stash logger).
+    Stash plugin logger parses stderr lines for real-time task queue updates,
+    while keeping stdout strictly reserved for clean JSON responses.
     """
     formatted = f"[{level}] [StashFileManager] {msg}"
     print(formatted, file=sys.stderr, flush=True)
-    print(formatted, flush=True)
 
 def read_input():
     """
@@ -234,11 +234,33 @@ def resolve_file_disk_path(path_str):
         return path_str
     if os.path.exists(path_str):
         return path_str
-    if path_str.startswith("/data/"):
-        for prefix in ["/hed-nas/Downloads", "/hed-nas/HED", "/hed-nas"]:
-            cand = prefix + path_str[5:]
+
+    clean_path = path_str.strip()
+    if clean_path.startswith("data/"):
+        clean_path = "/" + clean_path
+
+    # Candidate prefixes mapped to container mounts (/data -> /hed-nas/HED/Media/Corn_Archives, etc.)
+    prefixes = [
+        "/hed-nas/HED/Media/Corn_Archives",
+        "/hed-nas/HED/Media/.handy.card",
+        "/hed-nas/Downloads",
+        "/hed-nas/HED",
+        "/hed-nas"
+    ]
+
+    if clean_path.startswith("/data/"):
+        sub_path = clean_path[len("/data/"):]
+        for prefix in prefixes:
+            cand = os.path.join(prefix, sub_path)
             if os.path.exists(cand):
                 return cand
+
+    # If starts with /hed-nas or relative, test direct join
+    for prefix in prefixes:
+        cand = os.path.join(prefix, clean_path.lstrip("/"))
+        if os.path.exists(cand):
+            return cand
+
     return path_str
 
 def task_rename(endpoint, api_key, session_cookie, plugin_dir, input_data):
@@ -340,17 +362,23 @@ def task_rename(endpoint, api_key, session_cookie, plugin_dir, input_data):
             error_count += 1
             continue
 
-        # Verify destination file does not collide
-        if os.path.exists(new_disk_path):
+        # Verify destination file does not collide (unless case-only rename of same file)
+        is_case_only = (old_disk_path.lower() == new_disk_path.lower() and old_basename != clean_basename)
+        if os.path.exists(new_disk_path) and not is_case_only:
             msg = f"Target file already exists on disk: {new_disk_path}"
             log(f"[{idx+1}/{len(items)}] Error: {msg}", "ERROR")
             results.append({"status": "error", "file_id": file_id, "scene_id": scene_id, "message": msg})
             error_count += 1
             continue
 
-        # Step a: Rename file on disk
+        # Step a: Rename file on disk (handle case-only SMB shares via two-step rename)
         try:
-            os.rename(old_disk_path, new_disk_path)
+            if is_case_only:
+                temp_disk_path = old_disk_path + f".tmp_{int(time.time()*1000)}"
+                os.rename(old_disk_path, temp_disk_path)
+                os.rename(temp_disk_path, new_disk_path)
+            else:
+                os.rename(old_disk_path, new_disk_path)
             log(f"[{idx+1}/{len(items)}] Renamed on disk: '{old_basename}' -> '{clean_basename}'", "INFO")
         except Exception as e:
             msg = f"OS filesystem rename failed: {e}"
