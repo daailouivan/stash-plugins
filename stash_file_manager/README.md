@@ -47,7 +47,7 @@ Eliminate wasted vertical space with compact folder layouts tailored to any libr
   * **Hide Empty:** Instantly toggles visibility of empty directories without scenes.
 * **Dynamic Selection & Floating Bulk Action Bar:**
   * **Unified Header Button:** A dynamic control that switches between `Select All` and `[N] Selected`—clicking clears active selections instantly.
-  * **Floating Bottom Bar:** A persistent bottom pill displaying the active count button and vector-icon buttons for `Batch Edit`, `Parse`, `Stash Grid`, and `Clear`.
+  * **Floating Bottom Bar:** A persistent bottom pill displaying the active count button and vector-icon buttons for `Batch Edit`, `Parse & Scrape`, `Stash Grid`, and `Clear`.
 * **Directory Keyboard Shortcuts:**
   * <kbd>/</kbd> — Instantly focus the live search box.
   * <kbd>Backspace</kbd> or <kbd>Alt</kbd> + <kbd>←</kbd> — Go up to parent folder or back in history.
@@ -78,9 +78,13 @@ Eliminate wasted vertical space with compact folder layouts tailored to any libr
 
 ---
 
-### 5. ⚡ In-Memory Trie Cache, Filename Regex Parser & Stash Tasks
+### 5. ⚡ In-Memory Trie Cache, Unified Scene Scraper & Filename Parser
 * **Progressive Indexing & Multi-Tier Caching:** Builds a client-side Path Trie stored in memory, session storage, and IndexedDB for instant folder switching and zero-latency filtering.
-* **Folder-Scoped Filename Regex Parser:** Test regular expression pattern schemes scoped strictly to the current folder with live interactive match preview tables.
+* **Unified Scene Scraper & Filename Parser:**
+  * **Parallel Scrape All:** High-speed concurrent scraping (4 parallel workers) across Stash-box endpoints and YAML site scrapers, leveraging native fingerprint hashes, existing Stash-IDs, and smart title queries.
+  * **Inline Query Search:** Search any individual scene by custom title query with live candidate results previews and 1-click selection.
+  * **Interactive Word Block & Regex Builder:** Guided visual token splitter, raw regex presets, and filesystem path clues for folder-scoped metadata extraction.
+  * **Bulk Safe Resolution:** Applies verified titles, dates, studios, performers, and tags to scenes in Stash with automatic entity resolution and creation.
 * **Native Stash Plugin Tasks (`sfm_tasks.py`):**
   * `Rescan Library and Rebuild Tree`: Crawls library directories and rebuilds the directory cache.
   * `Reset Plugin Settings to Defaults`: Restores factory settings via GraphQL mutation.

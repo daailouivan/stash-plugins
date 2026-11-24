@@ -1058,6 +1058,10 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                   title
                   date
                   rating100
+                  code
+                  details
+                  urls
+                  stash_ids { endpoint stash_id }
                   studio { id name }
                   performers { id name }
                   tags { id name }
@@ -4351,7 +4355,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
     // ==========================================
     // Modal: Fully Customizable Smart Filename & Path Resolver
     // ==========================================
-    function FilenameParserModal({ currentFolder, currentPath = "", directScenes, onClose, onApplied }) {
+    function FilenameParserModal({ currentFolder, currentPath = "", directScenes = [], onClose, onApplied }) {
       const PRESETS = [
         { label: "Auto-Detected / Interactive Pattern", pattern: "", caseInsensitive: true },
         { label: "Code__PERFORMER_Title__hash (e.g. MM2821__BIANNA_ARSON_Shoot...)", pattern: "^(?<code>[A-Za-z0-9]+)__(?<performers>[A-Z]+(?:_[A-Z]+)*)_+(?<title>.+?)__(?:[a-zA-Z0-9]+)(?:\\.[^.]+)?$", caseInsensitive: false },
@@ -4374,45 +4378,109 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
         { id: "ignore", label: "Ignore", color: "#4c566a" },
       ];
 
-      // Inspect first sample to determine if current folder is a double-underscore release
       const initialSampleBasename = directScenes[0]?.files?.[0]?.basename || "";
       const initialSampleNoExt = initialSampleBasename.replace(/\.[^/.]+$/, "");
       const isInitialDunder = /^([A-Za-z0-9]{2,8})__([A-Z]+(?:_[A-Z]+)*)_+(.+?)(?:__[a-zA-Z0-9]{4,10})?$/.test(initialSampleNoExt);
       const dunderPattern = "^(?<code>[A-Za-z0-9]+)__(?<performers>[A-Z]+(?:_[A-Z]+)*)_+(?<title>.+?)__(?:[a-zA-Z0-9]+)(?:\\.[^.]+)?$";
 
-      const [builderMode, setBuilderMode] = useState("guided"); // "guided" | "raw"
-      const [sampleIndex, setSampleIndex] = useState(0);
-      const [pattern, setPattern] = useState(() => (isInitialDunder ? dunderPattern : PRESETS[1].pattern));
-      const [caseInsensitive, setCaseInsensitive] = useState(() => !isInitialDunder);
-      const [flexibleDelimiters, setFlexibleDelimiters] = useState(true);
-      const [cleanSpaces, setCleanSpaces] = useState(true);
-      const [titleCase, setTitleCase] = useState(true);
-      const [normalizeDate, setNormalizeDate] = useState(true);
-      const [previewFilter, setPreviewFilter] = useState("all"); // "all" | "matched" | "unmatched"
-      const [chunks, setChunks] = useState([]);
-      const [activeSplitChunkId, setActiveSplitChunkId] = useState(null); // Chunk ID currently being split
-      const [selectedSceneIds, setSelectedSceneIds] = useState(() => new Set());
-      const [isExecuting, setIsExecuting] = useState(false);
-      const [progressText, setProgressText] = useState("");
+      // Tab mode: "scrape" (default) or "pattern"
+      const [activeTab, setActiveTab] = React.useState("scrape");
+      const [builderMode, setBuilderMode] = React.useState("guided"); // "guided" | "raw"
+      const [sampleIndex, setSampleIndex] = React.useState(0);
+      const [pattern, setPattern] = React.useState(() => (isInitialDunder ? dunderPattern : PRESETS[1].pattern));
+      const [caseInsensitive, setCaseInsensitive] = React.useState(() => !isInitialDunder);
+      const [cleanSpaces, setCleanSpaces] = React.useState(true);
+      const [titleCase, setTitleCase] = React.useState(true);
+      const [normalizeDate, setNormalizeDate] = React.useState(true);
+      const [previewFilter, setPreviewFilter] = React.useState("all"); // "all" | "matched" | "unmatched"
+      const [chunks, setChunks] = React.useState([]);
+      const [activeSplitChunkId, setActiveSplitChunkId] = React.useState(null);
+      const [selectedSceneIds, setSelectedSceneIds] = React.useState(() => new Set(directScenes.map((s) => s.id)));
+      const [isExecuting, setIsExecuting] = React.useState(false);
+      const [progressText, setProgressText] = React.useState("");
 
-      // --- PATH CLUES & SCRAPE SOURCES STATE ---
-      const [pathClues, setPathClues] = useState([]);
-      const [availableSources, setAvailableSources] = useState([]);
-      const [selectedSourceKey, setSelectedSourceKey] = useState(() => {
+      // Path Clues & Scrape Sources
+      const [pathClues, setPathClues] = React.useState([]);
+      const [availableSources, setAvailableSources] = React.useState([]);
+      const [selectedSourceKey, setSelectedSourceKey] = React.useState(() => {
         return (typeof window !== "undefined" && window.localStorage ? window.localStorage.getItem("sfm_last_scrape_source") : null) || "auto";
       });
-      const [isCloudQuerying, setIsCloudQuerying] = useState(false);
-      const [cloudMatches, setCloudMatches] = useState({});
+      const [scrapeStrategy, setScrapeStrategy] = React.useState("smart"); // "smart" | "fingerprint" | "query"
+      const [isScrapingAll, setIsScrapingAll] = React.useState(false);
+      const [scrapeProgress, setScrapeProgress] = React.useState({ current: 0, total: 0, text: "" });
+      const [scrapeStates, setScrapeStates] = React.useState({}); // { [sceneId]: { status: "idle" | "scraping" | "scraped" | "nomatch" | "error", sourceName: "", msg: "" } }
+      const [cloudMatches, setCloudMatches] = React.useState({}); // { [sceneId]: scrapedData }
+
+      // Inline Search State per row
+      const [inlineSearchRowId, setInlineSearchRowId] = React.useState(null);
+      const [inlineSearchQuery, setInlineSearchQuery] = React.useState("");
+      const [inlineSearchSource, setInlineSearchSource] = React.useState("");
+      const [inlineSearchResults, setInlineSearchResults] = React.useState([]);
+      const [inlineSearchLoading, setInlineSearchLoading] = React.useState(false);
+
+      // Field selection for applying
+      const [fieldsToApply, setFieldsToApply] = React.useState({
+        title: true,
+        date: true,
+        studio: true,
+        performers: true,
+        tags: true,
+        details: true,
+        code: true,
+      });
+
+      const handleToggleFieldToApply = (field) => {
+        setFieldsToApply((prev) => ({ ...prev, [field]: !prev[field] }));
+      };
 
       const sampleScene = directScenes[sampleIndex] || directScenes[0];
       const sampleRawBasename = sampleScene?.files?.[0]?.basename || "";
       const sampleWithoutExt = sampleRawBasename.replace(/\.[^/.]+$/, "");
-
-      // Helper: escape regex literal
       const escapeRegex = (s) => s.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&");
 
-      // Initialize Path Clues from directory hierarchy
-      useEffect(() => {
+      const cleanFilenameToQuery = (rawFilename) => {
+        if (!rawFilename) return "";
+        let name = rawFilename.replace(/\.[^/.]+$/, "");
+        const dunder = name.match(/^([A-Za-z0-9]+)__([A-Z_]+)_+(.+?)(?:__[a-zA-Z0-9]+)?$/);
+        if (dunder) {
+          const perf = dunder[2].replace(/_/g, " ");
+          const title = dunder[3].replace(/_+/g, " ").replace(/\bXxx\b/gi, "").trim();
+          return `${perf} ${title}`.trim();
+        }
+        name = name.replace(/\b(1080p|2160p|4k|720p|480p|hevc|x264|x265|h264|h265|web-dl|aac|uhd|hd|sd|vr|60fps|3dh|sbs|xxx)\b/gi, " ");
+        name = name.replace(/\b\d{2,4}[-._]\d{2}[-._]\d{2}\b/g, " ");
+        name = name.replace(/[._-]+/g, " ").replace(/\s+/g, " ").trim();
+        return name;
+      };
+
+      const cleanExtracted = (fieldId, rawVal) => {
+        if (!rawVal) return "";
+        let val = rawVal.trim();
+        if (fieldId === "title") {
+          val = val.replace(/__+/g, " - ").replace(/[_.]+/g, " ").replace(/\s+/g, " ").trim();
+          if (titleCase) {
+            val = val.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());
+            val = val.replace(/\bXxx\b/g, "XXX");
+            val = val.replace(/\b4k\b/g, "4K");
+          }
+        } else if (fieldId === "studio" || fieldId === "performers") {
+          val = val.replace(/__+/g, ", ").replace(/[_.]+/g, " ").replace(/\s+/g, " ").trim();
+          if (titleCase) {
+            val = val.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());
+          }
+        } else if (fieldId === "date") {
+          if (normalizeDate) {
+            val = val.replace(/[._]/g, "-");
+            if (/^\d{8}$/.test(val)) {
+              val = `${val.substring(0, 4)}-${val.substring(4, 6)}-${val.substring(6, 8)}`;
+            }
+          }
+        }
+        return val;
+      };
+
+      // Path Clues initialization
+      React.useEffect(() => {
         const fullSamplePath = sampleScene?.files?.[0]?.path || currentPath || "";
         const normalized = fullSamplePath.replace(/\\/g, "/");
         const dirParts = normalized.split("/").filter(Boolean);
@@ -4422,8 +4490,8 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
 
         const relevantParts = dirParts.slice(-3);
         const initialClues = relevantParts.map((part, idx) => {
-          const isParent = (idx === relevantParts.length - 1);
-          const isGrandparent = (idx === relevantParts.length - 2);
+          const isParent = idx === relevantParts.length - 1;
+          const isGrandparent = idx === relevantParts.length - 2;
           let role = "ignore";
           if (isParent) role = "studio";
           else if (isGrandparent && /^vr|4k|1080p|uhd$/i.test(part)) role = "tag";
@@ -4453,14 +4521,13 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
             .catch(() => {});
         }
 
-        // Fetch Scrape Sources: Stash-boxes and Site scrapers
+        // Fetch Scrape Sources: Stash-boxes and YAML scrapers
         gqlFetch(`query GetScrapeSources {
           configuration {
             general {
               stashBoxes {
                 name
                 endpoint
-                api_key
               }
             }
           }
@@ -4476,7 +4543,6 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
             const boxes = res?.configuration?.general?.stashBoxes || [];
             const scrapers = res?.listScrapers || [];
 
-            // Sort sources: Stash-box FIRST, then Sites
             const stashboxSources = boxes.map((box) => ({
               key: `stashbox:${box.endpoint}`,
               type: "stashbox",
@@ -4501,7 +4567,6 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
 
             setAvailableSources(combined);
 
-            // Restore saved preference if valid; otherwise default to Stash-box first (or auto)
             const saved = (typeof window !== "undefined" && window.localStorage ? window.localStorage.getItem("sfm_last_scrape_source") : null) || "";
             if (saved && combined.some((s) => s.key === saved)) {
               setSelectedSourceKey(saved);
@@ -4511,61 +4576,24 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
               setSelectedSourceKey("auto");
             }
           })
-          .catch(() => {
-            // Fallback query for environments with classic StashBox schema
-            gqlFetch(`query GetStashBoxesFallback {
-              configuration {
-                general {
-                  stashBoxes {
-                    name
-                    endpoint
-                  }
-                }
-              }
-            }`)
-              .then((res) => {
-                const boxes = res?.configuration?.general?.stashBoxes || [];
-                const stashboxSources = boxes.map((box) => ({
-                  key: `stashbox:${box.endpoint}`,
-                  type: "stashbox",
-                  endpoint: box.endpoint,
-                  name: box.name || box.endpoint,
-                  label: `stash-box: ${box.name || box.endpoint}`,
-                }));
-                const combined = [
-                  { key: "auto", type: "auto", name: "Auto (Stash-box first)", label: "Auto (Stash-box first)" },
-                  ...stashboxSources,
-                ];
-                setAvailableSources(combined);
-
-                const saved = (typeof window !== "undefined" && window.localStorage ? window.localStorage.getItem("sfm_last_scrape_source") : null) || "";
-                if (saved && combined.some((s) => s.key === saved)) {
-                  setSelectedSourceKey(saved);
-                } else if (stashboxSources.length > 0) {
-                  setSelectedSourceKey(stashboxSources[0].key);
-                } else {
-                  setSelectedSourceKey("auto");
-                }
-              })
-              .catch(() => {});
-          });
+          .catch(() => {});
       }, [sampleIndex, currentPath]);
 
       const handleSetPathClueRole = (segmentName, newRole) => {
         setPathClues((prev) => prev.map((c) => (c.name === segmentName ? { ...c, role: newRole } : c)));
       };
 
-      const activeStudioClue = useMemo(() => {
+      const activeStudioClue = React.useMemo(() => {
         const clue = pathClues.find((c) => c.role === "studio");
         return clue ? clue.name : "";
       }, [pathClues]);
 
-      const activePerformerClue = useMemo(() => {
+      const activePerformerClue = React.useMemo(() => {
         const clue = pathClues.find((c) => c.role === "performer");
         return clue ? clue.name : "";
       }, [pathClues]);
 
-      // Compile regex directly from visual chunks by inspecting actual separators in sampleWithoutExt
+      // Regex compilation from interactive chunks
       const compileRegexFromChunks = (currentChunks, sampleText) => {
         if (!currentChunks || currentChunks.length === 0) return;
 
@@ -4574,11 +4602,10 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
         let hasUppercaseOnlyGroup = false;
 
         currentChunks.forEach((chunk, idx) => {
-          const isLast = (idx === currentChunks.length - 1);
+          const isLast = idx === currentChunks.length - 1;
           const chunkText = chunk.text;
           const pos = sampleText.indexOf(chunkText, cursor);
 
-          // If there is literal separator text between the previous chunk and this chunk
           if (pos > cursor) {
             const sepText = sampleText.substring(cursor, pos);
             if (sepText === "__") {
@@ -4594,14 +4621,12 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
             }
           }
 
-          // Build field pattern
           if (chunk.fieldId === "ignore") {
             regex += isLast ? "(?:.+)" : "(?:[a-zA-Z0-9]+)";
           } else if (chunk.fieldId === "code") {
-            if (/^\\d+$/.test(chunkText)) {
+            if (/^\d+$/.test(chunkText)) {
               regex += "(?<code>\\d+)";
             } else {
-              // Code must NOT include underscores
               regex += "(?<code>[A-Za-z0-9]+)";
             }
           } else if (chunk.fieldId === "studio") {
@@ -4625,10 +4650,9 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
             regex += "(?<duration>\\d+(?:m|min|s|sec)?|\\d+:\\d+(?::\\d+)?)";
           }
 
-          cursor = pos >= 0 ? (pos + chunkText.length) : cursor;
+          cursor = pos >= 0 ? pos + chunkText.length : cursor;
         });
 
-        // Trailing separator / hash
         if (cursor < sampleText.length) {
           const trailing = sampleText.substring(cursor);
           if (trailing === "__") regex += "__";
@@ -4639,17 +4663,14 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
         regex += "(?:\\.[^.]+)?$";
         setPattern(regex);
 
-        // If the performer group relies on uppercase, automatically enforce case-sensitivity
         if (hasUppercaseOnlyGroup) {
           setCaseInsensitive(false);
         }
       };
 
-      // Auto-detect chunks from filename
       const autoDetectFromFilename = (filename, forcedDelimiter = null) => {
         if (!filename) return;
 
-        // Pattern: MM2821__BIANNA_ARSON_Shoot_closeup_XXX__1q2wxz
         const dunderFull = filename.match(/^([A-Za-z0-9]{2,8})__([A-Z]+(?:_[A-Z]+)*)_+(.+?)__(?:[a-zA-Z0-9]+)$/);
         if (dunderFull && !forcedDelimiter) {
           const detectedChunks = [
@@ -4681,11 +4702,11 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
             fieldId = "ignore";
           } else if (idx === rawParts.length - 1 && /^[a-zA-Z0-9]{5,8}$/.test(part)) {
             fieldId = "ignore";
-          } else if (/^\\d{4}[-._]\\d{2}[-._]\\d{2}$/.test(part) || /^\\d{6,8}$/.test(part)) {
+          } else if (/^\d{4}[-._]\d{2}[-._]\d{2}$/.test(part) || /^\d{6,8}$/.test(part)) {
             fieldId = "date";
-          } else if (/^[A-Za-z0-9]{2,6}[-_]?[0-9]{2,5}$/i.test(part) || /^[A-Z]{2,}\\d{2,}$/i.test(part)) {
+          } else if (/^[A-Za-z0-9]{2,6}[-_]?[0-9]{2,5}$/i.test(part) || /^[A-Z]{2,}\d{2,}$/i.test(part)) {
             fieldId = "code";
-          } else if (/^\\d+[mhms]$/i.test(part) || /^\\d+:\\d+(?::\\d+)?$/.test(part)) {
+          } else if (/^\d+[mhms]$/i.test(part) || /^\d+:\d+(?::\d+)?$/.test(part)) {
             fieldId = "duration";
           } else if (idx === 0 && rawParts.length > 1) {
             fieldId = "studio";
@@ -4706,35 +4727,24 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
         compileRegexFromChunks(detectedChunks, filename);
       };
 
-      // Run initial auto-detection on mount or sample switch
-      useEffect(() => {
+      React.useEffect(() => {
         if (sampleWithoutExt) {
           autoDetectFromFilename(sampleWithoutExt);
         }
       }, [sampleIndex]);
 
-      // Change field role of a chunk
       const handleSetChunkField = (chunkId, newFieldId) => {
         const updated = chunks.map((c) => (c.id === chunkId ? { ...c, fieldId: newFieldId } : c));
         setChunks(updated);
         compileRegexFromChunks(updated, sampleWithoutExt);
       };
 
-      // Edit text of a chunk directly
-      const handleEditChunkText = (chunkId, newText) => {
-        const updated = chunks.map((c) => (c.id === chunkId ? { ...c, text: newText } : c));
-        setChunks(updated);
-        compileRegexFromChunks(updated, sampleWithoutExt);
-      };
-
-      // Delete a chunk
       const handleDeleteChunk = (chunkId) => {
         const updated = chunks.filter((c) => c.id !== chunkId);
         setChunks(updated);
         compileRegexFromChunks(updated, sampleWithoutExt);
       };
 
-      // Split a chunk into two chunks at a specific position or split string
       const handleSplitChunk = (chunkId, part1, part2, field1, field2) => {
         const idx = chunks.findIndex((c) => c.id === chunkId);
         if (idx === -1) return;
@@ -4748,7 +4758,6 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
         compileRegexFromChunks(updated, sampleWithoutExt);
       };
 
-      // Merge chunk with next chunk
       const handleMergeWithNext = (idx) => {
         if (idx >= chunks.length - 1) return;
         const current = chunks[idx];
@@ -4762,35 +4771,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
         compileRegexFromChunks(updated, sampleWithoutExt);
       };
 
-      // Helper to clean extracted text
-      const cleanExtracted = (fieldId, rawVal) => {
-        if (!rawVal) return "";
-        let val = rawVal.trim();
-        if (fieldId === "title") {
-          val = val.replace(/__+/g, " - ").replace(/[_.]+/g, " ").replace(/\\s+/g, " ").trim();
-          if (titleCase) {
-            val = val.replace(/\\w\\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());
-            val = val.replace(/\\bXxx\\b/g, "XXX");
-            val = val.replace(/\\b4k\\b/g, "4K");
-          }
-        } else if (fieldId === "studio" || fieldId === "performers") {
-          val = val.replace(/__+/g, ", ").replace(/[_.]+/g, " ").replace(/\\s+/g, " ").trim();
-          if (titleCase) {
-            val = val.replace(/\\w\\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());
-          }
-        } else if (fieldId === "date") {
-          if (normalizeDate) {
-            val = val.replace(/[._]/g, "-");
-            if (/^\\d{8}$/.test(val)) {
-              val = `${val.substring(0, 4)}-${val.substring(4, 6)}-${val.substring(6, 8)}`;
-            }
-          }
-        }
-        return val;
-      };
-
-      // Compute parsed matches in real-time
-      const parsedResults = useMemo(() => {
+      const parsedResults = React.useMemo(() => {
         let re = null;
         try {
           re = new RegExp(pattern, caseInsensitive ? "i" : "");
@@ -4800,7 +4781,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
 
         const items = directScenes.map((scene) => {
           const rawBasename = scene.files?.[0]?.basename || "";
-          const nameWithoutExt = rawBasename.replace(/\\.[^/.]+$/, "");
+          const nameWithoutExt = rawBasename.replace(/\.[^/.]+$/, "");
           const match = re.exec(nameWithoutExt) || re.exec(rawBasename);
 
           if (!match || !match.groups) {
@@ -4812,173 +4793,333 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
         return { error: null, items };
       }, [pattern, caseInsensitive, directScenes]);
 
-      // Query Stash-box / Scrapers for all matched scenes with parallel workload
-      const handleQueryStashBox = async () => {
-        const matchedItems = parsedResults.items.filter((i) => i.matched);
-        if (matchedItems.length === 0) return;
+      const getSceneBestQuery = (scene, matchedGroups) => {
+        if (matchedGroups?.title && matchedGroups.title.trim()) {
+          return cleanExtracted("title", matchedGroups.title);
+        }
+        if (matchedGroups?.code && matchedGroups.code.trim()) {
+          return matchedGroups.code.trim();
+        }
+        if (scene?.title && !scene.title.includes(".")) {
+          return scene.title.trim();
+        }
+        const basename = scene?.files?.[0]?.basename || "";
+        return cleanFilenameToQuery(basename);
+      };
 
-        setIsCloudQuerying(true);
-        const CONCURRENCY = 4;
-        let completed = 0;
-        const total = matchedItems.length;
-        const newCloudMatches = { ...cloudMatches };
+      // GraphQL Scraper Queries
+      const Q_SCRAPE_SINGLE = `query ScrapeSingleScene($source: ScraperSourceInput!, $input: ScrapeSingleSceneInput!) {
+        scrapeSingleScene(source: $source, input: $input) {
+          title
+          details
+          url
+          date
+          code
+          image
+          studio { stored_id name }
+          performers { stored_id name disambiguation gender }
+          tags { stored_id name }
+        }
+      }`;
 
-        setProgressText(`Starting parallel scrape (0/${total})...`);
+      const Q_SCRAPE_URL_DIRECT = `query ScrapeSceneURL($url: String!) {
+        scrapeSceneURL(url: $url) {
+          title
+          details
+          url
+          date
+          code
+          image
+          studio { stored_id name }
+          performers { stored_id name disambiguation gender }
+          tags { stored_id name }
+        }
+      }`;
 
-        const executeItem = async (item) => {
-          const queryCode = item.groups.code || item.groups.title || item.rawBasename || "";
-          if (!queryCode) {
-            completed++;
-            return;
+      // Core Scraper Execution Function
+      const executeScrapeForScene = async (scene, sourceKey, strategy = "smart", queryOverride = null) => {
+        const queryText = (queryOverride || getSceneBestQuery(scene, parsedResults?.items?.find((i) => i.scene.id === scene.id)?.groups)).trim();
+        const sceneId = String(scene.id);
+        const stashIds = scene.stash_ids || [];
+        const sceneUrls = scene.urls || [];
+
+        const queryBox = async (endpoint, boxName) => {
+          // 1. Try existing stash_id if present on the scene
+          const matchingStashId = stashIds.find((x) => x.endpoint === endpoint && x.stash_id);
+          if (matchingStashId) {
+            try {
+              const res = await gqlFetch(Q_SCRAPE_SINGLE, {
+                source: { stash_box_endpoint: endpoint },
+                input: { query: matchingStashId.stash_id },
+              });
+              const hit = res?.scrapeSingleScene?.[0];
+              if (hit) return { scraped: hit, sourceName: `${boxName} (StashID)` };
+            } catch (e) {}
           }
 
+          // 2. Try scene_id (fingerprint / hash lookup)
+          if (strategy !== "query") {
+            try {
+              const res = await gqlFetch(Q_SCRAPE_SINGLE, {
+                source: { stash_box_endpoint: endpoint },
+                input: { scene_id: sceneId },
+              });
+              const hit = res?.scrapeSingleScene?.[0];
+              if (hit) return { scraped: hit, sourceName: `${boxName} (Hash)` };
+            } catch (e) {}
+          }
+
+          // 3. Fallback to query text (title / filename)
+          if (strategy !== "fingerprint" && queryText) {
+            try {
+              const res = await gqlFetch(Q_SCRAPE_SINGLE, {
+                source: { stash_box_endpoint: endpoint },
+                input: { query: queryText },
+              });
+              const hit = res?.scrapeSingleScene?.[0];
+              if (hit) return { scraped: hit, sourceName: `${boxName} (Query)` };
+            } catch (e) {}
+          }
+          return null;
+        };
+
+        const querySite = async (scraperId, scraperName) => {
+          // 1. URL lookup if scene has an existing URL
+          if (sceneUrls.length > 0) {
+            try {
+              const res = await gqlFetch(Q_SCRAPE_URL_DIRECT, { url: sceneUrls[0] });
+              const hit = res?.scrapeSceneURL;
+              if (hit) return { scraped: hit, sourceName: `${scraperName} (URL)` };
+            } catch (e) {}
+          }
+
+          // 2. Try scene_id
+          if (strategy !== "query") {
+            try {
+              const res = await gqlFetch(Q_SCRAPE_SINGLE, {
+                source: { scraper_id: scraperId },
+                input: { scene_id: sceneId },
+              });
+              const hit = res?.scrapeSingleScene?.[0];
+              if (hit) return { scraped: hit, sourceName: `${scraperName} (Hash)` };
+            } catch (e) {}
+          }
+
+          // 3. Try query
+          if (strategy !== "fingerprint" && queryText) {
+            try {
+              const res = await gqlFetch(Q_SCRAPE_SINGLE, {
+                source: { scraper_id: scraperId },
+                input: { query: queryText },
+              });
+              const hit = res?.scrapeSingleScene?.[0];
+              if (hit) return { scraped: hit, sourceName: `${scraperName} (Query)` };
+            } catch (e) {}
+          }
+          return null;
+        };
+
+        if (sourceKey === "auto") {
+          const boxes = availableSources.filter((s) => s.type === "stashbox");
+          const sites = availableSources.filter((s) => s.type === "site");
+
+          for (const box of boxes) {
+            const hit = await queryBox(box.endpoint, box.name);
+            if (hit) return hit;
+          }
+          for (const site of sites) {
+            const hit = await querySite(site.scraperId, site.name);
+            if (hit) return hit;
+          }
+          return null;
+        }
+
+        if (sourceKey.startsWith("stashbox:")) {
+          const endpoint = sourceKey.replace("stashbox:", "");
+          const box = availableSources.find((s) => s.key === sourceKey) || { name: endpoint };
+          return await queryBox(endpoint, box.name);
+        }
+
+        if (sourceKey.startsWith("site:")) {
+          const scraperId = sourceKey.replace("site:", "");
+          const site = availableSources.find((s) => s.key === sourceKey) || { name: scraperId };
+          return await querySite(scraperId, site.name);
+        }
+
+        return null;
+      };
+
+      // "Scrape All" Parallel Worker Pool (Concurrency: 4)
+      const handleScrapeAll = async () => {
+        if (isScrapingAll) return;
+        setIsScrapingAll(true);
+        const todo = directScenes;
+        const total = todo.length;
+        let completed = 0;
+        const CONCURRENCY = 4;
+        setScrapeProgress({ current: 0, total, text: `Starting parallel scrape (0/${total})...` });
+
+        const processItem = async (scene) => {
+          setScrapeStates((prev) => ({ ...prev, [scene.id]: { status: "scraping", sourceName: "" } }));
           try {
-            let scraped = null;
-
-            if (selectedSourceKey === "auto") {
-              // Auto mode: Try Stash-box first, then site scrapers fallback
-              const stashBoxes = availableSources.filter((s) => s.type === "stashbox");
-              const siteScrapers = availableSources.filter((s) => s.type === "site");
-
-              for (const box of stashBoxes) {
-                try {
-                  const sRes = await gqlFetch(
-                    `query ScrapeSceneFromBox($source: ScraperSourceInput!, $input: ScrapeSingleSceneInput!) {
-                      scrapeSingleScene(source: $source, input: $input) {
-                        title
-                        details
-                        url
-                        date
-                        code
-                        studio { name }
-                        performers { name }
-                        tags { name }
-                      }
-                    }`,
-                    {
-                      source: { stash_box_endpoint: box.endpoint },
-                      input: { query: queryCode.trim() },
-                    }
-                  );
-                  if (sRes?.scrapeSingleScene?.[0]) {
-                    scraped = sRes.scrapeSingleScene[0];
-                    break;
-                  }
-                } catch (e) {}
-              }
-
-              if (!scraped && siteScrapers.length > 0) {
-                for (const site of siteScrapers) {
-                  try {
-                    const sRes = await gqlFetch(
-                      `query ScrapeSceneFromSite($source: ScraperSourceInput!, $input: ScrapeSingleSceneInput!) {
-                        scrapeSingleScene(source: $source, input: $input) {
-                          title
-                          details
-                          url
-                          date
-                          code
-                          studio { name }
-                          performers { name }
-                          tags { name }
-                        }
-                      }`,
-                      {
-                        source: { scraper_id: site.scraperId },
-                        input: { query: queryCode.trim() },
-                      }
-                    );
-                    if (sRes?.scrapeSingleScene?.[0]) {
-                      scraped = sRes.scrapeSingleScene[0];
-                      break;
-                    }
-                  } catch (e) {}
-                }
-              }
-            } else if (selectedSourceKey.startsWith("site:")) {
-              const scraperId = selectedSourceKey.replace("site:", "");
-              const sRes = await gqlFetch(
-                `query ScrapeSceneFromSite($source: ScraperSourceInput!, $input: ScrapeSingleSceneInput!) {
-                  scrapeSingleScene(source: $source, input: $input) {
-                    title
-                    details
-                    url
-                    date
-                    code
-                    studio { name }
-                    performers { name }
-                    tags { name }
-                  }
-                }`,
-                {
-                  source: { scraper_id: scraperId },
-                  input: { query: queryCode.trim() },
-                }
-              );
-              scraped = sRes?.scrapeSingleScene?.[0] || null;
+            const res = await executeScrapeForScene(scene, selectedSourceKey, scrapeStrategy);
+            if (res?.scraped) {
+              setCloudMatches((prev) => ({ ...prev, [scene.id]: res.scraped }));
+              setScrapeStates((prev) => ({ ...prev, [scene.id]: { status: "scraped", sourceName: res.sourceName } }));
             } else {
-              const endpoint = selectedSourceKey.replace("stashbox:", "");
-              const sRes = await gqlFetch(
-                `query ScrapeSceneFromBox($source: ScraperSourceInput!, $input: ScrapeSingleSceneInput!) {
-                  scrapeSingleScene(source: $source, input: $input) {
-                    title
-                    details
-                    url
-                    date
-                    code
-                    studio { name }
-                    performers { name }
-                    tags { name }
-                  }
-                }`,
-                {
-                  source: { stash_box_endpoint: endpoint },
-                  input: { query: queryCode.trim() },
-                }
-              );
-              scraped = sRes?.scrapeSingleScene?.[0] || null;
-            }
-
-            if (scraped) {
-              newCloudMatches[item.scene.id] = scraped;
-              setCloudMatches((prev) => ({ ...prev, [item.scene.id]: scraped }));
+              setScrapeStates((prev) => ({ ...prev, [scene.id]: { status: "nomatch", sourceName: "" } }));
             }
           } catch (err) {
-            console.warn(`Scrape error for ${queryCode}:`, err);
+            setScrapeStates((prev) => ({ ...prev, [scene.id]: { status: "error", error: err.message || String(err) } }));
           } finally {
             completed++;
-            setProgressText(`Scraping in parallel (${completed}/${total}): ${queryCode}...`);
+            setScrapeProgress({
+              current: completed,
+              total,
+              text: `Scraped ${completed}/${total}: ${scene.files?.[0]?.basename || scene.title || ""}`,
+            });
           }
         };
 
         let queueIdx = 0;
-        const workers = Array.from({ length: Math.min(CONCURRENCY, matchedItems.length) }, async () => {
-          while (queueIdx < matchedItems.length) {
-            const currentItem = matchedItems[queueIdx++];
-            await executeItem(currentItem);
+        const workers = Array.from({ length: Math.min(CONCURRENCY, todo.length) }, async () => {
+          while (queueIdx < todo.length) {
+            const item = todo[queueIdx++];
+            await processItem(item);
           }
         });
 
         await Promise.all(workers);
-
-        setCloudMatches({ ...newCloudMatches });
-        setIsCloudQuerying(false);
-        setProgressText(`Completed parallel scrape. Found ${Object.keys(newCloudMatches).length} verified matches.`);
+        setIsScrapingAll(false);
       };
 
-      useEffect(() => {
-        const matchedIds = new Set(parsedResults.items.filter((i) => i.matched).map((i) => i.scene.id));
-        setSelectedSceneIds(matchedIds);
-      }, [parsedResults]);
+      // "Search by Title" Mass Search
+      const handleMassSearch = async () => {
+        if (isScrapingAll) return;
+        const unscraped = directScenes.filter((s) => !cloudMatches[s.id]);
+        if (unscraped.length === 0) return;
 
-      const matchedCount = parsedResults.items.filter((i) => i.matched).length;
-      const unmatchedCount = parsedResults.items.length - matchedCount;
+        setIsScrapingAll(true);
+        const total = unscraped.length;
+        let completed = 0;
+        const CONCURRENCY = 4;
+        setScrapeProgress({ current: 0, total, text: `Mass searching by title (0/${total})...` });
 
-      const filteredItems = useMemo(() => {
-        if (previewFilter === "matched") return parsedResults.items.filter((i) => i.matched);
-        if (previewFilter === "unmatched") return parsedResults.items.filter((i) => !i.matched);
-        return parsedResults.items;
-      }, [parsedResults, previewFilter]);
+        const processItem = async (scene) => {
+          setScrapeStates((prev) => ({ ...prev, [scene.id]: { status: "scraping", sourceName: "" } }));
+          try {
+            const res = await executeScrapeForScene(scene, selectedSourceKey, "query");
+            if (res?.scraped) {
+              setCloudMatches((prev) => ({ ...prev, [scene.id]: res.scraped }));
+              setScrapeStates((prev) => ({ ...prev, [scene.id]: { status: "scraped", sourceName: res.sourceName } }));
+            } else {
+              setScrapeStates((prev) => ({ ...prev, [scene.id]: { status: "nomatch", sourceName: "" } }));
+            }
+          } catch (err) {
+            setScrapeStates((prev) => ({ ...prev, [scene.id]: { status: "error", error: err.message || String(err) } }));
+          } finally {
+            completed++;
+            setScrapeProgress({
+              current: completed,
+              total,
+              text: `Searched ${completed}/${total}: ${scene.files?.[0]?.basename || scene.title || ""}`,
+            });
+          }
+        };
+
+        let queueIdx = 0;
+        const workers = Array.from({ length: Math.min(CONCURRENCY, unscraped.length) }, async () => {
+          while (queueIdx < unscraped.length) {
+            const item = unscraped[queueIdx++];
+            await processItem(item);
+          }
+        });
+
+        await Promise.all(workers);
+        setIsScrapingAll(false);
+      };
+
+      // Single Scene Scrape
+      const handleScrapeSingleRow = async (scene) => {
+        setScrapeStates((prev) => ({ ...prev, [scene.id]: { status: "scraping", sourceName: "" } }));
+        try {
+          const res = await executeScrapeForScene(scene, selectedSourceKey, scrapeStrategy);
+          if (res?.scraped) {
+            setCloudMatches((prev) => ({ ...prev, [scene.id]: res.scraped }));
+            setScrapeStates((prev) => ({ ...prev, [scene.id]: { status: "scraped", sourceName: res.sourceName } }));
+          } else {
+            setScrapeStates((prev) => ({ ...prev, [scene.id]: { status: "nomatch", sourceName: "" } }));
+          }
+        } catch (err) {
+          setScrapeStates((prev) => ({ ...prev, [scene.id]: { status: "error", error: err.message || String(err) } }));
+        }
+      };
+
+      // Inline Query Search per row
+      const handleOpenInlineSearch = (scene) => {
+        if (inlineSearchRowId === scene.id) {
+          setInlineSearchRowId(null);
+          return;
+        }
+        setInlineSearchRowId(scene.id);
+        const query = getSceneBestQuery(scene, parsedResults?.items?.find((i) => i.scene.id === scene.id)?.groups);
+        setInlineSearchQuery(query);
+        setInlineSearchSource(selectedSourceKey === "auto" ? (availableSources.find((s) => s.type === "stashbox")?.key || availableSources[0]?.key || "") : selectedSourceKey);
+        setInlineSearchResults([]);
+      };
+
+      const handleExecuteInlineSearch = async () => {
+        if (!inlineSearchQuery.trim()) return;
+        setInlineSearchLoading(true);
+        setInlineSearchResults([]);
+
+        const targetSource = inlineSearchSource || selectedSourceKey;
+        let candidates = [];
+
+        try {
+          if (targetSource.startsWith("stashbox:")) {
+            const endpoint = targetSource.replace("stashbox:", "");
+            const res = await gqlFetch(Q_SCRAPE_SINGLE, {
+              source: { stash_box_endpoint: endpoint },
+              input: { query: inlineSearchQuery.trim() },
+            });
+            candidates = res?.scrapeSingleScene || [];
+          } else if (targetSource.startsWith("site:")) {
+            const scraperId = targetSource.replace("site:", "");
+            const res = await gqlFetch(Q_SCRAPE_SINGLE, {
+              source: { scraper_id: scraperId },
+              input: { query: inlineSearchQuery.trim() },
+            });
+            candidates = res?.scrapeSingleScene || [];
+          } else {
+            const firstBox = availableSources.find((s) => s.type === "stashbox");
+            if (firstBox) {
+              const res = await gqlFetch(Q_SCRAPE_SINGLE, {
+                source: { stash_box_endpoint: firstBox.endpoint },
+                input: { query: inlineSearchQuery.trim() },
+              });
+              candidates = res?.scrapeSingleScene || [];
+            }
+          }
+          setInlineSearchResults(Array.isArray(candidates) ? candidates.filter(Boolean) : (candidates ? [candidates] : []));
+        } catch (err) {
+          console.warn("Inline search error:", err);
+          setInlineSearchResults([]);
+        } finally {
+          setInlineSearchLoading(false);
+        }
+      };
+
+      const handleSelectCandidate = (sceneId, candidate) => {
+        const sourceObj = availableSources.find((s) => s.key === inlineSearchSource) || { name: "Manual Search" };
+        setCloudMatches((prev) => ({ ...prev, [sceneId]: candidate }));
+        setScrapeStates((prev) => ({
+          ...prev,
+          [sceneId]: { status: "scraped", sourceName: `${sourceObj.name} (Selected)` },
+        }));
+        setInlineSearchRowId(null);
+        setInlineSearchResults([]);
+      };
 
       const handleToggleSelectScene = (sceneId) => {
         const next = new Set(selectedSceneIds);
@@ -4987,77 +5128,196 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
         setSelectedSceneIds(next);
       };
 
+      const matchedCount = parsedResults.items.filter((i) => i.matched || cloudMatches[i.scene.id]).length;
+      const unmatchedCount = parsedResults.items.length - matchedCount;
+
       const handleSelectAllMatched = () => {
-        if (selectedSceneIds.size === matchedCount) {
+        if (selectedSceneIds.size === matchedCount && matchedCount > 0) {
           setSelectedSceneIds(new Set());
         } else {
-          setSelectedSceneIds(new Set(parsedResults.items.filter((i) => i.matched).map((i) => i.scene.id)));
+          setSelectedSceneIds(new Set(parsedResults.items.filter((i) => i.matched || cloudMatches[i.scene.id]).map((i) => i.scene.id)));
         }
       };
 
+      const filteredItems = React.useMemo(() => {
+        if (previewFilter === "matched") return parsedResults.items.filter((i) => i.matched || cloudMatches[i.scene.id]);
+        if (previewFilter === "unmatched") return parsedResults.items.filter((i) => !i.matched && !cloudMatches[i.scene.id]);
+        return parsedResults.items;
+      }, [parsedResults, previewFilter, cloudMatches]);
+
+      // Apply metadata updates to Stash
       const handleExecute = async () => {
-        const scenesToUpdate = parsedResults.items.filter((i) => i.matched && selectedSceneIds.has(i.scene.id));
+        const scenesToUpdate = directScenes.filter((s) => selectedSceneIds.has(s.id));
         if (scenesToUpdate.length === 0) return;
         setIsExecuting(true);
         setProgressText(`Starting updates for ${scenesToUpdate.length} scenes...`);
+
+        const resolvedStudios = {};
+        const resolvedPerformers = {};
+        const resolvedTags = {};
 
         try {
           let success = 0;
 
           for (let i = 0; i < scenesToUpdate.length; i++) {
-            const item = scenesToUpdate[i];
-            const cloud = cloudMatches[item.scene.id];
-            setProgressText(`Updating scene ${i + 1}/${scenesToUpdate.length}: ${item.rawBasename}...`);
+            const scene = scenesToUpdate[i];
+            const cloud = cloudMatches[scene.id];
+            const parsed = parsedResults.items.find((it) => it.scene.id === scene.id)?.groups || {};
+            setProgressText(`Updating scene ${i + 1}/${scenesToUpdate.length}: ${scene.files?.[0]?.basename || scene.title || ""}...`);
 
-            const updateInput = { id: item.scene.id };
-            const { title, date, code, studio, performers } = item.groups;
+            const updateInput = { id: scene.id };
 
-            const finalTitle = cloud?.title || cleanExtracted("title", title);
-            const finalDate = cloud?.date || cleanExtracted("date", date);
-            const finalCode = cloud?.code || (code || "").trim();
-            const finalStudio = cloud?.studio?.name || cleanExtracted("studio", studio) || activeStudioClue;
-            const finalPerformers = cloud?.performers ? cloud.performers.map((p) => p.name).join(", ") : (cleanExtracted("performers", performers) || activePerformerClue);
-
-            if (finalTitle) updateInput.title = finalTitle;
-            if (finalDate && /^\\d{4}-\\d{2}-\\d{2}$/.test(finalDate)) {
-              updateInput.date = finalDate;
+            if (fieldsToApply.title) {
+              const finalTitle = cloud?.title || cleanExtracted("title", parsed.title);
+              if (finalTitle) updateInput.title = finalTitle;
             }
-            if (finalCode) {
-              updateInput.code = finalCode;
+
+            if (fieldsToApply.date) {
+              const finalDate = cloud?.date || cleanExtracted("date", parsed.date);
+              if (finalDate && /^\d{4}-\d{2}-\d{2}$/.test(finalDate)) {
+                updateInput.date = finalDate;
+              }
             }
-            if (cloud?.details) {
+
+            if (fieldsToApply.code) {
+              const finalCode = cloud?.code || (parsed.code || "").trim();
+              if (finalCode) updateInput.code = finalCode;
+            }
+
+            if (fieldsToApply.details && cloud?.details) {
               updateInput.details = cloud.details;
             }
 
-            if (finalStudio) {
-              const sRes = await gqlFetch(
-                `query FindStudio($name: String!) {
-                  findStudios(studio_filter: { name: { value: $name, modifier: EQUALS } }) {
-                    studios { id name }
+            if (fieldsToApply.studio) {
+              const studioName = cloud?.studio?.name || cleanExtracted("studio", parsed.studio) || activeStudioClue;
+              if (studioName) {
+                if (!resolvedStudios[studioName]) {
+                  const sRes = await gqlFetch(
+                    `query FindStudio($name: String!) {
+                      findStudios(studio_filter: { name: { value: $name, modifier: EQUALS } }) {
+                        studios { id name }
+                      }
+                    }`,
+                    { name: studioName }
+                  );
+                  let foundId = sRes?.findStudios?.studios?.[0]?.id;
+                  if (!foundId) {
+                    try {
+                      const cRes = await gqlFetch(
+                        `mutation CreateStudio($name: String!) {
+                          studioCreate(input: { name: $name }) { id }
+                        }`,
+                        { name: studioName }
+                      );
+                      foundId = cRes?.studioCreate?.id;
+                    } catch (e) {
+                      const sRes2 = await gqlFetch(
+                        `query FindStudio2($name: String!) {
+                          findStudios(studio_filter: { name: { value: $name, modifier: EQUALS } }) {
+                            studios { id name }
+                          }
+                        }`,
+                        { name: studioName }
+                      );
+                      foundId = sRes2?.findStudios?.studios?.[0]?.id;
+                    }
                   }
-                }`,
-                { name: finalStudio }
-              );
-              const found = sRes?.findStudios?.studios?.[0];
-              if (found) updateInput.studio_id = found.id;
+                  if (foundId) resolvedStudios[studioName] = foundId;
+                }
+                if (resolvedStudios[studioName]) {
+                  updateInput.studio_id = resolvedStudios[studioName];
+                }
+              }
             }
 
-            if (finalPerformers) {
-              const pNames = finalPerformers.split(/,|&|\\band\\b/i).map((s) => s.trim()).filter(Boolean);
+            if (fieldsToApply.performers) {
+              const perfNames = cloud?.performers
+                ? cloud.performers.map((p) => p.name)
+                : (cleanExtracted("performers", parsed.performers) || activePerformerClue)
+                    .split(/,|&|\band\b/i).map((s) => s.trim()).filter(Boolean);
+
               const pIds = [];
-              for (const pName of pNames) {
-                const pRes = await gqlFetch(
-                  `query FindPerformer($name: String!) {
-                    findPerformers(performer_filter: { name: { value: $name, modifier: EQUALS } }) {
-                      performers { id name }
+              for (const pName of perfNames) {
+                if (!pName) continue;
+                if (!resolvedPerformers[pName]) {
+                  const pRes = await gqlFetch(
+                    `query FindPerformer($name: String!) {
+                      findPerformers(performer_filter: { name: { value: $name, modifier: EQUALS } }) {
+                        performers { id name }
+                      }
+                    }`,
+                    { name: pName }
+                  );
+                  let foundId = pRes?.findPerformers?.performers?.[0]?.id;
+                  if (!foundId) {
+                    try {
+                      const cRes = await gqlFetch(
+                        `mutation CreatePerformer($name: String!) {
+                          performerCreate(input: { name: $name }) { id }
+                        }`,
+                        { name: pName }
+                      );
+                      foundId = cRes?.performerCreate?.id;
+                    } catch (e) {
+                      const pRes2 = await gqlFetch(
+                        `query FindPerformer2($name: String!) {
+                          findPerformers(performer_filter: { name: { value: $name, modifier: EQUALS } }) {
+                            performers { id name }
+                          }
+                        }`,
+                        { name: pName }
+                      );
+                      foundId = pRes2?.findPerformers?.performers?.[0]?.id;
                     }
-                  }`,
-                  { name: pName }
-                );
-                const found = pRes?.findPerformers?.performers?.[0];
-                if (found) pIds.push(found.id);
+                  }
+                  if (foundId) resolvedPerformers[pName] = foundId;
+                }
+                if (resolvedPerformers[pName]) pIds.push(resolvedPerformers[pName]);
               }
               if (pIds.length > 0) updateInput.performer_ids = pIds;
+            }
+
+            if (fieldsToApply.tags && cloud?.tags?.length > 0) {
+              const tIds = [];
+              for (const tag of cloud.tags) {
+                const tName = tag.name?.trim();
+                if (!tName) continue;
+                if (!resolvedTags[tName]) {
+                  const tRes = await gqlFetch(
+                    `query FindTag($name: String!) {
+                      findTags(tag_filter: { name: { value: $name, modifier: EQUALS } }) {
+                        tags { id name }
+                      }
+                    }`,
+                    { name: tName }
+                  );
+                  let foundId = tRes?.findTags?.tags?.[0]?.id;
+                  if (!foundId) {
+                    try {
+                      const cRes = await gqlFetch(
+                        `mutation CreateTag($name: String!) {
+                          tagCreate(input: { name: $name }) { id }
+                        }`,
+                        { name: tName }
+                      );
+                      foundId = cRes?.tagCreate?.id;
+                    } catch (e) {
+                      const tRes2 = await gqlFetch(
+                        `query FindTag2($name: String!) {
+                          findTags(tag_filter: { name: { value: $name, modifier: EQUALS } }) {
+                            tags { id name }
+                          }
+                        }`,
+                        { name: tName }
+                      );
+                      foundId = tRes2?.findTags?.tags?.[0]?.id;
+                    }
+                  }
+                  if (foundId) resolvedTags[tName] = foundId;
+                }
+                if (resolvedTags[tName]) tIds.push(resolvedTags[tName]);
+              }
+              if (tIds.length > 0) updateInput.tag_ids = tIds;
             }
 
             await gqlFetch(
@@ -5088,461 +5348,441 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
         React.createElement(
           "div",
           { className: "sfm-modal-dialog sfm-modal-dialog-large sfm-parser-modal", onClick: (e) => e.stopPropagation() },
+          // Header
           React.createElement(
             "div",
             { className: "sfm-modal-header d-flex justify-content-between align-items-center" },
             React.createElement(
               "div",
-              { className: "d-flex align-items-center gap-3" },
-              React.createElement("h5", { className: "mb-0" }, React.createElement(IconSearch, { size: 16, color: "#88c0d0", className: "mr-2" }), "Customizable Filename & Path Resolver"),
+              { className: "d-flex align-items-center gap-3 flex-wrap" },
+              React.createElement("h5", { className: "mb-0 d-flex align-items-center" }, React.createElement(IconGlobe, { size: 17, color: "#88c0d0", className: "mr-2" }), "Scene Scraper & Filename Parser"),
               React.createElement(
                 "div",
-                { className: "btn-group btn-group-sm sfm-builder-mode-tabs ml-3" },
+                { className: "btn-group btn-group-sm ml-2" },
                 React.createElement(
                   "button",
                   {
                     type: "button",
-                    className: `btn btn-sm ${builderMode === "guided" ? "btn-info font-weight-bold" : "btn-outline-secondary"} py-0 px-3`,
-                    onClick: () => setBuilderMode("guided"),
+                    className: `btn btn-sm ${activeTab === "scrape" ? "btn-primary font-weight-bold" : "btn-outline-secondary"} py-1 px-3`,
+                    onClick: () => setActiveTab("scrape"),
                   },
-                  React.createElement(IconSparkles, { size: 13, className: "mr-1 text-info" }), "Interactive Blocks"
+                  React.createElement(IconGlobe, { size: 13, className: "mr-1" }),
+                  "Scrape & Search"
                 ),
                 React.createElement(
                   "button",
                   {
                     type: "button",
-                    className: `btn btn-sm ${builderMode === "raw" ? "btn-info font-weight-bold" : "btn-outline-secondary"} py-0 px-3`,
-                    onClick: () => setBuilderMode("raw"),
+                    className: `btn btn-sm ${activeTab === "pattern" ? "btn-primary font-weight-bold" : "btn-outline-secondary"} py-1 px-3`,
+                    onClick: () => setActiveTab("pattern"),
                   },
-                  React.createElement(IconSettings, { size: 13, className: "mr-1 text-info" }), "Raw Regex"
+                  React.createElement(IconSettings, { size: 13, className: "mr-1" }),
+                  "Filename Patterns"
                 )
-              )
+              ),
+              React.createElement("span", { className: "small text-muted" }, currentFolder)
             ),
             React.createElement("button", { className: "close text-light", onClick: onClose }, "×")
           ),
+          // Body
           React.createElement(
             "div",
             { className: "sfm-modal-body" },
-            // Section 1: Directory Path Clues
-            React.createElement(
-              "div",
-              { className: "sfm-path-clues-card p-2 px-3 mb-3 rounded bg-dark border border-secondary" },
-              React.createElement(
-                "div",
-                { className: "d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2" },
-                React.createElement(
-                  "div",
-                  { className: "d-flex align-items-center gap-2" },
-                  React.createElement("span", { className: "badge badge-info d-inline-flex align-items-center" }, React.createElement(IconFolder, { size: 11, className: "mr-1" }), "Path Clues"),
-                  React.createElement("span", { className: "small text-muted" }, "Folder hierarchy context inferred from filesystem:")
-                ),
-                availableSources.length > 0 &&
-                  React.createElement(
-                    "div",
-                    { className: "d-flex align-items-center gap-2" },
-                    React.createElement(
-                      "span",
-                      { className: "small text-light" },
-                      React.createElement(IconGlobe, { size: 12, className: "mr-1 text-info" }),
-                      "Scrape from:"
-                    ),
-                    React.createElement(
-                      "select",
-                      {
-                        className: "form-control form-control-sm bg-dark text-info border-secondary py-0",
-                        style: { width: "auto", height: "24px", fontSize: "0.78rem" },
-                        value: selectedSourceKey,
-                        onChange: (e) => {
-                          const val = e.target.value;
-                          setSelectedSourceKey(val);
-                          if (typeof window !== "undefined" && window.localStorage) {
-                            window.localStorage.setItem("sfm_last_scrape_source", val);
-                          }
-                        },
-                      },
-                      availableSources.map((src) =>
-                        React.createElement("option", { key: src.key, value: src.key }, src.label)
-                      )
-                    ),
-                    React.createElement(
-                      "button",
-                      {
-                        type: "button",
-                        className: "btn btn-xs btn-primary font-weight-bold py-0 px-2",
-                        disabled: isCloudQuerying || matchedCount === 0,
-                        onClick: handleQueryStashBox,
-                        title: "Query scene metadata in parallel using code and title clues",
-                      },
-                      React.createElement(IconGlobe, { size: 13, className: "mr-1" }),
-                      isCloudQuerying ? "Scraping (Parallel)..." : "Auto Scrape (Parallel)"
-                    )
-                  )
-              ),
-              React.createElement(
-                "div",
-                { className: "d-flex align-items-center flex-wrap gap-2" },
-                pathClues.map((clue, idx) =>
-                  React.createElement(
-                    "div",
-                    {
-                      key: clue.name,
-                      className: "sfm-path-clue-pill d-inline-flex align-items-center p-1 px-2 rounded bg-black border border-secondary",
-                    },
-                    React.createElement("span", { className: "text-muted small mr-1" }, idx === pathClues.length - 1 ? "Parent:" : "Folder:"),
-                    React.createElement("span", { className: "font-weight-bold text-light mr-2", style: { fontFamily: "monospace" } }, clue.name),
-                    React.createElement(
-                      "select",
-                      {
-                        className: "form-control form-control-sm border-0 py-0 px-1 font-weight-bold",
-                        style: {
-                          width: "auto",
-                          height: "22px",
-                          fontSize: "0.75rem",
-                          backgroundColor: clue.role === "studio" ? "#81a1c1" : clue.role === "performer" ? "#d08770" : clue.role === "tag" ? "#ebcb8b" : "#4c566a",
-                          color: "#1e222a",
-                          borderRadius: "3px",
-                        },
-                        value: clue.role,
-                        onChange: (e) => handleSetPathClueRole(clue.name, e.target.value),
-                      },
-                      React.createElement("option", { value: "studio" }, "Studio Clue"),
-                      React.createElement("option", { value: "performer" }, "Performer Clue"),
-                      React.createElement("option", { value: "tag" }, "Tag Clue"),
-                      React.createElement("option", { value: "ignore" }, "Ignore")
-                    ),
-                    clue.verifiedStudioId &&
-                      React.createElement("span", { className: "badge badge-success ml-2 py-0 px-1", title: "Matched verified Studio in local Stash database" }, "✓ DB Studio")
-                  )
-                )
-              )
-            ),
-            // Section 2: Interactive Field Customization Blocks
-            builderMode === "guided"
+            activeTab === "scrape"
               ? React.createElement(
                   "div",
-                  { className: "sfm-guided-card p-3 mb-3 rounded bg-dark border border-secondary" },
-                  // Sample File Toolbar
+                  { className: "sfm-scrape-section mb-3" },
+                  // Scrape Toolbar
                   React.createElement(
                     "div",
-                    { className: "d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2" },
+                    { className: "d-flex justify-content-between align-items-center p-2 px-3 mb-3 rounded bg-dark border border-secondary flex-wrap gap-2" },
+                    React.createElement(
+                      "div",
+                      { className: "d-flex align-items-center gap-2 flex-wrap" },
+                      React.createElement(
+                        "span",
+                        { className: "small text-light font-weight-bold" },
+                        React.createElement(IconGlobe, { size: 13, className: "mr-1 text-info" }),
+                        "Scrape Source:"
+                      ),
+                      React.createElement(
+                        "select",
+                        {
+                          className: "form-control form-control-sm bg-dark text-info border-secondary py-0 font-weight-bold",
+                          style: { width: "auto", height: "26px", fontSize: "0.8rem" },
+                          value: selectedSourceKey,
+                          onChange: (e) => {
+                            const val = e.target.value;
+                            setSelectedSourceKey(val);
+                            if (typeof window !== "undefined" && window.localStorage) {
+                              window.localStorage.setItem("sfm_last_scrape_source", val);
+                            }
+                          },
+                        },
+                        availableSources.map((src) =>
+                          React.createElement("option", { key: src.key, value: src.key }, src.label)
+                        )
+                      ),
+                      React.createElement(
+                        "select",
+                        {
+                          className: "form-control form-control-sm bg-dark text-muted border-secondary py-0",
+                          style: { width: "auto", height: "26px", fontSize: "0.78rem" },
+                          value: scrapeStrategy,
+                          onChange: (e) => setScrapeStrategy(e.target.value),
+                          title: "Scrape Strategy: Smart (Hash + Title Query), Hash Only, or Title Query Only",
+                        },
+                        React.createElement("option", { value: "smart" }, "Smart (Hash + Title)"),
+                        React.createElement("option", { value: "fingerprint" }, "Hash Fingerprint Only"),
+                        React.createElement("option", { value: "query" }, "Title Query Only")
+                      )
+                    ),
                     React.createElement(
                       "div",
                       { className: "d-flex align-items-center gap-2" },
-                      React.createElement("span", { className: "badge badge-secondary" }, "Sample File"),
-                      React.createElement("span", { className: "font-weight-bold text-light", style: { fontFamily: "monospace" } }, sampleWithoutExt)
-                    ),
-                    directScenes.length > 1 &&
                       React.createElement(
-                        "div",
-                        { className: "d-flex align-items-center gap-2" },
-                        React.createElement(
-                          "button",
-                          {
-                            type: "button",
-                            className: "btn btn-xs btn-outline-secondary py-0 px-2",
-                            disabled: sampleIndex <= 0,
-                            onClick: () => setSampleIndex(Math.max(0, sampleIndex - 1)),
-                          },
-                          "◀ Prev"
-                        ),
-                        React.createElement("span", { className: "text-muted small" }, `${sampleIndex + 1} of ${directScenes.length}`),
-                        React.createElement(
-                          "button",
-                          {
-                            type: "button",
-                            className: "btn btn-xs btn-outline-secondary py-0 px-2",
-                            disabled: sampleIndex >= directScenes.length - 1,
-                            onClick: () => setSampleIndex(Math.min(directScenes.length - 1, sampleIndex + 1)),
-                          },
-                          "Next ▶"
-                        )
-                      )
-                  ),
-                  // Word Chunks & Customization Action Bar
-                  React.createElement(
-                    "div",
-                    { className: "mb-3" },
-                    React.createElement(
-                      "div",
-                      { className: "d-flex justify-content-between align-items-center mb-1" },
-                      React.createElement("label", { className: "small font-weight-bold text-muted mb-0" }, "CUSTOMIZE & ADJUST FIELDS:"),
+                        "button",
+                        {
+                          type: "button",
+                          className: "btn btn-sm btn-primary font-weight-bold py-1 px-3",
+                          disabled: isScrapingAll || directScenes.length === 0,
+                          onClick: handleScrapeAll,
+                          title: "Scrape all scenes in parallel using hashes, stash-ids, and titles",
+                        },
+                        React.createElement(IconGlobe, { size: 13, className: "mr-1" }),
+                        isScrapingAll ? "Scraping in Parallel..." : `Scrape All (${directScenes.length})`
+                      ),
                       React.createElement(
-                        "div",
-                        { className: "d-flex align-items-center gap-1" },
-                        React.createElement("span", { className: "small text-muted mr-1" }, "Auto:"),
-                        React.createElement(
-                          "button",
-                          {
-                            type: "button",
-                            className: "btn btn-xs btn-info font-weight-bold py-0 px-2 mr-1",
-                            onClick: () => autoDetectFromFilename(sampleWithoutExt),
-                            title: "Auto-detect fields using smart heuristics",
-                          },
-                          React.createElement(IconSparkles, { size: 12, className: "mr-1" }), "Auto-Detect"
-                        ),
-                        React.createElement(
-                          "button",
-                          {
-                            type: "button",
-                            className: "btn btn-xs btn-outline-secondary py-0 px-1",
-                            onClick: () => autoDetectFromFilename(sampleWithoutExt, "__"),
-                          },
-                          '"__"'
-                        ),
-                        React.createElement(
-                          "button",
-                          {
-                            type: "button",
-                            className: "btn btn-xs btn-outline-secondary py-0 px-1",
-                            onClick: () => autoDetectFromFilename(sampleWithoutExt, " - "),
-                          },
-                          '" - "'
-                        ),
-                        React.createElement(
-                          "button",
-                          {
-                            type: "button",
-                            className: "btn btn-xs btn-outline-secondary py-0 px-1",
-                            onClick: () => autoDetectFromFilename(sampleWithoutExt, "_"),
-                          },
-                          '"_"'
-                        )
+                        "button",
+                        {
+                          type: "button",
+                          className: "btn btn-sm btn-outline-info font-weight-bold py-1 px-2",
+                          disabled: isScrapingAll || directScenes.length === 0,
+                          onClick: handleMassSearch,
+                          title: "Mass search all un-scraped scenes by title",
+                        },
+                        React.createElement(IconSearch, { size: 13, className: "mr-1" }),
+                        "Search by Title"
                       )
-                    ),
-                    // Word block items with Split, Edit, Merge, and Role Dropdown
-                    React.createElement(
-                      "div",
-                      { className: "d-flex align-items-center flex-wrap gap-2 p-2 rounded bg-black border border-secondary" },
-                      chunks.map((chunk, idx) => {
-                        const fObj = FIELDS.find((f) => f.id === chunk.fieldId) || FIELDS[0];
-                        const isSplitting = activeSplitChunkId === chunk.id;
-
-                        // Calculate split suggestions (letters/digits, underscores, dashes)
-                        const splitSuggestions = [];
-                        const text = chunk.text;
-                        const ldMatch = text.match(/^([A-Za-z]+)(\\d+)$/);
-                        if (ldMatch) {
-                          splitSuggestions.push({ p1: ldMatch[1], p2: ldMatch[2], f1: "studio", f2: "code", label: `"${ldMatch[1]}" (Studio) + "${ldMatch[2]}" (Code)` });
-                        }
-                        if (text.includes("_")) {
-                          const parts = text.split("_");
-                          if (parts.length > 1) {
-                            splitSuggestions.push({ p1: parts[0], p2: parts.slice(1).join("_"), f1: chunk.fieldId, f2: "title", label: `"${parts[0]}" + "${parts.slice(1).join("_")}"` });
-                            splitSuggestions.push({ p1: parts.slice(0, -1).join("_"), p2: parts[parts.length - 1], f1: chunk.fieldId, f2: "ignore", label: `"${parts.slice(0, -1).join("_")}" + "${parts[parts.length - 1]}"` });
-                          }
-                        }
-
-                        return React.createElement(
-                          "div",
-                          {
-                            key: chunk.id,
-                            className: "sfm-chunk-box d-inline-flex flex-column rounded p-1 mr-1 mb-1 position-relative",
-                            style: { border: `1px solid ${fObj.color}`, backgroundColor: "#1a1f2c" },
-                          },
-                          React.createElement(
-                            "div",
-                            { className: "d-flex align-items-center" },
-                            React.createElement(
-                              "span",
-                              {
-                                className: "font-weight-bold px-2 py-0",
-                                style: { fontFamily: "monospace", fontSize: "0.88rem", color: "#eceff4" },
-                                title: "Click to split this field or change its assignment",
-                              },
-                              chunk.text
-                            ),
-                            React.createElement(
-                              "select",
-                              {
-                                className: "form-control form-control-sm border-0 py-0 px-1 font-weight-bold mr-1",
-                                style: {
-                                  width: "auto",
-                                  height: "22px",
-                                  fontSize: "0.76rem",
-                                  backgroundColor: fObj.color,
-                                  color: "#1e222a",
-                                  borderRadius: "3px",
-                                  cursor: "pointer",
-                                },
-                                value: chunk.fieldId,
-                                onChange: (e) => handleSetChunkField(chunk.id, e.target.value),
-                              },
-                              FIELDS.map((f) => React.createElement("option", { key: f.id, value: f.id }, f.label))
-                            ),
-                            // ✂️ Split Button
-                            React.createElement(
-                              "button",
-                              {
-                                type: "button",
-                                className: `btn btn-xs ${isSplitting ? "btn-warning" : "btn-outline-secondary"} py-0 px-1 mr-1`,
-                                onClick: () => setActiveSplitChunkId(isSplitting ? null : chunk.id),
-                                title: "Break / Split this field into two separate fields",
-                              },
-                              React.createElement(IconScissors, { size: 11 })
-                            ),
-                            // ▶ Merge with next button
-                            idx < chunks.length - 1 &&
-                              React.createElement(
-                                "button",
-                                {
-                                  type: "button",
-                                  className: "btn btn-xs btn-link text-muted p-0 mr-1",
-                                  onClick: () => handleMergeWithNext(idx),
-                                  title: "Merge with next field",
-                                },
-                                "▶"
-                              ),
-                            // ✕ Delete chunk button
-                            React.createElement(
-                              "button",
-                              {
-                                type: "button",
-                                className: "btn btn-xs text-muted p-0 px-1",
-                                onClick: () => handleDeleteChunk(chunk.id),
-                                title: "Remove field",
-                              },
-                              "×"
-                            )
-                          ),
-                          // Interactive Split Popover Bar
-                          isSplitting &&
-                            React.createElement(
-                              "div",
-                              {
-                                className: "p-2 mt-1 rounded bg-black border border-warning shadow",
-                                style: { minWidth: "220px", zIndex: 10 },
-                              },
-                              React.createElement("div", { className: "small font-weight-bold text-warning mb-1 d-flex align-items-center" }, React.createElement(IconScissors, { size: 12, className: "mr-1" }), `Break apart "${chunk.text}":`),
-                              splitSuggestions.map((sug, sIdx) =>
-                                React.createElement(
-                                  "button",
-                                  {
-                                    key: sIdx,
-                                    type: "button",
-                                    className: "btn btn-xs btn-outline-info text-left d-block w-100 mb-1 py-1 px-2 font-weight-bold",
-                                    style: { fontSize: "0.75rem" },
-                                    onClick: () => handleSplitChunk(chunk.id, sug.p1, sug.p2, sug.f1, sug.f2),
-                                  },
-                                  `Break into: ${sug.label}`
-                                )
-                              ),
-                              // Halfway custom split fallback
-                              splitSuggestions.length === 0 &&
-                                React.createElement(
-                                  "div",
-                                  { className: "d-flex align-items-center gap-1" },
-                                  React.createElement(
-                                    "button",
-                                    {
-                                      type: "button",
-                                      className: "btn btn-xs btn-info py-0 px-2",
-                                      onClick: () => {
-                                        const half = Math.floor(chunk.text.length / 2);
-                                        handleSplitChunk(chunk.id, chunk.text.substring(0, half), chunk.text.substring(half), chunk.fieldId, "title");
-                                      },
-                                    },
-                                    "Split in half"
-                                  )
-                                )
-                            )
-                        );
-                      })
-                    )
-                  ),
-                  // Cleaner & Delimiter Settings
-                  React.createElement(
-                    "div",
-                    { className: "d-flex align-items-center flex-wrap gap-3 small text-muted pt-2 border-top border-secondary" },
-                    React.createElement(
-                      "div",
-                      { className: "d-flex align-items-center gap-1 cursor-pointer" },
-                      React.createElement("input", {
-                        type: "checkbox",
-                        id: "sfm-clean-spaces",
-                        checked: cleanSpaces,
-                        onChange: (e) => setCleanSpaces(e.target.checked),
-                      }),
-                      React.createElement("label", { htmlFor: "sfm-clean-spaces", className: "mb-0 ml-1 text-light cursor-pointer" }, "Replace _ and . with spaces")
-                    ),
-                    React.createElement(
-                      "div",
-                      { className: "d-flex align-items-center gap-1 cursor-pointer" },
-                      React.createElement("input", {
-                        type: "checkbox",
-                        id: "sfm-clean-titlecase",
-                        checked: titleCase,
-                        onChange: (e) => setTitleCase(e.target.checked),
-                      }),
-                      React.createElement("label", { htmlFor: "sfm-clean-titlecase", className: "mb-0 ml-1 text-light cursor-pointer" }, "Title Case")
-                    ),
-                    React.createElement(
-                      "div",
-                      { className: "d-flex align-items-center gap-1 cursor-pointer" },
-                      React.createElement("input", {
-                        type: "checkbox",
-                        id: "sfm-clean-normdate",
-                        checked: normalizeDate,
-                        onChange: (e) => setNormalizeDate(e.target.checked),
-                      }),
-                      React.createElement("label", { htmlFor: "sfm-clean-normdate", className: "mb-0 ml-1 text-light cursor-pointer" }, "Normalize Date (YYYY-MM-DD)")
                     )
                   )
                 )
               : React.createElement(
                   "div",
-                  { className: "sfm-raw-builder-section mb-3" },
+                  { className: "sfm-patterns-section mb-3" },
+                  // Directory Path Clues
                   React.createElement(
                     "div",
-                    { className: "form-group mb-2" },
-                    React.createElement("label", { className: "small font-weight-bold" }, "Preset Patterns"),
+                    { className: "sfm-path-clues-card p-2 px-3 mb-3 rounded bg-dark border border-secondary" },
                     React.createElement(
-                      "select",
-                      {
-                        className: "form-control form-control-sm bg-dark text-light border-secondary",
-                        onChange: (e) => {
-                          const chosen = PRESETS.find((p) => p.pattern === e.target.value);
-                          setPattern(e.target.value);
-                          if (chosen && chosen.caseInsensitive !== undefined) {
-                            setCaseInsensitive(chosen.caseInsensitive);
-                          }
-                        },
-                      },
-                      PRESETS.map((p) => React.createElement("option", { key: p.label, value: p.pattern }, p.label))
+                      "div",
+                      { className: "d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2" },
+                      React.createElement(
+                        "div",
+                        { className: "d-flex align-items-center gap-2" },
+                        React.createElement("span", { className: "badge badge-info d-inline-flex align-items-center" }, React.createElement(IconFolder, { size: 11, className: "mr-1" }), "Path Clues"),
+                        React.createElement("span", { className: "small text-muted" }, "Folder hierarchy context inferred from filesystem:")
+                      )
+                    ),
+                    React.createElement(
+                      "div",
+                      { className: "d-flex align-items-center flex-wrap gap-2" },
+                      pathClues.map((clue, idx) =>
+                        React.createElement(
+                          "div",
+                          {
+                            key: clue.name,
+                            className: "sfm-path-clue-pill d-inline-flex align-items-center p-1 px-2 rounded bg-black border border-secondary",
+                          },
+                          React.createElement("span", { className: "text-muted small mr-1" }, idx === pathClues.length - 1 ? "Parent:" : "Folder:"),
+                          React.createElement("span", { className: "font-weight-bold text-light mr-2", style: { fontFamily: "monospace" } }, clue.name),
+                          React.createElement(
+                            "select",
+                            {
+                              className: "form-control form-control-sm border-0 py-0 px-1 font-weight-bold",
+                              style: {
+                                width: "auto",
+                                height: "22px",
+                                fontSize: "0.75rem",
+                                backgroundColor: clue.role === "studio" ? "#81a1c1" : clue.role === "performer" ? "#d08770" : clue.role === "tag" ? "#ebcb8b" : "#4c566a",
+                                color: "#1e222a",
+                                borderRadius: "3px",
+                              },
+                              value: clue.role,
+                              onChange: (e) => handleSetPathClueRole(clue.name, e.target.value),
+                            },
+                            React.createElement("option", { value: "studio" }, "Studio Clue"),
+                            React.createElement("option", { value: "performer" }, "Performer Clue"),
+                            React.createElement("option", { value: "tag" }, "Tag Clue"),
+                            React.createElement("option", { value: "ignore" }, "Ignore")
+                          ),
+                          clue.verifiedStudioId &&
+                            React.createElement("span", { className: "badge badge-success ml-2 py-0 px-1", title: "Matched verified Studio in local Stash database" }, "✓ DB Studio")
+                        )
+                      )
                     )
+                  ),
+                  // Pattern Controls
+                  builderMode === "guided"
+                    ? React.createElement(
+                        "div",
+                        { className: "sfm-guided-card p-3 mb-3 rounded bg-dark border border-secondary" },
+                        React.createElement(
+                          "div",
+                          { className: "d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2" },
+                          React.createElement(
+                            "div",
+                            { className: "d-flex align-items-center gap-2" },
+                            React.createElement("span", { className: "badge badge-secondary" }, "Sample File"),
+                            React.createElement("span", { className: "font-weight-bold text-light", style: { fontFamily: "monospace" } }, sampleWithoutExt)
+                          ),
+                          directScenes.length > 1 &&
+                            React.createElement(
+                              "div",
+                              { className: "d-flex align-items-center gap-2" },
+                              React.createElement(
+                                "button",
+                                {
+                                  type: "button",
+                                  className: "btn btn-xs btn-outline-secondary py-0 px-2",
+                                  disabled: sampleIndex <= 0,
+                                  onClick: () => setSampleIndex(Math.max(0, sampleIndex - 1)),
+                                },
+                                "◀ Prev"
+                              ),
+                              React.createElement("span", { className: "text-muted small" }, `${sampleIndex + 1} of ${directScenes.length}`),
+                              React.createElement(
+                                "button",
+                                {
+                                  type: "button",
+                                  className: "btn btn-xs btn-outline-secondary py-0 px-2",
+                                  disabled: sampleIndex >= directScenes.length - 1,
+                                  onClick: () => setSampleIndex(Math.min(directScenes.length - 1, sampleIndex + 1)),
+                                },
+                                "Next ▶"
+                              )
+                            )
+                        ),
+                        React.createElement(
+                          "div",
+                          { className: "mb-3" },
+                          React.createElement(
+                            "div",
+                            { className: "d-flex justify-content-between align-items-center mb-1" },
+                            React.createElement("label", { className: "small font-weight-bold text-muted mb-0" }, "CUSTOMIZE & ADJUST FIELDS:"),
+                            React.createElement(
+                              "div",
+                              { className: "d-flex align-items-center gap-1" },
+                              React.createElement("span", { className: "small text-muted mr-1" }, "Auto:"),
+                              React.createElement(
+                                "button",
+                                {
+                                  type: "button",
+                                  className: "btn btn-xs btn-info font-weight-bold py-0 px-2 mr-1",
+                                  onClick: () => autoDetectFromFilename(sampleWithoutExt),
+                                  title: "Auto-detect fields using smart heuristics",
+                                },
+                                React.createElement(IconSparkles, { size: 12, className: "mr-1" }),
+                                "Auto-Detect"
+                              ),
+                              React.createElement(
+                                "button",
+                                {
+                                  type: "button",
+                                  className: "btn btn-xs btn-outline-secondary py-0 px-1",
+                                  onClick: () => autoDetectFromFilename(sampleWithoutExt, "__"),
+                                },
+                                '"__"'
+                              ),
+                              React.createElement(
+                                "button",
+                                {
+                                  type: "button",
+                                  className: "btn btn-xs btn-outline-secondary py-0 px-1",
+                                  onClick: () => autoDetectFromFilename(sampleWithoutExt, " - "),
+                                },
+                                '" - "'
+                              )
+                            )
+                          ),
+                          React.createElement(
+                            "div",
+                            { className: "d-flex align-items-center flex-wrap gap-2 p-2 rounded bg-black border border-secondary" },
+                            chunks.map((chunk, idx) => {
+                              const fObj = FIELDS.find((f) => f.id === chunk.fieldId) || FIELDS[0];
+                              const isSplitting = activeSplitChunkId === chunk.id;
+                              return React.createElement(
+                                "div",
+                                {
+                                  key: chunk.id,
+                                  className: "sfm-chunk-box d-inline-flex flex-column rounded p-1 mr-1 mb-1 position-relative",
+                                  style: { border: `1px solid ${fObj.color}`, backgroundColor: "#1a1f2c" },
+                                },
+                                React.createElement(
+                                  "div",
+                                  { className: "d-flex align-items-center" },
+                                  React.createElement(
+                                    "span",
+                                    {
+                                      className: "font-weight-bold px-2 py-0",
+                                      style: { fontFamily: "monospace", fontSize: "0.88rem", color: "#eceff4" },
+                                    },
+                                    chunk.text
+                                  ),
+                                  React.createElement(
+                                    "select",
+                                    {
+                                      className: "form-control form-control-sm border-0 py-0 px-1 font-weight-bold mr-1",
+                                      style: {
+                                        width: "auto",
+                                        height: "22px",
+                                        fontSize: "0.76rem",
+                                        backgroundColor: fObj.color,
+                                        color: "#1e222a",
+                                        borderRadius: "3px",
+                                        cursor: "pointer",
+                                      },
+                                      value: chunk.fieldId,
+                                      onChange: (e) => handleSetChunkField(chunk.id, e.target.value),
+                                    },
+                                    FIELDS.map((f) => React.createElement("option", { key: f.id, value: f.id }, f.label))
+                                  ),
+                                  React.createElement(
+                                    "button",
+                                    {
+                                      type: "button",
+                                      className: `btn btn-xs ${isSplitting ? "btn-warning" : "btn-outline-secondary"} py-0 px-1 mr-1`,
+                                      onClick: () => setActiveSplitChunkId(isSplitting ? null : chunk.id),
+                                      title: "Break / Split this field into two separate fields",
+                                    },
+                                    React.createElement(IconScissors, { size: 11 })
+                                  ),
+                                  idx < chunks.length - 1 &&
+                                    React.createElement(
+                                      "button",
+                                      {
+                                        type: "button",
+                                        className: "btn btn-xs btn-link text-muted p-0 mr-1",
+                                        onClick: () => handleMergeWithNext(idx),
+                                        title: "Merge with next field",
+                                      },
+                                      "▶"
+                                    ),
+                                  React.createElement(
+                                    "button",
+                                    {
+                                      type: "button",
+                                      className: "btn btn-xs text-muted p-0 px-1",
+                                      onClick: () => handleDeleteChunk(chunk.id),
+                                      title: "Remove field",
+                                    },
+                                    "×"
+                                  )
+                                )
+                              );
+                            })
+                          )
+                        ),
+                        React.createElement(
+                          "div",
+                          { className: "d-flex align-items-center flex-wrap gap-3 small text-muted pt-2 border-top border-secondary" },
+                          React.createElement(
+                            "div",
+                            { className: "d-flex align-items-center gap-1 cursor-pointer" },
+                            React.createElement("input", {
+                              type: "checkbox",
+                              id: "sfm-clean-spaces",
+                              checked: cleanSpaces,
+                              onChange: (e) => setCleanSpaces(e.target.checked),
+                            }),
+                            React.createElement("label", { htmlFor: "sfm-clean-spaces", className: "mb-0 ml-1 text-light cursor-pointer" }, "Replace _ and . with spaces")
+                          ),
+                          React.createElement(
+                            "div",
+                            { className: "d-flex align-items-center gap-1 cursor-pointer" },
+                            React.createElement("input", {
+                              type: "checkbox",
+                              id: "sfm-clean-titlecase",
+                              checked: titleCase,
+                              onChange: (e) => setTitleCase(e.target.checked),
+                            }),
+                            React.createElement("label", { htmlFor: "sfm-clean-titlecase", className: "mb-0 ml-1 text-light cursor-pointer" }, "Title Case")
+                          ),
+                          React.createElement(
+                            "div",
+                            { className: "d-flex align-items-center gap-1 cursor-pointer" },
+                            React.createElement("input", {
+                              type: "checkbox",
+                              id: "sfm-clean-normdate",
+                              checked: normalizeDate,
+                              onChange: (e) => setNormalizeDate(e.target.checked),
+                            }),
+                            React.createElement("label", { htmlFor: "sfm-clean-normdate", className: "mb-0 ml-1 text-light cursor-pointer" }, "Normalize Date (YYYY-MM-DD)")
+                          )
+                        )
+                      )
+                    : React.createElement(
+                        "div",
+                        { className: "sfm-raw-builder-section mb-3" },
+                        React.createElement(
+                          "div",
+                          { className: "form-group mb-2" },
+                          React.createElement("label", { className: "small font-weight-bold" }, "Preset Patterns"),
+                          React.createElement(
+                            "select",
+                            {
+                              className: "form-control form-control-sm bg-dark text-light border-secondary",
+                              onChange: (e) => {
+                                const chosen = PRESETS.find((p) => p.pattern === e.target.value);
+                                setPattern(e.target.value);
+                                if (chosen && chosen.caseInsensitive !== undefined) {
+                                  setCaseInsensitive(chosen.caseInsensitive);
+                                }
+                              },
+                            },
+                            PRESETS.map((p) => React.createElement("option", { key: p.label, value: p.pattern }, p.label))
+                          )
+                        )
+                      ),
+                  React.createElement(
+                    "div",
+                    { className: "form-group mb-3" },
+                    React.createElement(
+                      "div",
+                      { className: "d-flex justify-content-between align-items-center mb-1" },
+                      React.createElement("label", { className: "small font-weight-bold mb-0" }, "Active Regular Expression"),
+                      React.createElement(
+                        "div",
+                        { className: "d-flex align-items-center gap-2 small text-muted" },
+                        React.createElement("input", {
+                          type: "checkbox",
+                          id: "sfm-case-sens",
+                          checked: caseInsensitive,
+                          onChange: (e) => setCaseInsensitive(e.target.checked),
+                        }),
+                        React.createElement("label", { htmlFor: "sfm-case-sens", className: "mb-0 cursor-pointer" }, "Case insensitive (?i)")
+                      )
+                    ),
+                    React.createElement("input", {
+                      type: "text",
+                      className: "form-control font-weight-bold bg-dark text-info border-secondary sfm-regex-input",
+                      value: pattern,
+                      readOnly: builderMode === "guided",
+                      onChange: (e) => setPattern(e.target.value),
+                      style: { fontFamily: "monospace", fontSize: "0.9rem" },
+                    })
                   )
                 ),
-            // Pattern Display & Options
-            React.createElement(
-              "div",
-              { className: "form-group mb-3" },
+            // Progress Bar (during scraping or updates)
+            (isScrapingAll || scrapeProgress.total > 0 || progressText) &&
               React.createElement(
                 "div",
-                { className: "d-flex justify-content-between align-items-center mb-1" },
-                React.createElement("label", { className: "small font-weight-bold mb-0" }, "Active Regular Expression"),
-                React.createElement(
-                  "div",
-                  { className: "d-flex align-items-center gap-2 small text-muted" },
-                  React.createElement("input", {
-                    type: "checkbox",
-                    id: "sfm-case-sens",
-                    checked: caseInsensitive,
-                    onChange: (e) => setCaseInsensitive(e.target.checked),
-                  }),
-                  React.createElement("label", { htmlFor: "sfm-case-sens", className: "mb-0 cursor-pointer" }, "Case insensitive (?i)")
-                )
+                { className: "alert alert-info py-2 px-3 small mb-3 d-flex align-items-center justify-content-between flex-wrap gap-2" },
+                React.createElement("span", { className: "font-weight-bold" }, scrapeProgress.text || progressText),
+                scrapeProgress.total > 0 &&
+                  React.createElement("span", { className: "badge badge-primary py-1 px-2" }, `${Math.round((scrapeProgress.current / scrapeProgress.total) * 100)}%`)
               ),
-              React.createElement("input", {
-                type: "text",
-                className: "form-control font-weight-bold bg-dark text-info border-secondary sfm-regex-input",
-                value: pattern,
-                readOnly: builderMode === "guided",
-                onChange: (e) => setPattern(e.target.value),
-                style: { fontFamily: "monospace", fontSize: "0.9rem" },
-              })
-            ),
-            parsedResults.error &&
-              React.createElement("div", { className: "alert alert-danger py-2 px-3 small" }, `Regex Error: ${parsedResults.error}`),
-            // Preview Filter Tabs & Count Header
+            // Preview Filter Tabs & Selection Bar
             React.createElement(
               "div",
               { className: "d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2" },
@@ -5556,7 +5796,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                     className: `btn btn-sm ${previewFilter === "all" ? "btn-secondary font-weight-bold" : "btn-outline-secondary"} py-0 px-2`,
                     onClick: () => setPreviewFilter("all"),
                   },
-                  `All (${parsedResults.items.length})`
+                  `All (${directScenes.length})`
                 ),
                 React.createElement(
                   "button",
@@ -5589,10 +5829,10 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                   },
                   selectedSceneIds.size === matchedCount && matchedCount > 0 ? "Deselect All Matched" : "Select All Matched"
                 ),
-                React.createElement("span", { className: "badge badge-info" }, `${selectedSceneIds.size} of ${matchedCount} matched selected for update`)
+                React.createElement("span", { className: "badge badge-info" }, `${selectedSceneIds.size} of ${directScenes.length} scenes selected for update`)
               )
             ),
-            // Live Preview Table
+            // Unified Live Preview Table
             React.createElement(
               "div",
               { className: "sfm-parser-table-wrap mb-3" },
@@ -5610,18 +5850,22 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                       { style: { width: "36px", textAlign: "center" } },
                       React.createElement("input", {
                         type: "checkbox",
-                        checked: matchedCount > 0 && selectedSceneIds.size === matchedCount,
-                        onChange: handleSelectAllMatched,
+                        checked: selectedSceneIds.size === directScenes.length && directScenes.length > 0,
+                        onChange: () => {
+                          if (selectedSceneIds.size === directScenes.length) setSelectedSceneIds(new Set());
+                          else setSelectedSceneIds(new Set(directScenes.map((s) => s.id)));
+                        },
                       })
                     ),
+                    React.createElement("th", { style: { width: "64px", textAlign: "center" } }, "Cover"),
                     React.createElement("th", null, "Filename"),
                     React.createElement("th", null, "Title"),
                     React.createElement("th", null, "Date"),
-                    React.createElement("th", null, "StudioCode"),
                     React.createElement("th", null, "Studio"),
                     React.createElement("th", null, "Performers"),
-                    React.createElement("th", { style: { width: "95px", textAlign: "center" } }, "Source"),
-                    React.createElement("th", { style: { width: "80px", textAlign: "center" } }, "Status")
+                    React.createElement("th", { style: { width: "115px", textAlign: "center" } }, "Source"),
+                    React.createElement("th", { style: { width: "85px", textAlign: "center" } }, "Status"),
+                    React.createElement("th", { style: { width: "135px", textAlign: "center" } }, "Actions")
                   )
                 ),
                 React.createElement(
@@ -5630,85 +5874,272 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                   filteredItems.map((item) => {
                     const isSelected = selectedSceneIds.has(item.scene.id);
                     const cloud = cloudMatches[item.scene.id];
+                    const sState = scrapeStates[item.scene.id] || { status: "idle" };
 
-                    const displayTitle = cloud?.title || cleanExtracted("title", item.groups.title);
-                    const displayDate = cloud?.date || cleanExtracted("date", item.groups.date);
-                    const displayCode = cloud?.code || item.groups.code || "—";
-                    const displayStudio = cloud?.studio?.name || cleanExtracted("studio", item.groups.studio) || activeStudioClue || "—";
-                    const displayPerformers = cloud?.performers ? cloud.performers.map((p) => p.name).join(", ") : (cleanExtracted("performers", item.groups.performers) || activePerformerClue || "—");
+                    const displayTitle = cloud?.title || cleanExtracted("title", item.groups.title) || item.scene.title || "—";
+                    const displayDate = cloud?.date || cleanExtracted("date", item.groups.date) || item.scene.date || "—";
+                    const displayStudio = cloud?.studio?.name || cleanExtracted("studio", item.groups.studio) || activeStudioClue || item.scene.studio?.name || "—";
+                    const displayPerformers = cloud?.performers
+                      ? cloud.performers.map((p) => p.name).join(", ")
+                      : cleanExtracted("performers", item.groups.performers) || (item.scene.performers || []).map((p) => p.name).join(", ") || activePerformerClue || "—";
 
                     const isFromPathStudio = !cloud && !item.groups.studio && activeStudioClue;
+                    const posterUrl = item.scene.paths?.screenshot || `/scene/${item.scene.id}/screenshot`;
+                    const isInlineOpen = inlineSearchRowId === item.scene.id;
 
-                    return React.createElement(
-                      "tr",
-                      {
-                        key: item.scene.id,
-                        style: { cursor: item.matched ? "pointer" : "default", opacity: item.matched ? 1 : 0.65 },
-                        onClick: () => item.matched && handleToggleSelectScene(item.scene.id),
-                      },
+                    return [
                       React.createElement(
-                        "td",
-                        { style: { textAlign: "center" } },
-                        item.matched &&
+                        "tr",
+                        {
+                          key: item.scene.id,
+                          style: { cursor: "pointer", opacity: isSelected ? 1 : 0.7 },
+                          onClick: () => handleToggleSelectScene(item.scene.id),
+                        },
+                        React.createElement(
+                          "td",
+                          { style: { textAlign: "center" } },
                           React.createElement("input", {
                             type: "checkbox",
                             checked: isSelected,
                             onChange: () => handleToggleSelectScene(item.scene.id),
                             onClick: (e) => e.stopPropagation(),
                           })
-                      ),
-                      React.createElement("td", { className: "text-truncate", style: { maxWidth: "180px" }, title: item.rawBasename }, item.rawBasename),
-                      React.createElement("td", { className: "text-info font-weight-bold" }, displayTitle || "—"),
-                      React.createElement("td", null, displayDate || "—"),
-                      React.createElement("td", null, displayCode),
-                      React.createElement(
-                        "td",
-                        null,
-                        displayStudio !== "—"
-                          ? React.createElement(
-                              "span",
-                              null,
-                              displayStudio,
-                              isFromPathStudio && React.createElement("span", { className: "badge badge-dark text-info ml-1 py-0", title: "Resolved from Directory Path Clue" }, React.createElement(IconFolder, { size: 11, className: "mr-1" }), "Path")
+                        ),
+                        React.createElement(
+                          "td",
+                          { style: { textAlign: "center" } },
+                          React.createElement("img", {
+                            src: posterUrl,
+                            className: "sfm-scrape-thumb",
+                            alt: "Thumb",
+                            loading: "lazy",
+                            onError: (e) => { e.target.style.display = "none"; },
+                          })
+                        ),
+                        React.createElement("td", { className: "text-truncate", style: { maxWidth: "160px" }, title: item.rawBasename }, item.rawBasename),
+                        React.createElement("td", { className: cloud ? "text-success font-weight-bold" : "text-info font-weight-bold" }, displayTitle),
+                        React.createElement("td", null, displayDate),
+                        React.createElement(
+                          "td",
+                          null,
+                          displayStudio !== "—"
+                            ? React.createElement(
+                                "span",
+                                null,
+                                displayStudio,
+                                isFromPathStudio && React.createElement("span", { className: "badge badge-dark text-info ml-1 py-0", title: "Resolved from Directory Path Clue" }, "Path")
+                              )
+                            : "—"
+                        ),
+                        React.createElement("td", { className: "text-truncate", style: { maxWidth: "140px" }, title: displayPerformers }, displayPerformers),
+                        React.createElement(
+                          "td",
+                          { style: { textAlign: "center" } },
+                          sState.sourceName
+                            ? React.createElement("span", { className: "badge badge-primary py-0 px-1", style: { fontSize: "0.72rem" } }, sState.sourceName)
+                            : cloud
+                            ? React.createElement("span", { className: "badge badge-primary py-0 px-1" }, "Scraped")
+                            : item.matched
+                            ? React.createElement("span", { className: "badge badge-dark text-muted py-0 px-1" }, "Pattern")
+                            : "—"
+                        ),
+                        React.createElement(
+                          "td",
+                          { style: { textAlign: "center" } },
+                          sState.status === "scraping"
+                            ? React.createElement("span", { className: "badge badge-info" }, "Scraping...")
+                            : cloud || item.matched
+                            ? React.createElement("span", { className: "badge badge-success" }, "Matched")
+                            : sState.status === "nomatch"
+                            ? React.createElement("span", { className: "badge badge-warning" }, "No Result")
+                            : React.createElement("span", { className: "badge badge-secondary" }, "Idle")
+                        ),
+                        React.createElement(
+                          "td",
+                          { style: { textAlign: "center" }, onClick: (e) => e.stopPropagation() },
+                          React.createElement(
+                            "div",
+                            { className: "d-inline-flex gap-1" },
+                            React.createElement(
+                              "button",
+                              {
+                                type: "button",
+                                className: "btn btn-xs btn-outline-info py-0 px-2 mr-1",
+                                onClick: () => handleScrapeSingleRow(item.scene),
+                                title: "Scrape this scene using selected source",
+                              },
+                              "Scrape"
+                            ),
+                            React.createElement(
+                              "button",
+                              {
+                                type: "button",
+                                className: `btn btn-xs ${isInlineOpen ? "btn-warning" : "btn-outline-secondary"} py-0 px-2`,
+                                onClick: () => handleOpenInlineSearch(item.scene),
+                                title: "Search this scene by custom title/query across scrapers",
+                              },
+                              React.createElement(IconSearch, { size: 10, className: "mr-1" }),
+                              "Search"
                             )
-                          : "—"
+                          )
+                        )
                       ),
-                      React.createElement("td", null, displayPerformers),
-                      React.createElement(
-                        "td",
-                        { style: { textAlign: "center" } },
-                        cloud
-                          ? React.createElement("span", { className: "badge badge-primary py-0 px-1" }, React.createElement(IconGlobe, { size: 11, className: "mr-1" }), "Stash-box")
-                          : item.matched
-                          ? React.createElement("span", { className: "badge badge-dark text-muted py-0 px-1" }, React.createElement(IconFolder, { size: 11, className: "mr-1" }), "Path+Token")
-                          : "—"
-                      ),
-                      React.createElement(
-                        "td",
-                        { style: { textAlign: "center" } },
-                        item.matched
-                          ? React.createElement("span", { className: "badge badge-success" }, "Matched")
-                          : React.createElement("span", { className: "badge badge-secondary" }, "No Match")
-                      )
-                    );
+                      // Inline Search Expansion Row
+                      isInlineOpen &&
+                        React.createElement(
+                          "tr",
+                          { key: `search-${item.scene.id}`, className: "bg-black" },
+                          React.createElement(
+                            "td",
+                            { colSpan: 10, className: "p-2 px-3" },
+                            React.createElement(
+                              "div",
+                              { className: "sfm-inline-search-card" },
+                              React.createElement(
+                                "div",
+                                { className: "d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2" },
+                                React.createElement(
+                                  "div",
+                                  { className: "d-flex align-items-center gap-2" },
+                                  React.createElement("span", { className: "font-weight-bold text-info small" }, React.createElement(IconSearch, { size: 12, className: "mr-1" }), "Query Search:"),
+                                  React.createElement("input", {
+                                    type: "text",
+                                    className: "form-control form-control-sm bg-dark text-light border-secondary",
+                                    style: { width: "320px", height: "26px", fontSize: "0.82rem" },
+                                    value: inlineSearchQuery,
+                                    onChange: (e) => setInlineSearchQuery(e.target.value),
+                                    onKeyDown: (e) => e.key === "Enter" && handleExecuteInlineSearch(),
+                                    placeholder: "Enter search title...",
+                                  }),
+                                  React.createElement(
+                                    "select",
+                                    {
+                                      className: "form-control form-control-sm bg-dark text-info border-secondary py-0",
+                                      style: { width: "auto", height: "26px", fontSize: "0.8rem" },
+                                      value: inlineSearchSource,
+                                      onChange: (e) => setInlineSearchSource(e.target.value),
+                                    },
+                                    availableSources.map((s) => React.createElement("option", { key: s.key, value: s.key }, s.label))
+                                  ),
+                                  React.createElement(
+                                    "button",
+                                    {
+                                      type: "button",
+                                      className: "btn btn-xs btn-primary font-weight-bold py-1 px-3",
+                                      disabled: inlineSearchLoading,
+                                      onClick: handleExecuteInlineSearch,
+                                    },
+                                    inlineSearchLoading ? "Searching..." : "Search"
+                                  )
+                                ),
+                                React.createElement(
+                                  "button",
+                                  {
+                                    type: "button",
+                                    className: "btn btn-xs btn-outline-secondary py-0 px-2",
+                                    onClick: () => setInlineSearchRowId(null),
+                                  },
+                                  "Close"
+                                )
+                              ),
+                              // Candidate Results List
+                              inlineSearchResults.length > 0 &&
+                                React.createElement(
+                                  "div",
+                                  { className: "sfm-candidate-list mt-2" },
+                                  React.createElement("div", { className: "small font-weight-bold text-muted mb-1" }, `Found ${inlineSearchResults.length} candidate results:`),
+                                  inlineSearchResults.map((cand, cIdx) =>
+                                    React.createElement(
+                                      "div",
+                                      { key: cIdx, className: "sfm-candidate-item" },
+                                      React.createElement(
+                                        "div",
+                                        { className: "d-flex align-items-center gap-2 text-truncate" },
+                                        cand.image &&
+                                          React.createElement("img", {
+                                            src: cand.image,
+                                            style: { width: "42px", height: "28px", objectFit: "cover", borderRadius: "3px" },
+                                            alt: "",
+                                          }),
+                                        React.createElement(
+                                          "div",
+                                          null,
+                                          React.createElement("div", { className: "font-weight-bold text-info small text-truncate", style: { maxWidth: "500px" } }, cand.title || "Untitled"),
+                                          React.createElement(
+                                            "div",
+                                            { className: "small text-muted" },
+                                            cand.date && React.createElement("span", { className: "mr-2" }, cand.date),
+                                            cand.studio?.name && React.createElement("span", { className: "badge badge-secondary mr-2" }, cand.studio.name),
+                                            cand.performers?.length > 0 && React.createElement("span", null, cand.performers.map((p) => p.name).join(", "))
+                                          )
+                                        )
+                                      ),
+                                      React.createElement(
+                                        "button",
+                                        {
+                                          type: "button",
+                                          className: "btn btn-xs btn-success font-weight-bold py-1 px-2 ml-2",
+                                          onClick: () => handleSelectCandidate(item.scene.id, cand),
+                                        },
+                                        "Select"
+                                      )
+                                    )
+                                  )
+                                ),
+                              !inlineSearchLoading && inlineSearchResults.length === 0 && inlineSearchRowId === item.scene.id &&
+                                React.createElement("div", { className: "small text-muted" }, 'No results yet. Enter a title and click "Search".')
+                            )
+                          )
+                        ),
+                    ];
                   })
                 )
               )
-            ),
-            progressText && React.createElement("div", { className: "alert alert-info py-2 px-3 small" }, progressText)
+            )
           ),
+          // Footer
           React.createElement(
             "div",
-            { className: "sfm-modal-footer" },
-            React.createElement("button", { className: "btn btn-secondary btn-sm", onClick: onClose }, "Cancel"),
+            { className: "sfm-modal-footer d-flex justify-content-between align-items-center flex-wrap gap-2" },
             React.createElement(
-              "button",
-              {
-                className: "btn btn-primary btn-sm font-weight-bold",
-                disabled: isExecuting || selectedSceneIds.size === 0,
-                onClick: handleExecute,
-              },
-              isExecuting ? "Executing Updates..." : `Apply to ${selectedSceneIds.size} Selected Scenes`
+              "div",
+              { className: "d-flex align-items-center flex-wrap gap-3 small text-muted" },
+              React.createElement("span", { className: "font-weight-bold text-light" }, "Fields to apply:"),
+              [
+                ["title", "Title"],
+                ["date", "Date"],
+                ["studio", "Studio"],
+                ["performers", "Performers"],
+                ["tags", "Tags"],
+                ["details", "Details"],
+                ["code", "Code"],
+              ].map(([key, label]) =>
+                React.createElement(
+                  "div",
+                  { key, className: "d-flex align-items-center gap-1 cursor-pointer" },
+                  React.createElement("input", {
+                    type: "checkbox",
+                    id: `sfm-apply-${key}`,
+                    checked: !!fieldsToApply[key],
+                    onChange: () => handleToggleFieldToApply(key),
+                  }),
+                  React.createElement("label", { htmlFor: `sfm-apply-${key}`, className: "mb-0 ml-1 text-light cursor-pointer small" }, label)
+                )
+              )
+            ),
+            React.createElement(
+              "div",
+              { className: "d-flex align-items-center gap-2" },
+              React.createElement("button", { className: "btn btn-secondary btn-sm", onClick: onClose }, "Cancel"),
+              React.createElement(
+                "button",
+                {
+                  className: "btn btn-primary btn-sm font-weight-bold",
+                  disabled: isExecuting || selectedSceneIds.size === 0,
+                  onClick: handleExecute,
+                },
+                isExecuting ? "Executing Updates..." : `Apply to ${selectedSceneIds.size} Selected Scenes`
+              )
             )
           )
         )
@@ -7793,10 +8224,10 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                     type: "button",
                     className: "btn btn-sm btn-outline-secondary py-1 px-2",
                     onClick: () => setShowParserModal(true),
-                    title: "Parse Filenames with Regex",
+                    title: "Scrape scenes from Stash-box / sites & parse filenames",
                   },
-                  React.createElement(IconSearch, { size: 13, className: "mr-1" }),
-                  "Parse"
+                  React.createElement(IconGlobe, { size: 13, className: "mr-1 text-info" }),
+                  "Parse & Scrape"
                 )
               )
             )
@@ -8439,10 +8870,10 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                       type: "button",
                       className: "btn btn-sm btn-outline-secondary py-1 px-2",
                       onClick: () => setShowParserModal(true),
-                      title: "Regex parse selected scenes",
+                      title: "Scrape selected scenes from Stash-box / sites & parse filenames",
                     },
-                    React.createElement(IconSearch, { size: 13, className: "mr-1" }),
-                    "Parse"
+                    React.createElement(IconGlobe, { size: 13, className: "mr-1 text-info" }),
+                    "Parse & Scrape"
                   ),
                   React.createElement(
                     "button",
