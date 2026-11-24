@@ -690,6 +690,20 @@ body.sfm-body-locked {
   flex-shrink: 0;
 }
 
+.sfm-matched-row {
+  background-color: rgba(136, 192, 208, 0.08) !important;
+  border-left: 3px solid #88c0d0 !important;
+}
+
+.sfm-matched-row td {
+  border-top-color: #3b4252 !important;
+}
+
+.sfm-scrape-thumb-matched {
+  border: 1.5px solid #88c0d0 !important;
+  box-shadow: 0 0 6px rgba(136, 192, 208, 0.4);
+}
+
 .sfm-scene-scrape-btn {
   background-color: #2e3440 !important;
   border: 1px solid #4c566a !important;

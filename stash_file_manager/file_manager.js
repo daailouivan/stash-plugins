@@ -4518,6 +4518,8 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
         }
         name = name.replace(/\b(1080p|2160p|4k|720p|480p|hevc|x264|x265|h264|h265|web-dl|aac|uhd|hd|sd|vr|60fps|3dh|sbs|xxx)\b/gi, " ");
         name = name.replace(/\b\d{2,4}[-._]\d{2}[-._]\d{2}\b/g, " ");
+        name = name.replace(/\[\s*\]|\(\s*\)|\{\s*\}/g, " ");
+        name = name.replace(/[()[\]{}]/g, " ");
         name = name.replace(/[._-]+/g, " ").replace(/\s+/g, " ").trim();
         return name;
       };
@@ -4905,6 +4907,26 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
         }
       }`;
 
+      // Usable result verification helper (checks genuine metadata presence)
+      const isUsableScrapedResult = (r) => {
+        if (!r) return false;
+        return Boolean(
+          (r.title && r.title.trim()) ||
+          (r.details && r.details.trim()) ||
+          (r.studio && r.studio.name && r.studio.name.trim()) ||
+          (r.tags && r.tags.length > 0) ||
+          (r.performers && r.performers.length > 0) ||
+          (r.code && r.code.trim()) ||
+          (r.date && r.date.trim())
+        );
+      };
+
+      const pickBestHit = (raw) => {
+        if (!raw) return null;
+        const list = Array.isArray(raw) ? raw.filter(Boolean) : [raw];
+        return list.find(isUsableScrapedResult) || (list[0] && isUsableScrapedResult(list[0]) ? list[0] : null);
+      };
+
       // Core Scraper Execution Function
       const executeScrapeForScene = async (scene, sourceKey, strategy = "smart", queryOverride = null) => {
         const queryText = (queryOverride || getSceneBestQuery(scene, parsedResults?.items?.find((i) => i.scene.id === scene.id)?.groups)).trim();
@@ -4921,7 +4943,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                 source: { stash_box_endpoint: endpoint },
                 input: { query: matchingStashId.stash_id },
               });
-              const hit = res?.scrapeSingleScene?.[0];
+              const hit = pickBestHit(res?.scrapeSingleScene);
               if (hit) return { scraped: hit, sourceName: `${boxName} (StashID)` };
             } catch (e) {}
           }
@@ -4933,19 +4955,19 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                 source: { stash_box_endpoint: endpoint },
                 input: { scene_id: sceneId },
               });
-              const hit = res?.scrapeSingleScene?.[0];
+              const hit = pickBestHit(res?.scrapeSingleScene);
               if (hit) return { scraped: hit, sourceName: `${boxName} (Hash)` };
             } catch (e) {}
           }
 
-          // 3. Fallback to query text (title / filename)
+          // 3. Fallback to query text (title / cleaned filename)
           if (strategy !== "fingerprint" && queryText) {
             try {
               const res = await gqlFetch(Q_SCRAPE_SINGLE, {
                 source: { stash_box_endpoint: endpoint },
                 input: { query: queryText },
               });
-              const hit = res?.scrapeSingleScene?.[0];
+              const hit = pickBestHit(res?.scrapeSingleScene);
               if (hit) return { scraped: hit, sourceName: `${boxName} (Query)` };
             } catch (e) {}
           }
@@ -4958,30 +4980,18 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
             try {
               const res = await gqlFetch(Q_SCRAPE_URL_DIRECT, { url: sceneUrls[0] });
               const hit = res?.scrapeSceneURL;
-              if (hit) return { scraped: hit, sourceName: `${scraperName} (URL)` };
+              if (isUsableScrapedResult(hit)) return { scraped: hit, sourceName: `${scraperName} (URL)` };
             } catch (e) {}
           }
 
-          // 2. Try scene_id
-          if (strategy !== "query") {
-            try {
-              const res = await gqlFetch(Q_SCRAPE_SINGLE, {
-                source: { scraper_id: scraperId },
-                input: { scene_id: sceneId },
-              });
-              const hit = res?.scrapeSingleScene?.[0];
-              if (hit) return { scraped: hit, sourceName: `${scraperName} (Hash)` };
-            } catch (e) {}
-          }
-
-          // 3. Try query
+          // 2. Query lookup for site scrapers (do NOT send scene_id hash which fails on script scrapers)
           if (strategy !== "fingerprint" && queryText) {
             try {
               const res = await gqlFetch(Q_SCRAPE_SINGLE, {
                 source: { scraper_id: scraperId },
                 input: { query: queryText },
               });
-              const hit = res?.scrapeSingleScene?.[0];
+              const hit = pickBestHit(res?.scrapeSingleScene);
               if (hit) return { scraped: hit, sourceName: `${scraperName} (Query)` };
             } catch (e) {}
           }
@@ -5029,18 +5039,20 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
         setScrapeProgress({ current: 0, total, text: `Starting parallel scrape (0/${total})...` });
 
         const processItem = async (scene) => {
-          setScrapeStates((prev) => ({ ...prev, [scene.id]: { status: "scraping", sourceName: "" } }));
+          const sId = String(scene.id);
+          setScrapeStates((prev) => ({ ...prev, [sId]: { status: "scraping", sourceName: "" }, [scene.id]: { status: "scraping", sourceName: "" } }));
           try {
             const res = await executeScrapeForScene(scene, selectedSourceKey, scrapeStrategy);
             if (res?.scraped) {
-              setCloudMatches((prev) => ({ ...prev, [scene.id]: res.scraped }));
-              setScrapeStates((prev) => ({ ...prev, [scene.id]: { status: "scraped", sourceName: res.sourceName } }));
-              setExpandedRowIds((prev) => new Set(prev).add(scene.id));
+              setCloudMatches((prev) => ({ ...prev, [sId]: res.scraped, [scene.id]: res.scraped }));
+              setScrapeStates((prev) => ({ ...prev, [sId]: { status: "scraped", sourceName: res.sourceName }, [scene.id]: { status: "scraped", sourceName: res.sourceName } }));
+              setExpandedRowIds((prev) => new Set(prev).add(sId).add(scene.id));
+              setSelectedSceneIds((prev) => new Set(prev).add(sId).add(scene.id));
             } else {
-              setScrapeStates((prev) => ({ ...prev, [scene.id]: { status: "nomatch", sourceName: "" } }));
+              setScrapeStates((prev) => ({ ...prev, [sId]: { status: "nomatch", sourceName: "" }, [scene.id]: { status: "nomatch", sourceName: "" } }));
             }
           } catch (err) {
-            setScrapeStates((prev) => ({ ...prev, [scene.id]: { status: "error", error: err.message || String(err) } }));
+            setScrapeStates((prev) => ({ ...prev, [sId]: { status: "error", error: err.message || String(err) }, [scene.id]: { status: "error", error: err.message || String(err) } }));
           } finally {
             completed++;
             setScrapeProgress({
@@ -5066,7 +5078,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
       // "Search by Title" Mass Search
       const handleMassSearch = async () => {
         if (isScrapingAll) return;
-        const unscraped = directScenes.filter((s) => !cloudMatches[s.id]);
+        const unscraped = directScenes.filter((s) => !cloudMatches[String(s.id)] && !cloudMatches[s.id]);
         if (unscraped.length === 0) return;
 
         setIsScrapingAll(true);
@@ -5076,18 +5088,20 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
         setScrapeProgress({ current: 0, total, text: `Mass searching by title (0/${total})...` });
 
         const processItem = async (scene) => {
-          setScrapeStates((prev) => ({ ...prev, [scene.id]: { status: "scraping", sourceName: "" } }));
+          const sId = String(scene.id);
+          setScrapeStates((prev) => ({ ...prev, [sId]: { status: "scraping", sourceName: "" }, [scene.id]: { status: "scraping", sourceName: "" } }));
           try {
             const res = await executeScrapeForScene(scene, selectedSourceKey, "query");
             if (res?.scraped) {
-              setCloudMatches((prev) => ({ ...prev, [scene.id]: res.scraped }));
-              setScrapeStates((prev) => ({ ...prev, [scene.id]: { status: "scraped", sourceName: res.sourceName } }));
-              setExpandedRowIds((prev) => new Set(prev).add(scene.id));
+              setCloudMatches((prev) => ({ ...prev, [sId]: res.scraped, [scene.id]: res.scraped }));
+              setScrapeStates((prev) => ({ ...prev, [sId]: { status: "scraped", sourceName: res.sourceName }, [scene.id]: { status: "scraped", sourceName: res.sourceName } }));
+              setExpandedRowIds((prev) => new Set(prev).add(sId).add(scene.id));
+              setSelectedSceneIds((prev) => new Set(prev).add(sId).add(scene.id));
             } else {
-              setScrapeStates((prev) => ({ ...prev, [scene.id]: { status: "nomatch", sourceName: "" } }));
+              setScrapeStates((prev) => ({ ...prev, [sId]: { status: "nomatch", sourceName: "" }, [scene.id]: { status: "nomatch", sourceName: "" } }));
             }
           } catch (err) {
-            setScrapeStates((prev) => ({ ...prev, [scene.id]: { status: "error", error: err.message || String(err) } }));
+            setScrapeStates((prev) => ({ ...prev, [sId]: { status: "error", error: err.message || String(err) }, [scene.id]: { status: "error", error: err.message || String(err) } }));
           } finally {
             completed++;
             setScrapeProgress({
@@ -5112,18 +5126,20 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
 
       // Single Scene Scrape
       const handleScrapeSingleRow = async (scene) => {
-        setScrapeStates((prev) => ({ ...prev, [scene.id]: { status: "scraping", sourceName: "" } }));
+        const sId = String(scene.id);
+        setScrapeStates((prev) => ({ ...prev, [sId]: { status: "scraping", sourceName: "" }, [scene.id]: { status: "scraping", sourceName: "" } }));
         try {
           const res = await executeScrapeForScene(scene, selectedSourceKey, scrapeStrategy);
           if (res?.scraped) {
-            setCloudMatches((prev) => ({ ...prev, [scene.id]: res.scraped }));
-            setScrapeStates((prev) => ({ ...prev, [scene.id]: { status: "scraped", sourceName: res.sourceName } }));
-            setExpandedRowIds((prev) => new Set(prev).add(scene.id));
+            setCloudMatches((prev) => ({ ...prev, [sId]: res.scraped, [scene.id]: res.scraped }));
+            setScrapeStates((prev) => ({ ...prev, [sId]: { status: "scraped", sourceName: res.sourceName }, [scene.id]: { status: "scraped", sourceName: res.sourceName } }));
+            setExpandedRowIds((prev) => new Set(prev).add(sId).add(scene.id));
+            setSelectedSceneIds((prev) => new Set(prev).add(sId).add(scene.id));
           } else {
-            setScrapeStates((prev) => ({ ...prev, [scene.id]: { status: "nomatch", sourceName: "" } }));
+            setScrapeStates((prev) => ({ ...prev, [sId]: { status: "nomatch", sourceName: "" }, [scene.id]: { status: "nomatch", sourceName: "" } }));
           }
         } catch (err) {
-          setScrapeStates((prev) => ({ ...prev, [scene.id]: { status: "error", error: err.message || String(err) } }));
+          setScrapeStates((prev) => ({ ...prev, [sId]: { status: "error", error: err.message || String(err) }, [scene.id]: { status: "error", error: err.message || String(err) } }));
         }
       };
 
@@ -5183,17 +5199,20 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
       };
 
       const handleSelectCandidate = (sceneId, candidate, applyImmediately = false) => {
+        const sId = String(sceneId);
         const sourceObj = availableSources.find((s) => s.key === inlineSearchSource) || { name: "Manual Search" };
-        setCloudMatches((prev) => ({ ...prev, [sceneId]: candidate }));
+        setCloudMatches((prev) => ({ ...prev, [sId]: candidate, [sceneId]: candidate }));
         setScrapeStates((prev) => ({
           ...prev,
+          [sId]: { status: "scraped", sourceName: `${sourceObj.name} (Selected)` },
           [sceneId]: { status: "scraped", sourceName: `${sourceObj.name} (Selected)` },
         }));
-        setExpandedRowIds((prev) => new Set(prev).add(sceneId));
+        setExpandedRowIds((prev) => new Set(prev).add(sId).add(sceneId));
+        setSelectedSceneIds((prev) => new Set(prev).add(sId).add(sceneId));
         setInlineSearchRowId(null);
         setInlineSearchResults([]);
         if (applyImmediately) {
-          const scene = directScenes.find((s) => String(s.id) === String(sceneId));
+          const scene = directScenes.find((s) => String(s.id) === sId);
           if (scene) {
             setTimeout(() => handleApplySingle(scene, candidate), 50);
           }
@@ -5458,20 +5477,25 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
         setSelectedSceneIds(next);
       };
 
-      const matchedCount = parsedResults.items.filter((i) => i.matched || cloudMatches[i.scene.id]).length;
+      const isItemMatched = (item) => {
+        const sId = String(item.scene.id);
+        return Boolean(item.matched || cloudMatches[sId] || cloudMatches[item.scene.id]);
+      };
+
+      const matchedCount = parsedResults.items.filter(isItemMatched).length;
       const unmatchedCount = parsedResults.items.length - matchedCount;
 
       const handleSelectAllMatched = () => {
         if (selectedSceneIds.size === matchedCount && matchedCount > 0) {
           setSelectedSceneIds(new Set());
         } else {
-          setSelectedSceneIds(new Set(parsedResults.items.filter((i) => i.matched || cloudMatches[i.scene.id]).map((i) => i.scene.id)));
+          setSelectedSceneIds(new Set(parsedResults.items.filter(isItemMatched).map((i) => i.scene.id)));
         }
       };
 
       const filteredItems = React.useMemo(() => {
-        if (previewFilter === "matched") return parsedResults.items.filter((i) => i.matched || cloudMatches[i.scene.id]);
-        if (previewFilter === "unmatched") return parsedResults.items.filter((i) => !i.matched && !cloudMatches[i.scene.id]);
+        if (previewFilter === "matched") return parsedResults.items.filter(isItemMatched);
+        if (previewFilter === "unmatched") return parsedResults.items.filter((i) => !isItemMatched(i));
         return parsedResults.items;
       }, [parsedResults, previewFilter, cloudMatches]);
 
@@ -6724,9 +6748,10 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                   "tbody",
                   null,
                   filteredItems.map((item) => {
-                    const isSelected = selectedSceneIds.has(item.scene.id);
-                    const cloud = cloudMatches[item.scene.id];
-                    const sState = scrapeStates[item.scene.id] || { status: "idle" };
+                    const sId = String(item.scene.id);
+                    const isSelected = selectedSceneIds.has(item.scene.id) || selectedSceneIds.has(sId);
+                    const cloud = cloudMatches[sId] || cloudMatches[item.scene.id];
+                    const sState = scrapeStates[sId] || scrapeStates[item.scene.id] || { status: "idle" };
 
                     const displayTitle = cloud?.title || cleanExtracted("title", item.groups.title) || item.scene.title || "—";
                     const displayDate = cloud?.date || cleanExtracted("date", item.groups.date) || item.scene.date || "—";
@@ -6737,15 +6762,19 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
 
                     const isFromPathStudio = !cloud && !item.groups.studio && activeStudioClue;
                     const posterUrl = item.scene.paths?.screenshot || `/scene/${item.scene.id}/screenshot`;
-                    const isInlineOpen = inlineSearchRowId === item.scene.id;
+                    const thumbUrl = cloud?.image || posterUrl;
+                    const isInlineOpen = inlineSearchRowId === item.scene.id || inlineSearchRowId === sId;
 
-                    const isExpanded = expandedRowIds.has(item.scene.id) || (!!cloud && sState.status !== "skipped");
+                    const isExpanded = expandedRowIds.has(item.scene.id) || expandedRowIds.has(sId) || (!!cloud && sState.status !== "skipped");
 
-                    return [
+                    return React.createElement(
+                      React.Fragment,
+                      { key: item.scene.id },
                       React.createElement(
                         "tr",
                         {
-                          key: item.scene.id,
+                          key: `row-${item.scene.id}`,
+                          className: cloud ? "sfm-matched-row" : "",
                           style: { cursor: "pointer", opacity: isSelected ? 1 : 0.7 },
                           onClick: () => handleToggleSelectScene(item.scene.id),
                         },
@@ -6763,15 +6792,20 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                           "td",
                           { style: { textAlign: "center" } },
                           React.createElement("img", {
-                            src: posterUrl,
-                            className: "sfm-scrape-thumb",
+                            src: thumbUrl,
+                            className: `sfm-scrape-thumb ${cloud ? "sfm-scrape-thumb-matched" : ""}`,
                             alt: "Thumb",
                             loading: "lazy",
-                            onError: (e) => { e.target.style.display = "none"; },
+                            onError: (e) => { e.target.src = posterUrl; },
                           })
                         ),
                         React.createElement("td", { className: "text-truncate", style: { maxWidth: "160px" }, title: item.rawBasename }, item.rawBasename),
-                        React.createElement("td", { className: cloud ? "text-success font-weight-bold" : "text-info font-weight-bold" }, displayTitle),
+                        React.createElement(
+                          "td",
+                          { className: cloud ? "text-success font-weight-bold" : "text-info font-weight-bold" },
+                          cloud && React.createElement("span", { className: "badge badge-success mr-1 py-0 px-1", style: { fontSize: "0.68rem" } }, "✓ MATCH"),
+                          displayTitle
+                        ),
                         React.createElement("td", null, displayDate),
                         React.createElement(
                           "td",
@@ -6779,7 +6813,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                           displayStudio !== "—"
                             ? React.createElement(
                                 "span",
-                                null,
+                                { className: cloud?.studio?.name ? "badge badge-secondary py-1 px-2 font-weight-bold" : "" },
                                 displayStudio,
                                 isFromPathStudio && React.createElement("span", { className: "badge badge-dark text-info ml-1 py-0", title: "Resolved from Directory Path Clue" }, "Path")
                               )
@@ -6809,7 +6843,7 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                             : sState.status === "scraping"
                             ? React.createElement("span", { className: "badge badge-info" }, "Scraping...")
                             : cloud
-                            ? React.createElement("span", { className: "badge badge-info font-weight-bold" }, "Scraped")
+                            ? React.createElement("span", { className: "badge badge-success font-weight-bold" }, "Matched")
                             : item.matched
                             ? React.createElement("span", { className: "badge badge-success" }, "Matched")
                             : sState.status === "nomatch"
@@ -6821,7 +6855,19 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                           { style: { textAlign: "center" }, onClick: (e) => e.stopPropagation() },
                           React.createElement(
                             "div",
-                            { className: "d-inline-flex gap-1" },
+                            { className: "d-inline-flex gap-1 align-items-center" },
+                            cloud &&
+                              React.createElement(
+                                "button",
+                                {
+                                  type: "button",
+                                  className: `btn btn-xs ${sState.status === "done" ? "btn-outline-success disabled" : "btn-success font-weight-bold"} py-0 px-2 mr-1`,
+                                  disabled: sState.status === "applying" || sState.status === "done",
+                                  onClick: () => handleApplySingle(item.scene),
+                                  title: "Apply scraped metadata immediately",
+                                },
+                                sState.status === "applying" ? "..." : sState.status === "done" ? "✓" : "Apply"
+                              ),
                             React.createElement(
                               "button",
                               {
@@ -7164,8 +7210,8 @@ function IconWidth({ size = 12, color = "#81a1c1" }) {
                                 React.createElement("div", { className: "small text-muted" }, 'No results yet. Enter a title and click "Search".')
                             )
                           )
-                        ),
-                    ];
+                        )
+                    );
                   })
                 )
               )
