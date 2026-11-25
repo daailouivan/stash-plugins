@@ -152,21 +152,17 @@ const sandbox = {
   ReactDOM,
   PluginApi: window.PluginApi,
   navigator: { clipboard: { writeText: async () => {} } },
+  URL,
+  URLSearchParams,
 };
 
 vm.createContext(sandbox);
 
-const fmPath = path.join(__dirname, "stash_file_manager", "file_manager.js");
-let code = fs.readFileSync(fmPath, "utf-8");
-
-const exportInjection = `
-  window.__SFM_TEST_EXPORTS__ = {
-    FilenameParserModal
-  };
-`;
-code = code.replace("console.log(\"[PathFileManager] Initialized successfully with all enhanced features.\");", exportInjection + "\nconsole.log(\"[PathFileManager] Initialized successfully with all enhanced features.\");");
-
-vm.runInContext(code, sandbox);
+const splitModules = ["sfm_core.js", "sfm_metadata_modal.js", "sfm_player.js", "sfm_views.js", "sfm_native.js"];
+for (const m of splitModules) {
+  const code = fs.readFileSync(path.join(__dirname, "stash_file_manager", m), "utf8");
+  vm.runInContext(code, sandbox);
+}
 
 const exported = sandbox.window.__SFM_TEST_EXPORTS__ || {};
 const { FilenameParserModal } = exported;

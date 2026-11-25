@@ -112,20 +112,7 @@ window.PluginApi.React = React;
 window.PluginApi.ReactDOM = ReactDOM;
 window.PluginApi.register = { route: () => {} };
 
-let rawCode = fs.readFileSync(path.join(__dirname, "stash_file_manager/file_manager.js"), "utf8");
-
-const exportInjection = `
-  window.__SFM_TEST_EXPORTS__ = {
-    FilenameParserModal,
-    patchNativeSceneCard,
-    injectSceneCardsDOMFallback,
-    resolveSceneFolder
-  };
-`;
-rawCode = rawCode.replace(
-  'console.log("[PathFileManager] Initialized successfully with all enhanced features.");',
-  exportInjection + '\nconsole.log("[PathFileManager] Initialized successfully with all enhanced features.");'
-);
+const splitModules = ["sfm_core.js", "sfm_metadata_modal.js", "sfm_player.js", "sfm_views.js", "sfm_native.js"];
 
 // Mock GraphQL calls
 let activeRequests = 0;
@@ -221,9 +208,14 @@ const context = vm.createContext({
   parseInt,
   encodeURIComponent,
   decodeURIComponent,
+  URL,
+  URLSearchParams,
 });
 
-vm.runInContext(rawCode, context);
+for (const m of splitModules) {
+  const code = fs.readFileSync(path.join(__dirname, "stash_file_manager", m), "utf8");
+  vm.runInContext(code, context);
+}
 
 const exp = window.__SFM_TEST_EXPORTS__;
 

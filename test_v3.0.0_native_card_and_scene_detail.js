@@ -123,16 +123,24 @@ const window = {
   history: {
     pushState: (state, title, url) => {
       historyCalls.push({ type: "push", state, url });
-      if (url.includes("#")) {
-        window.location.hash = url.slice(url.indexOf("#"));
-      } else {
-        window.location.hash = "";
+      try {
+        const u = new URL(url, "http://localhost");
+        window.location.pathname = u.pathname;
+        window.location.search = u.search;
+        window.location.hash = u.hash;
+      } catch (e) {
+        window.location.hash = url;
       }
     },
     replaceState: (state, title, url) => {
       historyCalls.push({ type: "replace", state, url });
-      if (url.includes("#")) {
-        window.location.hash = url.slice(url.indexOf("#"));
+      try {
+        const u = new URL(url, "http://localhost");
+        window.location.pathname = u.pathname;
+        window.location.search = u.search;
+        window.location.hash = u.hash;
+      } catch (e) {
+        window.location.hash = url;
       }
     },
     back: () => historyCalls.push({ type: "back" }),
@@ -236,8 +244,8 @@ window.PluginApi.React = React;
 window.PluginApi.ReactDOM = ReactDOM;
 window.PluginApi.register = { route: () => {} };
 
-// Run file_manager.js inside VM context
-const rawCode = fs.readFileSync(path.join(__dirname, "stash_file_manager/file_manager.js"), "utf8");
+// Run split modules inside VM context
+const splitModules = ["sfm_core.js", "sfm_metadata_modal.js", "sfm_player.js", "sfm_views.js", "sfm_native.js"];
 
 const context = vm.createContext({
   window,
@@ -254,10 +262,13 @@ const context = vm.createContext({
   clearInterval: () => {},
   IntersectionObserver: class { observe() {} unobserve() {} disconnect() {} },
   CustomEvent: class { constructor(type, init) { this.type = type; this.detail = init?.detail; } },
-  Array, Object, String, Number, Boolean, Math, Date, Set, Map, Promise, RegExp, Error, isNaN, parseInt, encodeURIComponent, decodeURIComponent, URLSearchParams
+  Array, Object, String, Number, Boolean, Math, Date, Set, Map, Promise, RegExp, Error, isNaN, parseInt, encodeURIComponent, decodeURIComponent, URL, URLSearchParams
 });
 
-vm.runInContext(rawCode, context);
+for (const m of splitModules) {
+  const code = fs.readFileSync(path.join(__dirname, "stash_file_manager", m), "utf8");
+  vm.runInContext(code, context);
+}
 
 const cache = window.__SFM_GLOBAL_CACHE__;
 assert(cache, "window.__SFM_GLOBAL_CACHE__ must exist");
@@ -308,10 +319,12 @@ const chip = cardOverlay.props.children.find(c => c && c.props && c.props.classN
 assert(chip, "Path chip must be rendered");
 assert(chip.props.title.includes("Anime/Naruto/Season 1"), "Chip tooltip must include path");
 
+const currentNavUrl = () => window.location.pathname + window.location.search + window.location.hash;
+
 // Trigger click on chip
 chip.props.onClick({ preventDefault: () => {}, stopPropagation: () => {} });
-assert(window.location.hash.includes("path=Anime%2FNaruto%2FSeason+1"), "Clicking chip must navigate to folder in File Manager");
-console.log("Navigated hash on chip click:", window.location.hash);
+assert(currentNavUrl().includes("path=Anime%2FNaruto%2FSeason+1") || currentNavUrl().includes("path=Anime%2FNaruto%2FSeason%201"), "Clicking chip must navigate to folder in File Manager");
+console.log("Navigated URL on chip click:", currentNavUrl());
 console.log("✓ NativeSceneCardOverlay path chip renders and opens File Manager!");
 
 // Find quick actions (Profile wall & Reel mode)
@@ -322,15 +335,15 @@ assert.strictEqual(quickActions.props.children.length, 3, "Must have 3 action ic
 // Trigger profile button
 const profileBtn = quickActions.props.children[1];
 profileBtn.props.onClick({ preventDefault: () => {}, stopPropagation: () => {} });
-assert(window.location.hash.includes("view=profile"), "Profile button must navigate to view=profile");
-console.log("Navigated hash on profile button click:", window.location.hash);
+assert(currentNavUrl().includes("view=profile"), "Profile button must navigate to view=profile");
+console.log("Navigated URL on profile button click:", currentNavUrl());
 console.log("✓ Quick action profile button launches folder video wall!");
 
 // Trigger reel button
 const reelBtn = quickActions.props.children[2];
 reelBtn.props.onClick({ preventDefault: () => {}, stopPropagation: () => {} });
-assert(window.location.hash.includes("scene=101"), "Reel button must navigate to scene=101");
-console.log("Navigated hash on reel button click:", window.location.hash);
+assert(currentNavUrl().includes("scene=101"), "Reel button must navigate to scene=101");
+console.log("Navigated URL on reel button click:", currentNavUrl());
 console.log("✓ Quick action reel button launches Binge Reel Player for scene!");
 
 // Find hover trigger
@@ -339,7 +352,7 @@ assert(hoverActions, "Hover actions container must exist");
 const hoverBtn = hoverActions.props.children;
 assert(hoverBtn, "Hover folder button must exist");
 hoverBtn.props.onClick({ preventDefault: () => {}, stopPropagation: () => {} });
-assert(window.location.hash.includes("path=Anime%2FNaruto%2FSeason+1"), "Hover button must open folder");
+assert(currentNavUrl().includes("path=Anime%2FNaruto%2FSeason+1") || currentNavUrl().includes("path=Anime%2FNaruto%2FSeason%201"), "Hover button must open folder");
 console.log("✓ Hover 1-click action button opens folder!");
 
 // --- TEST 4: Native Scene Detail Directory Hierarchy ---
@@ -363,8 +376,8 @@ console.log("Rendered crumbs count:", crumbs.length);
 // Click intermediate crumb "Anime"
 const animeCrumb = crumbs[1].props.children.find(c => c && c.props && c.props.className === "sfm-breadcrumb-item");
 animeCrumb.props.onClick({ preventDefault: () => {}, stopPropagation: () => {} });
-assert(window.location.hash.includes("path=Anime"), "Clicking Anime crumb must navigate to Anime folder");
-console.log("Navigated hash on Anime crumb click:", window.location.hash);
+assert(currentNavUrl().includes("path=Anime"), "Clicking Anime crumb must navigate to Anime folder");
+console.log("Navigated URL on Anime crumb click:", currentNavUrl());
 console.log("✓ Interactive breadcrumbs jump directly to specific folder hierarchy level!");
 
 // --- TEST 5: Native Scene Detail Reel Mode Button ---
@@ -380,7 +393,8 @@ assert(detailReelBtn.props.className.includes("sfm-scene-reel-mode-btn"), "Reel 
 
 // Click Reel Mode button
 detailReelBtn.props.onClick({ preventDefault: () => {}, stopPropagation: () => {} });
-assert(window.location.hash.includes("scene=101") && window.location.hash.includes("path=Anime"), "Reel button must open player at scene in path");
+assert(currentNavUrl().includes("scene=101") && currentNavUrl().includes("path=Anime"), "Reel button must open player at scene in path");
+console.log("Navigated URL on Reel Mode click:", currentNavUrl());
 console.log("Navigated hash on Reel Mode click:", window.location.hash);
 console.log("✓ Reel Mode button launches Binge Reel modal starting from current scene!");
 
@@ -415,8 +429,9 @@ assert(patchedPlayer, "Patched ScenePlayer must return element");
 console.log("✓ PluginApi.patch for ScenePlayer executed and injected Reel button!");
 
 // --- TEST 7: Fallback DOM Injection Observers ---
-console.log("\n--- TEST 7: Fallback DOM Injection Observers ---");
 window.location.hash = "";
+window.location.pathname = "/scenes/42";
+window.location.search = "";
 const mockCardDOM = createMockElement("div");
 mockCardDOM.className = "card scene-card";
 const mockCardLink = createMockElement("a");

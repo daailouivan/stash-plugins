@@ -6,18 +6,18 @@ console.log("\n========================================================");
 console.log("🧪 STARTING v3.0.1 & v3.0.2 TITLE LINE ALIGNMENT TEST SUITE");
 console.log("========================================================");
 
-const jsPath = path.join(__dirname, "stash_file_manager/file_manager.js");
+const splitModules = ["sfm_core.js", "sfm_metadata_modal.js", "sfm_player.js", "sfm_views.js", "sfm_native.js"];
 const cssPath = path.join(__dirname, "stash_file_manager/file_manager.css");
 const ymlPath = path.join(__dirname, "stash_file_manager/stash_file_manager.yml");
 const indexYmlPath = path.join(__dirname, "index.yml");
 
-const js = fs.readFileSync(jsPath, "utf8");
+const js = splitModules.map((f) => fs.readFileSync(path.join(__dirname, "stash_file_manager", f), "utf8")).join("\n");
 const css = fs.readFileSync(cssPath, "utf8");
 const yml = fs.readFileSync(ymlPath, "utf8");
 
 // --- TEST 1: Version Bumping ---
 console.log("\n--- TEST 1: Version Bump Verification ---");
-assert(/version:\s*"?3\.0\.[1-9]"?/.test(yml), "stash_file_manager.yml must have version >= 3.0.1");
+assert(/version:\s*"?([3-9]\.\d+\.\d+)"?/.test(yml), "stash_file_manager.yml must have valid semantic version >= 3.0.1");
 console.log("✓ Manifest version updated to >= 3.0.1");
 
 // --- TEST 2: Spelling of Sub-folders ---

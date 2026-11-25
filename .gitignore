@@ -13,3 +13,8 @@ desktop.ini
 *.zip
 !stash_file_manager.zip
 *.tar.gz
+__pycache__/
+*.pyc
+.sfm_rename_result.json
+.agents/
+

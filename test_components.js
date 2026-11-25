@@ -161,24 +161,7 @@ window.PluginApi.register = {
   route: () => {}
 };
 
-let rawCode = fs.readFileSync(path.join(__dirname, "stash_file_manager/file_manager.js"), "utf8");
-
-const exportInjection = `
-  window.__SFM_TEST_EXPORTS__ = {
-    FolderProfileView,
-    BingeReelPlayerModal,
-    FileManagerView,
-    SceneTableView,
-    SceneNamesTableView,
-    SceneCard,
-    FilenameParserModal,
-    BatchMetadataModal,
-    SettingsAndTasksModal,
-    clearCachedScenes,
-    SafeErrorBoundary
-  };
-`;
-rawCode = rawCode.replace("console.log(\"[PathFileManager] Initialized successfully with all enhanced features.\");", exportInjection + "\nconsole.log(\"[PathFileManager] Initialized successfully with all enhanced features.\");");
+const splitModules = ["sfm_core.js", "sfm_metadata_modal.js", "sfm_player.js", "sfm_views.js", "sfm_native.js"];
 
 const context = vm.createContext({
   window,
@@ -214,9 +197,14 @@ const context = vm.createContext({
   parseInt,
   encodeURIComponent,
   decodeURIComponent,
+  URL,
+  URLSearchParams,
 });
 
-vm.runInContext(rawCode, context);
+for (const m of splitModules) {
+  const code = fs.readFileSync(path.join(__dirname, "stash_file_manager", m), "utf8");
+  vm.runInContext(code, context);
+}
 
 const exp = window.__SFM_TEST_EXPORTS__;
 console.log("Successfully extracted exports:", Object.keys(exp));

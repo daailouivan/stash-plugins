@@ -1,4 +1,5 @@
 const fs = require("fs");
+const path = require("path");
 const vm = require("vm");
 const assert = require("assert");
 
@@ -144,11 +145,14 @@ function createStashEnvironment(patchMode) {
   };
   sandbox.global = sandbox.window;
   sandbox.window.window = sandbox.window;
-  sandbox.document = sandbox.window.document;
-
-  const code = fs.readFileSync("./stash_file_manager/file_manager.js", "utf8");
+  sandbox.URL = URL;
+  sandbox.URLSearchParams = URLSearchParams;
   vm.createContext(sandbox);
-  vm.runInContext(code, sandbox);
+  const splitModules = ["sfm_core.js", "sfm_metadata_modal.js", "sfm_player.js", "sfm_views.js", "sfm_native.js"];
+  for (const m of splitModules) {
+    const code = fs.readFileSync(path.join(__dirname, "stash_file_manager", m), "utf8");
+    vm.runInContext(code, sandbox);
+  }
 
   return { PatchFunction, sandbox };
 }

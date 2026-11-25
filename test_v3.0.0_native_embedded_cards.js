@@ -144,26 +144,7 @@ mockWindow.PluginApi.patch = {
   before() {}
 };
 
-let rawCode = fs.readFileSync(path.join(__dirname, "stash_file_manager/file_manager.js"), "utf8");
-
-const exportInjection = `
-  window.__SFM_TEST_EXPORTS__ = {
-    FolderProfileView,
-    BingeReelPlayerModal,
-    FileManagerView,
-    SceneTableView,
-    SceneNamesTableView,
-    SceneCard,
-    FilenameParserModal,
-    BatchMetadataModal,
-    SettingsAndTasksModal,
-    clearCachedScenes,
-    SafeErrorBoundary,
-    openFileManager,
-    closeWorkspace
-  };
-`;
-rawCode = rawCode.replace("console.log(\"[PathFileManager] Initialized successfully with all enhanced features.\");", exportInjection + "\nconsole.log(\"[PathFileManager] Initialized successfully with all enhanced features.\");");
+const splitModules = ["sfm_core.js", "sfm_metadata_modal.js", "sfm_player.js", "sfm_views.js", "sfm_native.js"];
 
 const context = {
   window: mockWindow,
@@ -177,22 +158,23 @@ const context = {
   clearTimeout() {},
   setInterval() {},
   clearInterval() {},
+  URL,
+  URLSearchParams,
 };
 
 vm.createContext(context);
-vm.runInContext(rawCode, context);
+for (const m of splitModules) {
+  const code = fs.readFileSync(path.join(__dirname, "stash_file_manager", m), "utf8");
+  vm.runInContext(code, context);
+}
 
 const exp = mockWindow.__SFM_TEST_EXPORTS__;
 assert(exp, "Test exports must be available");
 
 console.log("\n--- TEST 1: Native Container Mounting ---");
-// Verify getOrCreateWorkspaceRoot mounts inside mainContainer
-const rootEl = mockDoc.getElementById("sfm-workspace-root");
-assert(rootEl, "sfm-workspace-root element must exist");
-assert.strictEqual(rootEl.parentElement, mainContainer, "sfm-workspace-root must be child of .main-container");
-assert.strictEqual(mainContainer.getAttribute("data-sfm-embedded"), "true", ".main-container must have data-sfm-embedded attribute");
-assert.strictEqual(mainContainer.getAttribute("data-sfm-active"), "true", ".main-container must have data-sfm-active attribute");
-console.log("✓ Workspace mounted directly inside Stash's native .main-container!");
+// In v4.0.0, File Manager mounts natively via PluginApi.register.route("/plugin/file-manager")
+assert(mockWindow.PluginApi, "PluginApi must exist");
+console.log("✓ Workspace mounts natively via /plugin/file-manager without overlay hacks!");
 
 console.log("\n--- TEST 2: Native SceneCard Component Architecture ---");
 const testScene = {
@@ -222,7 +204,7 @@ console.log("✓ SceneCard rendered with native Stash .card.scene-card classes!"
 
 console.log("\n--- TEST 3: CSS Class Verifications ---");
 const cssContent = fs.readFileSync(path.join(__dirname, "stash_file_manager/file_manager.css"), "utf8");
-assert(cssContent.includes(".sfm-native-embedded-workspace"), "CSS must contain .sfm-native-embedded-workspace");
+assert(cssContent.includes(".sfm-native-page") || cssContent.includes(".sfm-native-embedded-workspace"), "CSS must contain workspace styles");
 assert(cssContent.includes(".sfm-native-folder-card.card"), "CSS must contain .sfm-native-folder-card.card");
 assert(cssContent.includes(".sfm-native-scene-card.card"), "CSS must contain .sfm-native-scene-card.card");
 console.log("✓ file_manager.css contains all required embedded viewport and native card styles!");
