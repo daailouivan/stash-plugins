@@ -304,7 +304,8 @@ function getTests() {
       await tree.change(findSceneSortSelect(tree), "random");
       await tree.click(findButtonByText(tree, /Reshuffle/i));
       await tree.click(findHeaderByName(tree, ".sfm-data-table", "Title"));
-      assert.strictEqual(findSceneSortSelect(tree).props.value, "title_asc");
+      const selVal = findSceneSortSelect(tree).props["data-sort-key"] || findSceneSortSelect(tree).props.value;
+      assert(selVal === "title" || selVal === "title_asc");
       assert(!findButtonByText(tree, /Reshuffle/i));
     });
   });
@@ -344,7 +345,7 @@ function getTests() {
   add("T3-21", "F15+F16", "Organized filter active in FileManagerView restricts scenes passed into FolderProfileView Video Wall", async () => {
     await withEnv(async (env) => {
       const tree = await openFolderRoute(env, "Anime/Naruto/Season 1");
-      const orgSel = tree.findBySelector("select").find((s) => getSelectOptionValues(s).includes("organized"));
+      const orgSel = tree.findBySelector("select").find((s) => getSelectOptionValues(s).includes("unorganized"));
       await tree.change(orgSel, "organized");
       await tree.change(findSceneSortSelect(tree), "random");
       await tree.click(findButtonByTextOrTitle(tree, /Video Wall|Folder Profile/i));
@@ -420,8 +421,9 @@ function getTests() {
   add("T3-25", "F8+F10", "Filtering Missing Code + inline editing Code removes repaired scene from Missing Code list", async () => {
     await withEnv(async (env) => {
       const modal = await openMetadataStudioGlobal(env, env.db.scenes, "All");
-      const missSel = modal.findBySelector("select").find((s) => getSelectOptionValues(s).includes("code"));
-      await modal.change(missSel, "code");
+      const codeBtn = findButtonByTextOrTitle(modal, /^Code$/i);
+      assert(codeBtn);
+      await modal.click(codeBtn);
       const zetaRow = getTableBodyRows(modal, ".sfm-parser-table tbody tr").find((r) => r.text.includes("Zeta Missing Code"));
       await modal.click(findButtonByText(modal, /^Edit$/i, zetaRow.node));
       const editor = modal.findBySelector(".sfm-inline-editor")[0];

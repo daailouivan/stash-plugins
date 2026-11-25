@@ -82,7 +82,7 @@ function findSceneSortSelect(tree) {
   const s = selects.find((el) => {
     const title = String(el.props?.title || "");
     const opts = (el.children || []).filter((c) => c.tag === "option").map((o) => o.props?.value);
-    return /Sort Scenes/i.test(title) || opts.includes("title_asc") || opts.includes("date_desc");
+    return /Sort Scenes/i.test(title) || opts.includes("title") || opts.includes("title_asc") || opts.includes("random");
   });
   if (!s) throw new Error("sceneSort <select> not found");
   return s;

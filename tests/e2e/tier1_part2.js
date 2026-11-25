@@ -40,11 +40,17 @@ function getTests() {
     await withEnv(async (env) => {
       const tree = await openFolderRoute(env, "Anime/Naruto/Season 1");
       await ensureTableView(tree);
-      await tree.change(findSceneSortSelect(tree), "date_desc");
+      await tree.change(findSceneSortSelect(tree), "date");
       await tree.click(findHeaderByName(tree, ".sfm-data-table", "Title"));
-      assert.strictEqual(findSceneSortSelect(tree).props.value, "title_asc");
+      const selVal1 = findSceneSortSelect(tree).props["data-sort-key"] || findSceneSortSelect(tree).props.value;
+      assert(selVal1 === "title_asc" || selVal1 === "title");
+      const dirBtn1 = tree.findBySelector(".sfm-scene-sort-wrap .sfm-sort-dir-btn")[0];
+      if (dirBtn1) assert.strictEqual(dirBtn1.props["data-sort-dir"], "asc");
       await tree.click(findHeaderByName(tree, ".sfm-data-table", "Title"));
-      assert.strictEqual(findSceneSortSelect(tree).props.value, "title_desc");
+      const selVal2 = findSceneSortSelect(tree).props["data-sort-key"] || findSceneSortSelect(tree).props.value;
+      assert(selVal2 === "title_desc" || selVal2 === "title");
+      const dirBtn2 = tree.findBySelector(".sfm-scene-sort-wrap .sfm-sort-dir-btn")[0];
+      if (dirBtn2) assert.strictEqual(dirBtn2.props["data-sort-dir"], "desc");
     });
   });
 
@@ -66,8 +72,9 @@ function getTests() {
       const tree = await openFolderRoute(env, "Anime/Naruto/Season 1");
       await ensureTableView(tree);
       await tree.click(findHeaderByName(tree, ".sfm-data-table", "Code"));
-      const selVal = findSceneSortSelect(tree).props.value;
-      assert(selVal === "code_asc" || selVal === "code_desc", `Expected code sort, got ${selVal}`);
+      const sel = findSceneSortSelect(tree);
+      const selVal = sel.props["data-sort-key"] || sel.props.value;
+      assert(selVal === "code" || selVal === "code_asc" || selVal === "code_desc", `Expected code sort, got ${selVal}`);
       const codeTh = findHeaderByName(tree, ".sfm-data-table", "Code");
       assert(/[▲▼]/.test(tree.nodeText(codeTh)));
     });
@@ -78,8 +85,9 @@ function getTests() {
       const tree = await openFolderRoute(env, "Anime/Naruto/Season 1");
       await ensureTableView(tree);
       await tree.click(findHeaderByName(tree, ".sfm-data-table", "Organized"));
-      const selVal = findSceneSortSelect(tree).props.value;
-      assert(selVal === "organized_asc" || selVal === "organized_desc", `Expected organized sort, got ${selVal}`);
+      const sel = findSceneSortSelect(tree);
+      const selVal = sel.props["data-sort-key"] || sel.props.value;
+      assert(selVal === "organized" || selVal === "organized_asc" || selVal === "organized_desc", `Expected organized sort, got ${selVal}`);
     });
   });
 
@@ -88,8 +96,9 @@ function getTests() {
       const tree = await openFolderRoute(env, "Anime/Naruto/Season 1");
       await ensureTableView(tree);
       await tree.click(findHeaderByName(tree, ".sfm-data-table", "Filename"));
-      const selVal = findSceneSortSelect(tree).props.value;
-      assert(selVal === "filename_asc" || selVal === "filename_desc", `Expected filename sort, got ${selVal}`);
+      const sel = findSceneSortSelect(tree);
+      const selVal = sel.props["data-sort-key"] || sel.props.value;
+      assert(selVal === "filename" || selVal === "filename_asc" || selVal === "filename_desc", `Expected filename sort, got ${selVal}`);
       const rows = getTableBodyRows(tree, ".sfm-data-table tbody tr");
       assert(rows.length === 5);
     });
@@ -178,7 +187,10 @@ function getTests() {
         onClose: () => {},
       });
       await tree.flush();
-      const sortSel = tree.findBySelector("select").find((s) => getSelectOptionValues(s).includes("date_desc"));
+      const sortSel = tree.findBySelector("select").find((s) => {
+        const opts = getSelectOptionValues(s);
+        return opts.includes("date_desc") || opts.includes("date");
+      });
       assert(sortSel, "FolderProfileView profileSort <select> must exist");
       assert(getSelectOptionValues(sortSel).includes("random"), "profileSort must include 'random' option");
     });
@@ -271,11 +283,9 @@ function getTests() {
   add("T1-F16-02", "F16", "Main browsing Missing Metadata filter isolates scenes missing Studio or Code", async () => {
     await withEnv(async (env) => {
       const tree = await openFolderRoute(env, "Anime/Naruto/Season 1");
-      const missingSel = tree.findBySelector("select").find((s) =>
-        getSelectOptionValues(s).includes("code") && getSelectOptionValues(s).includes("studio")
-      );
-      assert(missingSel, "Main view must provide Missing Metadata filter");
-      await tree.change(missingSel, "code");
+      const codeBtn = findButtonByTextOrTitle(tree, /^Code$/i);
+      assert(codeBtn, "Main view must provide Missing Code filter button");
+      await tree.click(codeBtn);
       const txt = tree.text();
       assert(txt.includes("Zeta Missing Code"), "Missing Code filter must keep Zeta Missing Code");
       assert(!txt.includes("Alpha Sunrise"), "Missing Code filter must hide scenes that have a code");

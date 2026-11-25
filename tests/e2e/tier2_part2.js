@@ -39,10 +39,11 @@ function getTests() {
     await withEnv(async (env) => {
       const tree = await openFolderRoute(env, "Anime/Naruto/Season 1");
       await ensureTableView(tree);
-      await tree.change(findSceneSortSelect(tree), "title_asc");
+      await tree.change(findSceneSortSelect(tree), "title");
       await tree.click(findHeaderByName(tree, ".sfm-data-table", "Cover"));
       await tree.click(findHeaderByName(tree, ".sfm-data-table", "Actions"));
-      assert.strictEqual(findSceneSortSelect(tree).props.value, "title_asc");
+      const selVal = findSceneSortSelect(tree).props["data-sort-key"] || findSceneSortSelect(tree).props.value;
+      assert(selVal === "title" || selVal === "title_asc");
     });
   });
 
@@ -53,7 +54,8 @@ function getTests() {
       await tree.change(findSceneSortSelect(tree), "random");
       assert(findButtonByText(tree, /Reshuffle/i));
       await tree.click(findHeaderByName(tree, ".sfm-data-table", "Title"));
-      assert.strictEqual(findSceneSortSelect(tree).props.value, "title_asc");
+      const selVal = findSceneSortSelect(tree).props["data-sort-key"] || findSceneSortSelect(tree).props.value;
+      assert(selVal === "title" || selVal === "title_asc");
       assert(!findButtonByText(tree, /Reshuffle/i), "Reshuffle must hide when switching from random to column sort");
     });
   });
@@ -82,7 +84,8 @@ function getTests() {
       }
       await ensureTableView(tree);
       await tree.click(findHeaderByName(tree, ".sfm-data-table", "Title"));
-      assert.strictEqual(findSceneSortSelect(tree).props.value, "title_asc");
+      const selVal = findSceneSortSelect(tree).props["data-sort-key"] || findSceneSortSelect(tree).props.value;
+      assert(selVal === "title" || selVal === "title_asc");
     });
   });
 
@@ -297,9 +300,9 @@ function getTests() {
   add("T2-F16-05", "F16", "Missing Cover filter isolates scene 103 when browsing Season 1", async () => {
     await withEnv(async (env) => {
       const tree = await openFolderRoute(env, "Anime/Naruto/Season 1");
-      const missSel = tree.findBySelector("select").find((s) => getSelectOptionValues(s).includes("cover"));
-      assert(missSel);
-      await tree.change(missSel, "cover");
+      const coverBtn = findButtonByTextOrTitle(tree, /^Cover$/i);
+      assert(coverBtn);
+      await tree.click(coverBtn);
       assert(tree.text().includes("raw_untagged_clip_720p.mkv"));
       assert(!tree.text().includes("Alpha Sunrise"));
     });

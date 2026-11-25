@@ -429,10 +429,10 @@ function getTests() {
     await withEnv(async (env) => {
       const modal = await openMetadataStudioGlobal(env, env.db.scenes, "All");
       const orgSel = modal.findBySelector("select").find((s) => getSelectOptionValues(s).includes("unorganized"));
-      const missSel = modal.findBySelector("select").find((s) => getSelectOptionValues(s).includes("code"));
-      assert(orgSel && missSel);
+      const codeBtn = findButtonByTextOrTitle(modal, /^Code$/i);
+      assert(orgSel && codeBtn);
       await modal.change(orgSel, "unorganized");
-      await modal.change(missSel, "code");
+      await modal.click(codeBtn);
       const rows = getTableBodyRows(modal, ".sfm-parser-table tbody tr").filter((r) => r.cells.length >= 8);
       assert.strictEqual(rows.length, 2, "Only scenes 103 and 107 are unorganized AND missing code");
     });
@@ -442,10 +442,10 @@ function getTests() {
     await withEnv(async (env) => {
       const modal = await openMetadataStudioGlobal(env, env.db.scenes, "All");
       const orgSel = modal.findBySelector("select").find((s) => getSelectOptionValues(s).includes("organized"));
-      const missSel = modal.findBySelector("select").find((s) => getSelectOptionValues(s).includes("studio"));
-      assert(orgSel && missSel);
+      const studioBtn = findButtonByTextOrTitle(modal, /^Studio$/i);
+      assert(orgSel && studioBtn);
       await modal.change(orgSel, "organized");
-      await modal.change(missSel, "studio");
+      await modal.click(studioBtn);
       const rows = getTableBodyRows(modal, ".sfm-parser-table tbody tr").filter((r) => r.cells.length >= 8);
       assert.strictEqual(rows.length, 0);
     });
@@ -466,9 +466,9 @@ function getTests() {
   add("T2-F8-04", "F8", "Missing Performers filter isolates scenes with empty performers array", async () => {
     await withEnv(async (env) => {
       const modal = await openMetadataStudioGlobal(env, env.db.scenes, "All");
-      const missSel = modal.findBySelector("select").find((s) => getSelectOptionValues(s).includes("performers"));
-      assert(missSel);
-      await modal.change(missSel, "performers");
+      const perfBtn = findButtonByTextOrTitle(modal, /^Performers$/i);
+      assert(perfBtn);
+      await modal.click(perfBtn);
       const rows = getTableBodyRows(modal, ".sfm-parser-table tbody tr").filter((r) => r.cells.length >= 8);
       assert.strictEqual(rows.length, 2, "Scenes 103 and 105 have empty performers");
     });
@@ -477,12 +477,16 @@ function getTests() {
   add("T2-F8-05", "F8", "Missing Tags and Missing Title filters isolate expected scenes", async () => {
     await withEnv(async (env) => {
       const modal = await openMetadataStudioGlobal(env, env.db.scenes, "All");
-      const missSel = modal.findBySelector("select").find((s) => getSelectOptionValues(s).includes("title"));
-      assert(missSel);
-      await modal.change(missSel, "title");
+      const titleBtn = findButtonByTextOrTitle(modal, /^Title$/i);
+      assert(titleBtn);
+      await modal.click(titleBtn);
       let rows = getTableBodyRows(modal, ".sfm-parser-table tbody tr").filter((r) => r.cells.length >= 8);
       assert.strictEqual(rows.length, 1, "Only scene 103 has empty title");
-      await modal.change(missSel, "tags");
+      // Deselect title and select tags
+      await modal.click(titleBtn);
+      const tagsBtn = findButtonByTextOrTitle(modal, /^Tags$/i);
+      assert(tagsBtn);
+      await modal.click(tagsBtn);
       rows = getTableBodyRows(modal, ".sfm-parser-table tbody tr").filter((r) => r.cells.length >= 8);
       assert.strictEqual(rows.length, 2, "Scenes 103 and 107 have empty tags");
     });

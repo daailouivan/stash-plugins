@@ -34,12 +34,14 @@
       createShuffledQueue,
       sortScenesWithOrder,
       matchesSceneFilters,
+      DEFAULT_SORT_DIR_MAP: CORE_DEFAULT_SORT_DIR_MAP,
     } = SFM;
 
     const {
       IconHome,
       IconArrowLeft,
       IconArrowUp,
+      IconArrowDown,
       IconFolder,
       IconFolderCard,
       IconZoom,
@@ -150,9 +152,31 @@
       return "grid";
     }
 
+    const DEFAULT_SORT_DIR_MAP = CORE_DEFAULT_SORT_DIR_MAP || {
+      title: "asc",
+      filename: "asc",
+      date: "desc",
+      studio: "asc",
+      code: "asc",
+      performers: "asc",
+      organized: "desc",
+      rating: "desc",
+      duration: "desc",
+      size: "desc",
+      resolution: "desc",
+      play_count: "desc",
+      o_counter: "desc",
+      created_at: "desc",
+      updated_at: "desc",
+      last_played_at: "desc",
+      director: "asc",
+      tags: "asc",
+      bitrate: "desc",
+    };
+
     function parseSortKeyParts(sortKey, sortDirProp) {
       if (!sortKey || sortKey === "random") {
-        return { sortBase: null, sortDir: null };
+        return { sortBase: sortKey || null, sortDir: null };
       }
       if (sortDirProp && (sortDirProp === "asc" || sortDirProp === "desc")) {
         return { sortBase: String(sortKey).replace(/_(asc|desc)$/, ""), sortDir: sortDirProp };
@@ -161,7 +185,8 @@
       if (match) {
         return { sortBase: match[1], sortDir: match[2] };
       }
-      return { sortBase: String(sortKey), sortDir: "asc" };
+      const base = String(sortKey);
+      return { sortBase: base, sortDir: DEFAULT_SORT_DIR_MAP[base] || "asc" };
     }
 
     function formatSceneResolution(file) {
@@ -190,45 +215,26 @@
     ];
 
     const SCENE_SORT_OPTIONS = [
-      { value: "title_asc", label: "Title (A-Z)" },
-      { value: "title_desc", label: "Title (Z-A)" },
-      { value: "filename_asc", label: "Filename (A-Z)" },
-      { value: "filename_desc", label: "Filename (Z-A)" },
-      { value: "date_desc", label: "Date (Newest)" },
-      { value: "date_asc", label: "Date (Oldest)" },
-      { value: "studio_asc", label: "Studio (A-Z)" },
-      { value: "studio_desc", label: "Studio (Z-A)" },
-      { value: "code_asc", label: "Code (A-Z)" },
-      { value: "code_desc", label: "Code (Z-A)" },
-      { value: "performers_asc", label: "Performers (A-Z)" },
-      { value: "performers_desc", label: "Performers (Z-A)" },
-      { value: "organized_desc", label: "Organized (Yes First)" },
-      { value: "organized_asc", label: "Organized (No First)" },
-      { value: "rating_desc", label: "Rating (Highest)" },
-      { value: "rating_asc", label: "Rating (Lowest)" },
-      { value: "duration_desc", label: "Duration (Longest)" },
-      { value: "duration_asc", label: "Duration (Shortest)" },
-      { value: "size_desc", label: "Size (Largest)" },
-      { value: "size_asc", label: "Size (Smallest)" },
-      { value: "resolution_desc", label: "Resolution (Highest)" },
-      { value: "resolution_asc", label: "Resolution (Lowest)" },
-      { value: "play_count_desc", label: "Play Count (Most)" },
-      { value: "play_count_asc", label: "Play Count (Least)" },
-      { value: "o_counter_desc", label: "O-Counter (Most)" },
-      { value: "o_counter_asc", label: "O-Counter (Least)" },
-      { value: "created_at_desc", label: "Created (Newest)" },
-      { value: "created_at_asc", label: "Created (Oldest)" },
-      { value: "updated_at_desc", label: "Updated (Newest)" },
-      { value: "updated_at_asc", label: "Updated (Oldest)" },
-      { value: "last_played_at_desc", label: "Last Played (Recent)" },
-      { value: "last_played_at_asc", label: "Last Played (Oldest)" },
-      { value: "director_asc", label: "Director (A-Z)" },
-      { value: "director_desc", label: "Director (Z-A)" },
-      { value: "tags_asc", label: "Tags (A-Z)" },
-      { value: "tags_desc", label: "Tags (Z-A)" },
-      { value: "bitrate_desc", label: "Bitrate (Highest)" },
-      { value: "bitrate_asc", label: "Bitrate (Lowest)" },
-      { value: "random", label: "Random (Shuffle)" },
+      { value: "title", label: "Title", defaultDir: "asc" },
+      { value: "filename", label: "Filename", defaultDir: "asc" },
+      { value: "date", label: "Date", defaultDir: "desc" },
+      { value: "studio", label: "Studio", defaultDir: "asc" },
+      { value: "code", label: "Code", defaultDir: "asc" },
+      { value: "performers", label: "Performers", defaultDir: "asc" },
+      { value: "organized", label: "Organized", defaultDir: "desc" },
+      { value: "rating", label: "Rating", defaultDir: "desc" },
+      { value: "duration", label: "Duration", defaultDir: "desc" },
+      { value: "size", label: "Size", defaultDir: "desc" },
+      { value: "resolution", label: "Resolution", defaultDir: "desc" },
+      { value: "play_count", label: "Play Count", defaultDir: "desc" },
+      { value: "o_counter", label: "O-Counter", defaultDir: "desc" },
+      { value: "created_at", label: "Created", defaultDir: "desc" },
+      { value: "updated_at", label: "Updated", defaultDir: "desc" },
+      { value: "last_played_at", label: "Last Played", defaultDir: "desc" },
+      { value: "director", label: "Director", defaultDir: "asc" },
+      { value: "tags", label: "Tags", defaultDir: "asc" },
+      { value: "bitrate", label: "Bitrate", defaultDir: "desc" },
+      { value: "random", label: "Random", defaultDir: null },
     ];
 
     // ==========================================
@@ -1919,17 +1925,46 @@
       const [sceneSort, setSceneSort] = useState("title_asc");
       const [shuffleSeed, setShuffleSeed] = useState(1);
 
+      const folderSortBase = folderSort.startsWith("count") ? "count" : "name";
+      const folderSortDir = folderSort.endsWith("_desc") ? "desc" : "asc";
+      const { sortBase: curSceneSortBase, sortDir: curSceneSortDir } = parseSortKeyParts(sceneSort);
+
       const [organizedFilter, setOrganizedFilter] = useState("all");
       const [missingFields, setMissingFields] = useState([]);
       const [resolutionFilter, setResolutionFilter] = useState("all");
       const [minRating, setMinRating] = useState(0);
 
       const handleSceneSortChange = useCallback((nextSort) => {
-        setSceneSort(nextSort);
+        if (!nextSort) return;
         if (nextSort === "random") {
+          setSceneSort("random");
           setShuffleSeed((prev) => prev + 1);
+          return;
         }
-      }, []);
+        if (nextSort.endsWith("_asc") || nextSort.endsWith("_desc")) {
+          setSceneSort(nextSort);
+          return;
+        }
+        const { sortDir: curDir } = parseSortKeyParts(sceneSort);
+        const dir = curDir || DEFAULT_SORT_DIR_MAP[nextSort] || "asc";
+        setSceneSort(`${nextSort}_${dir}`);
+      }, [sceneSort]);
+
+      const handleToggleSceneSortDir = useCallback(() => {
+        if (sceneSort === "random") return;
+        const { sortBase, sortDir } = parseSortKeyParts(sceneSort);
+        const base = sortBase || "title";
+        const nextDir = sortDir === "asc" ? "desc" : "asc";
+        setSceneSort(`${base}_${nextDir}`);
+      }, [sceneSort]);
+
+      const handleToggleFolderSortDir = useCallback(() => {
+        const isCount = folderSort.startsWith("count");
+        const base = isCount ? "count" : "name";
+        const isDesc = folderSort.endsWith("_desc");
+        const nextDir = isDesc ? "asc" : "desc";
+        setFolderSort(`${base}_${nextDir}`);
+      }, [folderSort]);
 
       const handleReshuffle = useCallback(() => {
         setSceneSort("random");
@@ -2948,57 +2983,91 @@
             React.createElement(
               "div",
               { className: "sfm-nav-line sfm-nav-line-controls d-flex align-items-center gap-2 mt-2 flex-wrap" },
-              React.createElement(
-                "div",
-                { className: "sfm-sort-group d-flex align-items-center gap-2 flex-shrink-0 flex-wrap" },
                 React.createElement(
                   "div",
-                  { className: "d-flex align-items-center sfm-sort-item" },
-                  React.createElement("span", { className: "sfm-sort-label mr-1 text-muted small" }, "Folders:"),
+                  { className: "sfm-sort-group d-flex align-items-center gap-2 flex-shrink-0 flex-wrap" },
                   React.createElement(
-                    "select",
-                    {
-                      className: "sfm-sort-select",
-                      value: folderSort,
-                      onChange: (e) => setFolderSort(e.target.value),
-                      title: "Sort Subfolders",
-                    },
-                    React.createElement("option", { value: "name_asc" }, "Name (A-Z)"),
-                    React.createElement("option", { value: "name_desc" }, "Name (Z-A)"),
-                    React.createElement("option", { value: "count_desc" }, "Count (High-Low)"),
-                    React.createElement("option", { value: "count_asc" }, "Count (Low-High)")
-                  )
-                ),
-                React.createElement(
-                  "div",
-                  { className: "d-flex align-items-center sfm-sort-item" },
-                  React.createElement("span", { className: "sfm-sort-label mr-1 text-muted small" }, "Scenes:"),
-                  React.createElement(
-                    "select",
-                    {
-                      className: "sfm-sort-select sfm-scene-sort-select",
-                      value: sceneSort,
-                      onChange: (e) => handleSceneSortChange(e.target.value),
-                      title: "Sort Scenes",
-                    },
-                    SCENE_SORT_OPTIONS.map((opt) =>
-                      React.createElement("option", { key: opt.value, value: opt.value }, opt.label)
-                    )
-                  ),
-                  sceneSort === "random" &&
+                    "div",
+                    { className: "d-flex align-items-center sfm-sort-item" },
+                    React.createElement("span", { className: "sfm-sort-label mr-1 text-muted small" }, "Folders:"),
+                    React.createElement(
+                      "select",
+                      {
+                        className: "sfm-sort-select sfm-folder-sort-select",
+                        value: folderSortBase,
+                        onChange: (e) => {
+                          const val = e.target.value;
+                          if (val.endsWith("_asc") || val.endsWith("_desc")) {
+                            setFolderSort(val);
+                          } else {
+                            setFolderSort(`${val}_${folderSortDir}`);
+                          }
+                        },
+                        title: "Sort Subfolders",
+                      },
+                      React.createElement("option", { value: "name" }, "Name"),
+                      React.createElement("option", { value: "count" }, "Count")
+                    ),
                     React.createElement(
                       "button",
                       {
                         type: "button",
-                        className: "btn btn-sm ml-1 py-0 px-2 sfm-reshuffle-btn d-inline-flex align-items-center btn-info font-weight-bold",
-                        onClick: handleReshuffle,
-                        title: "Reshuffle scenes order",
+                        className: "btn btn-sm btn-outline-secondary sfm-sort-dir-btn ml-1 py-0 px-2 d-inline-flex align-items-center",
+                        onClick: handleToggleFolderSortDir,
+                        title: folderSortDir === "asc" ? "Ascending (click to sort Descending)" : "Descending (click to sort Ascending)",
+                        "data-sort-dir": folderSortDir,
                       },
-                      React.createElement(IconShuffle, { size: 13, className: "mr-1" }),
-                      "Reshuffle"
+                      folderSortDir === "asc"
+                        ? React.createElement(IconArrowUp, { size: 13 })
+                        : React.createElement(IconArrowDown, { size: 13 })
                     )
-                )
-              ),
+                  ),
+                  React.createElement(
+                    "div",
+                    { className: "d-flex align-items-center sfm-sort-item" },
+                    React.createElement("span", { className: "sfm-sort-label mr-1 text-muted small" }, "Scenes:"),
+                    React.createElement(
+                      "select",
+                      {
+                        className: "sfm-sort-select sfm-scene-sort-select",
+                        value: sceneSort === "random" ? "random" : (curSceneSortBase || sceneSort),
+                        onChange: (e) => handleSceneSortChange(e.target.value),
+                        title: "Sort Scenes",
+                        "data-sort-key": sceneSort,
+                        "data-sort-dir": curSceneSortDir || undefined,
+                      },
+                      SCENE_SORT_OPTIONS.map((opt) =>
+                        React.createElement("option", { key: opt.value, value: opt.value }, opt.label)
+                      )
+                    ),
+                    sceneSort !== "random" &&
+                      React.createElement(
+                        "button",
+                        {
+                          type: "button",
+                          className: "btn btn-sm btn-outline-secondary sfm-sort-dir-btn ml-1 py-0 px-2 d-inline-flex align-items-center",
+                          onClick: handleToggleSceneSortDir,
+                          title: curSceneSortDir === "asc" ? "Ascending (click to sort Descending)" : "Descending (click to sort Ascending)",
+                          "data-sort-dir": curSceneSortDir,
+                        },
+                        curSceneSortDir === "asc"
+                          ? React.createElement(IconArrowUp, { size: 13 })
+                          : React.createElement(IconArrowDown, { size: 13 })
+                      ),
+                    sceneSort === "random" &&
+                      React.createElement(
+                        "button",
+                        {
+                          type: "button",
+                          className: "btn btn-sm ml-1 py-0 px-2 sfm-reshuffle-btn d-inline-flex align-items-center btn-info font-weight-bold",
+                          onClick: handleReshuffle,
+                          title: "Reshuffle scenes order",
+                        },
+                        React.createElement(IconShuffle, { size: 13, className: "mr-1" }),
+                        "Reshuffle"
+                      )
+                  )
+                ),
               React.createElement(
                 "div",
                 { className: "sfm-search-wrap sfm-search-stretch flex-grow-1 mx-2" },
@@ -3085,27 +3154,11 @@
                   React.createElement("option", { value: "unorganized" }, "Unorganized")
                 )
               ),
-              // Missing Metadata Select & Pills
+              // Missing Metadata Pills
               React.createElement(
                 "div",
                 { className: "d-flex align-items-center mr-2 sfm-filter-missing-wrap" },
-                React.createElement("span", { className: "small text-muted mr-1" }, "Missing:"),
-                React.createElement(
-                  "select",
-                  {
-                    className: "sfm-sort-select sfm-filter-missing-select",
-                    value: missingFields[0] || "",
-                    onChange: (e) => {
-                      const val = e.target.value;
-                      setMissingFields(val ? [val] : []);
-                    },
-                    title: "Filter by missing metadata",
-                  },
-                  React.createElement("option", { value: "" }, "Any"),
-                  MISSING_FIELD_OPTIONS.map((mf) =>
-                    React.createElement("option", { key: mf.id, value: mf.id }, `Missing ${mf.label}`)
-                  )
-                )
+                React.createElement("span", { className: "small text-muted mr-1 font-weight-bold" }, "Missing:")
               ),
               React.createElement(
                 "div",

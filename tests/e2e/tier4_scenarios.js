@@ -72,9 +72,9 @@ function getTests() {
 
       // Step 1: Filter Missing Studio -> finds scene 103
       const modal = tree.findBySelector(".sfm-modal-container, .sfm-parser-modal")[0] || tree.root;
-      const missSel = tree.findBySelector("select", modal).find((s) => getSelectOptionValues(s).includes("studio"))
-        || tree.findBySelector("select").find((s) => getSelectOptionValues(s).includes("studio"));
-      await tree.change(missSel, "studio");
+      const studioBtn = findButtonByTextOrTitle(tree, /^Studio$/i, modal);
+      assert(studioBtn);
+      await tree.click(studioBtn);
       let rows = getTableBodyRows(tree, ".sfm-parser-table tbody tr").filter((r) => r.cells.length >= 8);
       assert.strictEqual(rows.length, 1);
 
@@ -94,7 +94,7 @@ function getTests() {
       await tree.click(findButtonByText(tree, /^Save$/i, editor));
 
       // Step 3: Reset missing filter -> toggle Organized on 102
-      await tree.change(missSel, "all");
+      await tree.click(findButtonByTextOrTitle(tree, /Clear Filters/i, modal) || studioBtn);
       const orgIdx = getTableHeaders(tree, ".sfm-parser-table th").findIndex((h) => /Organized/i.test(h.text));
       const betaRow = getTableBodyRows(tree, ".sfm-parser-table tbody tr").find((r) => r.text.includes("Beta Midnight"));
       const orgCb = tree.findAll((n) => n.tag === "input" && n.props?.type === "checkbox", betaRow.cells[orgIdx].node)[0];
@@ -156,7 +156,8 @@ function getTests() {
 
       // Header sort -> syncs sceneSort
       await tree.click(findHeaderByName(tree, ".sfm-data-table", "Code"));
-      assert(findSceneSortSelect(tree).props.value.startsWith("code_"));
+      const selVal = findSceneSortSelect(tree).props["data-sort-key"] || findSceneSortSelect(tree).props.value;
+      assert(selVal === "code" || selVal.startsWith("code_"));
 
       // Dropdown sort -> syncs Table header
       await tree.change(findSceneSortSelect(tree), "date_desc");

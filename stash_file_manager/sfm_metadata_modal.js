@@ -2572,28 +2572,6 @@
               "div",
               { className: "d-flex align-items-center flex-wrap gap-1 sfm-missing-fields-bar" },
               React.createElement("span", { className: "small text-muted font-weight-bold mr-1" }, "Missing Fields:"),
-              React.createElement(
-                "select",
-                {
-                  className: "sfm-sort-select sfm-filter-missing-select form-control form-control-sm bg-black text-light border-secondary mr-2",
-                  style: { width: "auto", height: "27px", fontSize: "0.8rem", padding: "0 6px" },
-                  value: missingFields.length === 1 ? missingFields[0] : (missingFields.length > 1 ? "all" : ""),
-                  onChange: (e) => {
-                    const val = e.target.value;
-                    if (!val || val === "all") {
-                      setMissingFields([]);
-                    } else {
-                      setMissingFields([val]);
-                    }
-                  },
-                  title: "Filter by missing metadata field",
-                },
-                React.createElement("option", { value: "all" }, "All (No Missing Filter)"),
-                React.createElement("option", { value: "" }, "Any Missing"),
-                MISSING_FIELD_OPTIONS.map((mf) =>
-                  React.createElement("option", { key: mf.key, value: mf.key }, `Missing ${mf.label}`)
-                )
-              ),
               MISSING_FIELD_OPTIONS.map((mf) => {
                 const isActive = missingFields.includes(mf.key);
                 return React.createElement(

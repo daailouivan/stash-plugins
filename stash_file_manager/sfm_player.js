@@ -29,12 +29,15 @@
       getNextSfmDepth,
       createShuffledQueue,
       sortScenesWithOrder,
+      DEFAULT_SORT_DIR_MAP,
       icons = {},
     } = SFM;
 
     const {
       IconFolder,
       IconArrowLeft,
+      IconArrowUp,
+      IconArrowDown,
       IconSmartphone,
       IconX,
       IconShuffle,
@@ -325,18 +328,38 @@
               : syncedShuffleSeed
           : localShuffleSeed;
 
+      const { sortBase: curProfileSortBase, sortDir: curProfileSortDir } = (() => {
+        if (!profileSort || profileSort === "random") return { sortBase: profileSort || null, sortDir: null };
+        const match = String(profileSort).match(/^(.+)_(asc|desc)$/);
+        if (match) return { sortBase: match[1], sortDir: match[2] };
+        return { sortBase: String(profileSort), sortDir: (DEFAULT_SORT_DIR_MAP && DEFAULT_SORT_DIR_MAP[profileSort]) || "desc" };
+      })();
+
       const handleProfileSortChange = useCallback(
         (newSort) => {
-          setProfileSort(newSort);
+          if (!newSort) return;
+          let normalized = newSort;
+          if (normalized !== "random" && !normalized.endsWith("_asc") && !normalized.endsWith("_desc")) {
+            const dir = curProfileSortDir || (DEFAULT_SORT_DIR_MAP && DEFAULT_SORT_DIR_MAP[normalized]) || "desc";
+            normalized = `${normalized}_${dir}`;
+          }
+          setProfileSort(normalized);
           try {
-            window.localStorage.setItem("sfm_profile_scene_sort", newSort);
+            window.localStorage.setItem("sfm_profile_scene_sort", normalized);
           } catch (e) {}
           if (typeof onSortChange === "function") {
-            onSortChange(newSort);
+            onSortChange(normalized);
           }
         },
-        [onSortChange]
+        [onSortChange, curProfileSortDir]
       );
+
+      const handleToggleProfileSortDir = useCallback(() => {
+        if (profileSort === "random") return;
+        const base = curProfileSortBase || "date";
+        const nextDir = curProfileSortDir === "asc" ? "desc" : "asc";
+        handleProfileSortChange(`${base}_${nextDir}`);
+      }, [profileSort, curProfileSortBase, curProfileSortDir, handleProfileSortChange]);
 
       const handleReshuffle = useCallback(() => {
         if (typeof onReshuffle === "function") {
@@ -1111,57 +1134,54 @@
                       "select",
                       {
                         className: "sfm-sort-select sfm-profile-sort-select",
-                        value: profileSort,
+                        value: profileSort === "random" ? "random" : (curProfileSortBase || profileSort),
                         onChange: (e) => handleProfileSortChange(e.target.value),
                         title: "Sort Profile Videos",
+                        "data-sort-key": profileSort,
+                        "data-sort-dir": curProfileSortDir || undefined,
                       },
                       ((window.__SFM__?.SCENE_SORT_OPTIONS || []).length > 0
                         ? window.__SFM__.SCENE_SORT_OPTIONS
                         : [
-                            { value: "date_desc", label: "Date (Newest)" },
-                            { value: "date_asc", label: "Date (Oldest)" },
-                            { value: "title_asc", label: "Title (A-Z)" },
-                            { value: "title_desc", label: "Title (Z-A)" },
-                            { value: "filename_asc", label: "Filename (A-Z)" },
-                            { value: "filename_desc", label: "Filename (Z-A)" },
-                            { value: "studio_asc", label: "Studio (A-Z)" },
-                            { value: "studio_desc", label: "Studio (Z-A)" },
-                            { value: "code_asc", label: "Code (A-Z)" },
-                            { value: "code_desc", label: "Code (Z-A)" },
-                            { value: "performers_asc", label: "Performers (A-Z)" },
-                            { value: "performers_desc", label: "Performers (Z-A)" },
-                            { value: "organized_desc", label: "Organized (Yes First)" },
-                            { value: "organized_asc", label: "Organized (No First)" },
-                            { value: "rating_desc", label: "Rating (Highest)" },
-                            { value: "rating_asc", label: "Rating (Lowest)" },
-                            { value: "duration_desc", label: "Duration (Longest)" },
-                            { value: "duration_asc", label: "Duration (Shortest)" },
-                            { value: "size_desc", label: "Size (Largest)" },
-                            { value: "size_asc", label: "Size (Smallest)" },
-                            { value: "resolution_desc", label: "Resolution (Highest)" },
-                            { value: "resolution_asc", label: "Resolution (Lowest)" },
-                            { value: "play_count_desc", label: "Play Count (Most)" },
-                            { value: "play_count_asc", label: "Play Count (Least)" },
-                            { value: "o_counter_desc", label: "O-Counter (Most)" },
-                            { value: "o_counter_asc", label: "O-Counter (Least)" },
-                            { value: "created_at_desc", label: "Created (Newest)" },
-                            { value: "created_at_asc", label: "Created (Oldest)" },
-                            { value: "updated_at_desc", label: "Updated (Newest)" },
-                            { value: "updated_at_asc", label: "Updated (Oldest)" },
-                            { value: "last_played_at_desc", label: "Last Played (Recent)" },
-                            { value: "last_played_at_asc", label: "Last Played (Oldest)" },
-                            { value: "director_asc", label: "Director (A-Z)" },
-                            { value: "director_desc", label: "Director (Z-A)" },
-                            { value: "tags_asc", label: "Tags (A-Z)" },
-                            { value: "tags_desc", label: "Tags (Z-A)" },
-                            { value: "bitrate_desc", label: "Bitrate (Highest)" },
-                            { value: "bitrate_asc", label: "Bitrate (Lowest)" },
-                            { value: "random", label: "Random (Shuffle)" },
+                            { value: "title", label: "Title" },
+                            { value: "filename", label: "Filename" },
+                            { value: "date", label: "Date" },
+                            { value: "studio", label: "Studio" },
+                            { value: "code", label: "Code" },
+                            { value: "performers", label: "Performers" },
+                            { value: "organized", label: "Organized" },
+                            { value: "rating", label: "Rating" },
+                            { value: "duration", label: "Duration" },
+                            { value: "size", label: "Size" },
+                            { value: "resolution", label: "Resolution" },
+                            { value: "play_count", label: "Play Count" },
+                            { value: "o_counter", label: "O-Counter" },
+                            { value: "created_at", label: "Created" },
+                            { value: "updated_at", label: "Updated" },
+                            { value: "last_played_at", label: "Last Played" },
+                            { value: "director", label: "Director" },
+                            { value: "tags", label: "Tags" },
+                            { value: "bitrate", label: "Bitrate" },
+                            { value: "random", label: "Random" },
                           ]
                       ).map((opt) =>
                         React.createElement("option", { key: opt.value, value: opt.value }, opt.label)
                       )
                     ),
+                    profileSort !== "random" &&
+                      React.createElement(
+                        "button",
+                        {
+                          type: "button",
+                          className: "btn btn-sm btn-outline-secondary sfm-sort-dir-btn ml-1 py-0 px-2 d-inline-flex align-items-center",
+                          onClick: handleToggleProfileSortDir,
+                          title: curProfileSortDir === "asc" ? "Ascending (click to sort Descending)" : "Descending (click to sort Ascending)",
+                          "data-sort-dir": curProfileSortDir,
+                        },
+                        curProfileSortDir === "asc"
+                          ? React.createElement(IconArrowUp, { size: 12 })
+                          : React.createElement(IconArrowDown, { size: 12 })
+                      ),
                     profileSort === "random" &&
                       React.createElement(
                         "button",

@@ -15,6 +15,7 @@ const {
   getTableBodyRows,
   findHeaderByName,
   findButtonByText,
+  findButtonByTextOrTitle,
 } = require("./helpers");
 
 function getTests() {
@@ -521,12 +522,9 @@ function getTests() {
   add("T1-F8-02", "F8", "Metadata Studio Missing Fields filter isolates scenes missing Studio", async () => {
     await withEnv(async (env) => {
       const modal = await openMetadataStudioGlobal(env, env.db.scenes.slice(0, 4), "All");
-      const missingSelect = modal.findBySelector("select").find((s) =>
-        modal.findAll((o) => o.tag === "option" && /Studio/i.test(modal.nodeText(o)), s).length > 0 &&
-        modal.findAll((o) => o.tag === "option" && /Missing/i.test(modal.nodeText(o)), s).length > 0
-      );
-      assert(missingSelect, "Missing Fields selector must exist");
-      await modal.change(missingSelect, "studio");
+      const missingBtn = findButtonByTextOrTitle(modal, /Studio/i);
+      assert(missingBtn, "Missing Studio pill button must exist");
+      await modal.click(missingBtn);
       const rows = getTableBodyRows(modal, ".sfm-parser-table tbody tr").filter((r) => r.cells.length >= 8);
       assert.strictEqual(rows.length, 1, "Only scene 103 is missing Studio");
       assert(rows[0].text.includes("raw_untagged_clip_720p.mkv"));
@@ -536,11 +534,9 @@ function getTests() {
   add("T1-F8-03", "F8", "Metadata Studio Missing Fields filter isolates scenes missing Code", async () => {
     await withEnv(async (env) => {
       const modal = await openMetadataStudioGlobal(env, env.db.scenes, "All");
-      const missingSelect = modal.findBySelector("select").find((s) =>
-        modal.findAll((o) => o.tag === "option" && /Missing/i.test(modal.nodeText(o)), s).length > 0
-      );
-      assert(missingSelect, "Missing Fields selector must exist");
-      await modal.change(missingSelect, "code");
+      const missingBtn = findButtonByTextOrTitle(modal, /Code/i);
+      assert(missingBtn, "Missing Code pill button must exist");
+      await modal.click(missingBtn);
       const rows = getTableBodyRows(modal, ".sfm-parser-table tbody tr").filter((r) => r.cells.length >= 8);
       assert.strictEqual(rows.length, 2, "Scenes 103 and 107 are missing code");
     });
@@ -565,11 +561,9 @@ function getTests() {
   add("T1-F8-05", "F8", "Metadata Studio Missing Fields filter covers Cover/Screenshot", async () => {
     await withEnv(async (env) => {
       const modal = await openMetadataStudioGlobal(env, env.db.scenes, "All");
-      const missingSelect = modal.findBySelector("select").find((s) =>
-        modal.findAll((o) => o.tag === "option" && /Missing/i.test(modal.nodeText(o)), s).length > 0
-      );
-      assert(missingSelect, "Missing Fields selector must exist");
-      await modal.change(missingSelect, "cover");
+      const missingBtn = findButtonByTextOrTitle(modal, /Cover/i);
+      assert(missingBtn, "Missing Cover pill button must exist");
+      await modal.click(missingBtn);
       const rows = getTableBodyRows(modal, ".sfm-parser-table tbody tr").filter((r) => r.cells.length >= 8);
       assert.strictEqual(rows.length, 1, "Only scene 103 is missing cover screenshot");
       assert(rows[0].text.includes("raw_untagged_clip_720p.mkv"));

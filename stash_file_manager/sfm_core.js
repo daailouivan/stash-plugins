@@ -324,6 +324,25 @@
       );
     }
 
+    function IconArrowDown({ size = 13, color = "currentColor", style = {} }) {
+      return React.createElement(
+        "svg",
+        {
+          width: size,
+          height: size,
+          viewBox: "0 0 24 24",
+          fill: "none",
+          stroke: color,
+          strokeWidth: "2.2",
+          strokeLinecap: "round",
+          strokeLinejoin: "round",
+          style: { display: "inline-block", verticalAlign: "-1px", ...style },
+        },
+        React.createElement("line", { x1: "12", y1: "5", x2: "12", y2: "19" }),
+        React.createElement("polyline", { points: "19 12 12 19 5 12" })
+      );
+    }
+
     function IconFolder({ size = 20, color = "currentColor", className = "" }) {
       return React.createElement(
         "svg",
@@ -1820,52 +1839,61 @@
     }
 
     const SCENE_SORT_OPTIONS = [
-      { value: "title_asc", label: "Title (A-Z)" },
-      { value: "title_desc", label: "Title (Z-A)" },
-      { value: "filename_asc", label: "Filename (A-Z)" },
-      { value: "filename_desc", label: "Filename (Z-A)" },
-      { value: "date_desc", label: "Date (Newest)" },
-      { value: "date_asc", label: "Date (Oldest)" },
-      { value: "studio_asc", label: "Studio (A-Z)" },
-      { value: "studio_desc", label: "Studio (Z-A)" },
-      { value: "code_asc", label: "Code (A-Z)" },
-      { value: "code_desc", label: "Code (Z-A)" },
-      { value: "performers_asc", label: "Performers (A-Z)" },
-      { value: "performers_desc", label: "Performers (Z-A)" },
-      { value: "organized_desc", label: "Organized (Yes First)" },
-      { value: "organized_asc", label: "Organized (No First)" },
-      { value: "rating_desc", label: "Rating (Highest)" },
-      { value: "rating_asc", label: "Rating (Lowest)" },
-      { value: "duration_desc", label: "Duration (Longest)" },
-      { value: "duration_asc", label: "Duration (Shortest)" },
-      { value: "size_desc", label: "Size (Largest)" },
-      { value: "size_asc", label: "Size (Smallest)" },
-      { value: "resolution_desc", label: "Resolution (Highest)" },
-      { value: "resolution_asc", label: "Resolution (Lowest)" },
-      { value: "play_count_desc", label: "Play Count (Most)" },
-      { value: "play_count_asc", label: "Play Count (Least)" },
-      { value: "o_counter_desc", label: "O-Counter (Most)" },
-      { value: "o_counter_asc", label: "O-Counter (Least)" },
-      { value: "created_at_desc", label: "Created (Newest)" },
-      { value: "created_at_asc", label: "Created (Oldest)" },
-      { value: "updated_at_desc", label: "Updated (Newest)" },
-      { value: "updated_at_asc", label: "Updated (Oldest)" },
-      { value: "last_played_at_desc", label: "Last Played (Recent)" },
-      { value: "last_played_at_asc", label: "Last Played (Oldest)" },
-      { value: "director_asc", label: "Director (A-Z)" },
-      { value: "director_desc", label: "Director (Z-A)" },
-      { value: "tags_asc", label: "Tags (A-Z)" },
-      { value: "tags_desc", label: "Tags (Z-A)" },
-      { value: "bitrate_desc", label: "Bitrate (Highest)" },
-      { value: "bitrate_asc", label: "Bitrate (Lowest)" },
-      { value: "random", label: "Random (Shuffle)" },
+      { value: "title", label: "Title", defaultDir: "asc" },
+      { value: "filename", label: "Filename", defaultDir: "asc" },
+      { value: "date", label: "Date", defaultDir: "desc" },
+      { value: "studio", label: "Studio", defaultDir: "asc" },
+      { value: "code", label: "Code", defaultDir: "asc" },
+      { value: "performers", label: "Performers", defaultDir: "asc" },
+      { value: "organized", label: "Organized", defaultDir: "desc" },
+      { value: "rating", label: "Rating", defaultDir: "desc" },
+      { value: "duration", label: "Duration", defaultDir: "desc" },
+      { value: "size", label: "Size", defaultDir: "desc" },
+      { value: "resolution", label: "Resolution", defaultDir: "desc" },
+      { value: "play_count", label: "Play Count", defaultDir: "desc" },
+      { value: "o_counter", label: "O-Counter", defaultDir: "desc" },
+      { value: "created_at", label: "Created", defaultDir: "desc" },
+      { value: "updated_at", label: "Updated", defaultDir: "desc" },
+      { value: "last_played_at", label: "Last Played", defaultDir: "desc" },
+      { value: "director", label: "Director", defaultDir: "asc" },
+      { value: "tags", label: "Tags", defaultDir: "asc" },
+      { value: "bitrate", label: "Bitrate", defaultDir: "desc" },
+      { value: "random", label: "Random", defaultDir: null },
     ];
+
+    const DEFAULT_SORT_DIR_MAP = {
+      title: "asc",
+      filename: "asc",
+      date: "desc",
+      studio: "asc",
+      code: "asc",
+      performers: "asc",
+      organized: "desc",
+      rating: "desc",
+      duration: "desc",
+      size: "desc",
+      resolution: "desc",
+      play_count: "desc",
+      o_counter: "desc",
+      created_at: "desc",
+      updated_at: "desc",
+      last_played_at: "desc",
+      director: "asc",
+      tags: "asc",
+      bitrate: "desc",
+    };
 
     function sortScenesWithOrder(scenes, sortKey = "title_asc", shuffleSeed = 1) {
       if (!Array.isArray(scenes) || scenes.length === 0) return Array.isArray(scenes) ? scenes : [];
       const list = [...scenes];
 
-      if (sortKey === "random") {
+      let effectiveSortKey = sortKey || "title_asc";
+      if (effectiveSortKey !== "random" && !effectiveSortKey.endsWith("_asc") && !effectiveSortKey.endsWith("_desc")) {
+        const defaultDir = DEFAULT_SORT_DIR_MAP[effectiveSortKey] || "asc";
+        effectiveSortKey = `${effectiveSortKey}_${defaultDir}`;
+      }
+
+      if (effectiveSortKey === "random") {
         // Canonicalize by scene identity first so re-renders produce identical order regardless of input order
         list.sort((a, b) => getSceneSortKeyStr(a).localeCompare(getSceneSortKeyStr(b)));
         const idSignature = list.map((s) => getSceneSortKeyStr(s)).join("|");
@@ -1899,7 +1927,7 @@
         (Number(s?.files?.[0]?.height) || 0) * 100000 + (Number(s?.files?.[0]?.width) || 0);
 
       list.sort((a, b) => {
-        switch (sortKey) {
+        switch (effectiveSortKey) {
           case "title_desc":
             return strTitle(b).localeCompare(strTitle(a));
           case "title_asc":
@@ -2120,6 +2148,7 @@
         IconHome,
         IconArrowLeft,
         IconArrowUp,
+        IconArrowDown,
         IconFolder,
         IconTag,
         IconFolderCard,
@@ -2175,6 +2204,7 @@
       sortScenesWithOrder,
       matchesSceneFilters,
       SCENE_SORT_OPTIONS,
+      DEFAULT_SORT_DIR_MAP,
     });
   } catch (err) {
     console.error("[PathFileManager] Critical error in sfm_core.js:", err);
