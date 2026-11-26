@@ -54,19 +54,7 @@
     const VALID_TABS = ["scrape", "pattern", "bulk_edit", "rename"];
 
     const SCRAPE_LAYOUT_TEMPLATES = {
-      COMPACT_2TIER: "compact_2tier",
       STANDARD_1TIER: "standard_1tier",
-      MINIMAL: "minimal",
-    };
-
-    const DEFAULT_SCRAPE_WIDTHS_2TIER = {
-      checkbox: 36,
-      cover: 56,
-      title_filename: 240,
-      studio_performers: 165,
-      date_code: 110,
-      organized_status: 105,
-      actions: 140,
     };
 
     const DEFAULT_SCRAPE_WIDTHS_1TIER = {
@@ -74,14 +62,14 @@
       cover: 48,
       filename: 120,
       title: 150,
-      date: 80,
+      date: 75,
       studio: 95,
       code: 70,
       performers: 105,
-      organized: 60,
-      source: 75,
+      organized: 55,
+      source: 70,
       status: 70,
-      actions: 130,
+      actions: 125,
     };
 
     const PRESETS = [
@@ -367,42 +355,23 @@
         cover: true,
       });
 
-      // Scrape Table Layout & Width Customization (1-tier standard single-line & 2-tier compact)
-      const [layoutTemplate, setLayoutTemplate] = useState(() => {
-        try {
-          if (typeof window !== "undefined" && window.localStorage) {
-            const saved = window.localStorage.getItem("sfm_scrape_layout_template");
-            if (saved === SCRAPE_LAYOUT_TEMPLATES.COMPACT_2TIER || saved === SCRAPE_LAYOUT_TEMPLATES.STANDARD_1TIER) {
-              return saved;
-            }
-          }
-        } catch (e) {}
-        return SCRAPE_LAYOUT_TEMPLATES.STANDARD_1TIER;
-      });
+      // Scrape Table Layout & Width Customization (Always Standard Single-Line)
+      const [layoutTemplate, setLayoutTemplate] = useState(SCRAPE_LAYOUT_TEMPLATES.STANDARD_1TIER);
       const [colWidths, setColWidths] = useState(() => {
         try {
-          const saved =
-            typeof window !== "undefined" && window.localStorage
-              ? window.localStorage.getItem("sfm_scrape_col_widths")
-              : null;
-          if (saved) return JSON.parse(saved);
+          if (typeof window !== "undefined" && window.localStorage) {
+            // Purge old 2-tier template and bloated width keys
+            window.localStorage.removeItem("sfm_scrape_layout_template");
+            const saved = window.localStorage.getItem("sfm_scrape_col_widths_v4");
+            if (saved) return JSON.parse(saved);
+          }
         } catch (e) {}
         return { ...DEFAULT_SCRAPE_WIDTHS_1TIER };
       });
       const [showLayoutModal, setShowLayoutModal] = useState(false);
 
       const handleSelectTemplate = (tpl) => {
-        setLayoutTemplate(tpl);
-        try {
-          if (typeof window !== "undefined" && window.localStorage) {
-            window.localStorage.setItem("sfm_scrape_layout_template", tpl);
-          }
-        } catch (e) {}
-        if (tpl === SCRAPE_LAYOUT_TEMPLATES.COMPACT_2TIER) {
-          setColWidths((prev) => ({ ...DEFAULT_SCRAPE_WIDTHS_2TIER, ...prev }));
-        } else if (tpl === SCRAPE_LAYOUT_TEMPLATES.STANDARD_1TIER) {
-          setColWidths((prev) => ({ ...DEFAULT_SCRAPE_WIDTHS_1TIER, ...prev }));
-        }
+        setLayoutTemplate(SCRAPE_LAYOUT_TEMPLATES.STANDARD_1TIER);
       };
 
       const handleUpdateColWidth = (key, val) => {
@@ -411,7 +380,7 @@
           const next = { ...prev, [key]: num };
           try {
             if (typeof window !== "undefined" && window.localStorage) {
-              window.localStorage.setItem("sfm_scrape_col_widths", JSON.stringify(next));
+              window.localStorage.setItem("sfm_scrape_col_widths_v4", JSON.stringify(next));
             }
           } catch (e) {}
           return next;
@@ -419,14 +388,11 @@
       };
 
       const handleResetColWidths = () => {
-        const defaults =
-          layoutTemplate === SCRAPE_LAYOUT_TEMPLATES.COMPACT_2TIER
-            ? DEFAULT_SCRAPE_WIDTHS_2TIER
-            : DEFAULT_SCRAPE_WIDTHS_1TIER;
+        const defaults = DEFAULT_SCRAPE_WIDTHS_1TIER;
         setColWidths({ ...defaults });
         try {
           if (typeof window !== "undefined" && window.localStorage) {
-            window.localStorage.setItem("sfm_scrape_col_widths", JSON.stringify(defaults));
+            window.localStorage.setItem("sfm_scrape_col_widths_v4", JSON.stringify(defaults));
           }
         } catch (e) {}
       };
@@ -2820,16 +2786,13 @@
       const allFilteredSelected =
         filteredItems.length > 0 && filteredItems.every((it) => selectedSceneIds.has(String(it.scene.id)));
 
-      const is2Tier = layoutTemplate === SCRAPE_LAYOUT_TEMPLATES.COMPACT_2TIER;
-
-      // Action Buttons Cell Helper (Used by both 2-tier and 1-tier layouts)
+      // Action Buttons Cell Helper
       const renderActionsCell = (item, sId, sState, cloud, isExpanded, isInlineSearchOpen, isInlineEditOpen) =>
         React.createElement(
           "td",
           {
             key: "td-actions",
-            className: is2Tier ? "sfm-full-cell" : undefined,
-            style: { width: `${colWidths.actions || 130}px`, textAlign: "center" },
+            style: { width: `${colWidths.actions || 125}px`, textAlign: "center" },
             onClick: (e) => e.stopPropagation(),
           },
           React.createElement(
@@ -2917,19 +2880,9 @@
       const renderLayoutTemplateModal = () => {
         if (!showLayoutModal) return null;
 
-        const currentWidths = colWidths || (is2Tier ? DEFAULT_SCRAPE_WIDTHS_2TIER : DEFAULT_SCRAPE_WIDTHS_1TIER);
+        const currentWidths = colWidths || DEFAULT_SCRAPE_WIDTHS_1TIER;
 
-        const widthFields2Tier = [
-          { key: "checkbox", label: "Checkbox (Full)", min: 28, max: 80 },
-          { key: "cover", label: "Cover (Full)", min: 40, max: 120 },
-          { key: "title_filename", label: "Title / Filename (Split)", min: 140, max: 500 },
-          { key: "studio_performers", label: "Studio / Performers (Split)", min: 100, max: 400 },
-          { key: "date_code", label: "Date / Code (Split)", min: 80, max: 250 },
-          { key: "organized_status", label: "Organized / Status (Split)", min: 80, max: 250 },
-          { key: "actions", label: "Actions (Full)", min: 100, max: 300 },
-        ];
-
-        const widthFields1Tier = [
+        const activeFields = [
           { key: "checkbox", label: "Checkbox", min: 24, max: 80 },
           { key: "cover", label: "Cover", min: 36, max: 120 },
           { key: "filename", label: "Filename", min: 80, max: 350 },
@@ -2944,13 +2897,10 @@
           { key: "actions", label: "Actions", min: 90, max: 300 },
         ];
 
-        const activeFields = is2Tier ? widthFields2Tier : widthFields1Tier;
         const totalCalculatedWidth = activeFields.reduce(
           (sum, f) =>
             sum +
-            (Number(currentWidths[f.key]) ||
-              (is2Tier ? DEFAULT_SCRAPE_WIDTHS_2TIER[f.key] : DEFAULT_SCRAPE_WIDTHS_1TIER[f.key]) ||
-              100),
+            (Number(currentWidths[f.key]) || DEFAULT_SCRAPE_WIDTHS_1TIER[f.key] || 100),
           0
         );
 
@@ -2974,7 +2924,7 @@
                 "h5",
                 { className: "m-0 d-flex align-items-center gap-2 font-weight-bold" },
                 renderIcon(IconColumns, { size: 18, className: "text-info mr-2" }),
-                "Layout Templates & Column Widths"
+                "Customize Column Widths"
               ),
               React.createElement(
                 "button",
@@ -2989,77 +2939,13 @@
             React.createElement(
               "div",
               { className: "mb-3" },
-              React.createElement("label", { className: "font-weight-bold text-info small mb-2 d-block" }, "1. Select Layout Mode"),
-              React.createElement(
-                "div",
-                { className: "row g-2" },
-                React.createElement(
-                  "div",
-                  { className: "col-6" },
-                  React.createElement(
-                    "div",
-                    {
-                      className: `sfm-template-card p-2 rounded border cursor-pointer ${
-                        is2Tier ? "border-info bg-primary bg-opacity-25" : "border-secondary"
-                      }`,
-                      style: {
-                        cursor: "pointer",
-                        background: is2Tier ? "rgba(136, 192, 208, 0.12)" : "rgba(255, 255, 255, 0.03)",
-                      },
-                      onClick: () => handleSelectTemplate(SCRAPE_LAYOUT_TEMPLATES.COMPACT_2TIER),
-                    },
-                    React.createElement(
-                      "div",
-                      { className: "d-flex align-items-center justify-content-between mb-1" },
-                      React.createElement("span", { className: "font-weight-bold text-light" }, "Compact 2-Tier"),
-                      React.createElement("span", { className: "badge badge-success py-0 px-1 small" }, "Recommended")
-                    ),
-                    React.createElement(
-                      "div",
-                      { className: "small text-muted", style: { fontSize: "0.74rem", lineHeight: "1.2" } },
-                      "Full-height controls + 2-tier stacked metadata cells. Eliminates horizontal scrolling."
-                    )
-                  )
-                ),
-                React.createElement(
-                  "div",
-                  { className: "col-6" },
-                  React.createElement(
-                    "div",
-                    {
-                      className: `sfm-template-card p-2 rounded border cursor-pointer ${
-                        !is2Tier ? "border-info bg-primary bg-opacity-25" : "border-secondary"
-                      }`,
-                      style: {
-                        cursor: "pointer",
-                        background: !is2Tier ? "rgba(136, 192, 208, 0.12)" : "rgba(255, 255, 255, 0.03)",
-                      },
-                      onClick: () => handleSelectTemplate(SCRAPE_LAYOUT_TEMPLATES.STANDARD_1TIER),
-                    },
-                    React.createElement(
-                      "div",
-                      { className: "d-flex align-items-center justify-content-between mb-1" },
-                      React.createElement("span", { className: "font-weight-bold text-light" }, "Standard 1-Tier")
-                    ),
-                    React.createElement(
-                      "div",
-                      { className: "small text-muted", style: { fontSize: "0.74rem", lineHeight: "1.2" } },
-                      "Traditional single-line table with all 12 columns side-by-side."
-                    )
-                  )
-                )
-              )
-            ),
-            React.createElement(
-              "div",
-              { className: "mb-3" },
               React.createElement(
                 "div",
                 { className: "d-flex justify-content-between align-items-center mb-2" },
                 React.createElement(
                   "label",
                   { className: "font-weight-bold text-info small m-0" },
-                  "2. Adjust Column Widths"
+                  "Adjust Column Widths"
                 ),
                 React.createElement(
                   "div",
@@ -3085,13 +2971,13 @@
                 "div",
                 {
                   className: "sfm-width-adjusters p-2 rounded border border-secondary",
-                  style: { backgroundColor: "rgba(0, 0, 0, 0.25)", maxHeight: "230px", overflowY: "auto" },
+                  style: { backgroundColor: "rgba(0, 0, 0, 0.25)", maxHeight: "280px", overflowY: "auto" },
                 },
                 activeFields.map((f) => {
                   const val =
                     currentWidths[f.key] !== undefined
                       ? currentWidths[f.key]
-                      : (is2Tier ? DEFAULT_SCRAPE_WIDTHS_2TIER[f.key] : DEFAULT_SCRAPE_WIDTHS_1TIER[f.key]);
+                      : DEFAULT_SCRAPE_WIDTHS_1TIER[f.key];
                   return React.createElement(
                     "div",
                     {
@@ -4486,321 +4372,87 @@
                     // Unified Live Preview Table
                     React.createElement(
                       "div",
-                      { className: "sfm-parser-table-wrap mb-3", style: { overflowX: "auto" } },
-                    React.createElement(
-                      "table",
-                      { className: `sfm-parser-table table table-dark table-sm table-striped ${is2Tier ? "sfm-table-2tier" : "sfm-table-1tier"}` },
+                      { className: "sfm-parser-table-wrap mb-3" },
                       React.createElement(
-                        "thead",
-                        null,
+                        "table",
+                        { className: "sfm-parser-table table table-dark table-sm table-striped sfm-table-1tier" },
                         React.createElement(
-                          "tr",
+                          "thead",
                           null,
-                          ...(is2Tier
-                            ? [
-                                React.createElement(
-                                  "th",
-                                  { key: "th-cb", className: "sfm-full-th", style: { width: `${colWidths.checkbox || 36}px`, textAlign: "center" } },
-                                  React.createElement("input", {
-                                    type: "checkbox",
-                                    checked: allFilteredSelected,
-                                    onChange: () => {
-                                      if (allFilteredSelected) {
-                                        setSelectedSceneIds((prev) => {
-                                          const next = new Set(prev);
-                                          filteredItems.forEach((it) => next.delete(String(it.scene.id)));
-                                          return next;
-                                        });
-                                      } else {
-                                        setSelectedSceneIds((prev) => {
-                                          const next = new Set(prev);
-                                          filteredItems.forEach((it) => next.add(String(it.scene.id)));
-                                          return next;
-                                        });
-                                      }
-                                    },
-                                  })
-                                ),
-                                React.createElement(
-                                  "th",
-                                  { key: "th-cover", className: "sfm-full-th", style: { width: `${colWidths.cover || 56}px`, textAlign: "center" } },
-                                  "Cover"
-                                ),
-                                React.createElement(
-                                  "th",
-                                  {
-                                    key: "th-title-filename",
-                                    className: "sfm-split-th",
-                                    style: { width: `${colWidths.title_filename || 240}px`, maxWidth: `${colWidths.title_filename || 240}px` },
+                          React.createElement(
+                            "tr",
+                            null,
+                            React.createElement(
+                              "th",
+                              { key: "th-cb", style: { width: `${colWidths.checkbox || 34}px`, textAlign: "center" } },
+                              React.createElement("input", {
+                                type: "checkbox",
+                                checked: allFilteredSelected,
+                                onChange: () => {
+                                  if (allFilteredSelected) {
+                                    setSelectedSceneIds((prev) => {
+                                      const next = new Set(prev);
+                                      filteredItems.forEach((it) => next.delete(String(it.scene.id)));
+                                      return next;
+                                    });
+                                  } else {
+                                    setSelectedSceneIds((prev) => {
+                                      const next = new Set(prev);
+                                      filteredItems.forEach((it) => next.add(String(it.scene.id)));
+                                      return next;
+                                    });
+                                  }
+                                },
+                              })
+                            ),
+                            React.createElement("th", { key: "th-cover", style: { width: `${colWidths.cover || 48}px`, textAlign: "center" } }, "Cover"),
+                            ...TABLE_SORTABLE_COLUMNS.map((col) => {
+                              const isActive = tableSortKey === col.key;
+                              const arrow = isActive ? (tableSortDir === "asc" ? " ▲" : " ▼") : "";
+                              const dynamicWidth = colWidths[col.key] ? `${colWidths[col.key]}px` : undefined;
+                              return React.createElement(
+                                "th",
+                                {
+                                  key: col.key,
+                                  className: `sfm-sortable-th ${isActive ? "sfm-sort-active text-info" : ""}`.trim(),
+                                  "data-sort-key": col.key,
+                                  "data-sort-dir": isActive ? tableSortDir : undefined,
+                                  role: "button",
+                                  tabIndex: 0,
+                                  style: {
+                                    ...col.style,
+                                    width: dynamicWidth || col.style.width,
+                                    maxWidth: dynamicWidth || col.style.maxWidth,
+                                    textAlign: "center",
+                                    cursor: "pointer",
+                                    userSelect: "none",
                                   },
-                                  React.createElement(
-                                    "div",
-                                    {
-                                      className: `sfm-subth sfm-subth-top ${tableSortKey === "title" ? "sfm-sort-active text-info" : ""}`,
-                                      role: "button",
-                                      tabIndex: 0,
-                                      "data-sort-key": "title",
-                                      "data-sort-dir": tableSortKey === "title" ? tableSortDir : undefined,
-                                      onClick: () => handleHeaderSort("title"),
-                                      onKeyDown: (e) => {
-                                        if (e.key === "Enter" || e.key === " ") {
-                                          e.preventDefault();
-                                          handleHeaderSort("title");
-                                        }
-                                      },
-                                      title: "Sort by Title",
-                                    },
-                                    "Title",
-                                    tableSortKey === "title" && React.createElement("span", { className: "sfm-sort-indicator ml-1" }, tableSortDir === "asc" ? "▲" : "▼")
-                                  ),
-                                  React.createElement(
-                                    "div",
-                                    {
-                                      className: `sfm-subth sfm-subth-bottom ${tableSortKey === "filename" ? "sfm-sort-active text-info" : ""}`,
-                                      role: "button",
-                                      tabIndex: 0,
-                                      "data-sort-key": "filename",
-                                      "data-sort-dir": tableSortKey === "filename" ? tableSortDir : undefined,
-                                      onClick: () => handleHeaderSort("filename"),
-                                      onKeyDown: (e) => {
-                                        if (e.key === "Enter" || e.key === " ") {
-                                          e.preventDefault();
-                                          handleHeaderSort("filename");
-                                        }
-                                      },
-                                      title: "Sort by Filename",
-                                    },
-                                    "Filename",
-                                    tableSortKey === "filename" && React.createElement("span", { className: "sfm-sort-indicator ml-1" }, tableSortDir === "asc" ? "▲" : "▼")
-                                  )
-                                ),
-                                React.createElement(
-                                  "th",
-                                  {
-                                    key: "th-studio-performers",
-                                    className: "sfm-split-th",
-                                    style: { width: `${colWidths.studio_performers || 165}px`, maxWidth: `${colWidths.studio_performers || 165}px` },
+                                  title: `Sort by ${col.label}`,
+                                  onClick: () => handleHeaderSort(col.key),
+                                  onKeyDown: (e) => {
+                                    if (e.key === "Enter" || e.key === " ") {
+                                      e.preventDefault();
+                                      handleHeaderSort(col.key);
+                                    }
                                   },
-                                  React.createElement(
-                                    "div",
-                                    {
-                                      className: `sfm-subth sfm-subth-top ${tableSortKey === "studio" ? "sfm-sort-active text-info" : ""}`,
-                                      role: "button",
-                                      tabIndex: 0,
-                                      "data-sort-key": "studio",
-                                      "data-sort-dir": tableSortKey === "studio" ? tableSortDir : undefined,
-                                      onClick: () => handleHeaderSort("studio"),
-                                      onKeyDown: (e) => {
-                                        if (e.key === "Enter" || e.key === " ") {
-                                          e.preventDefault();
-                                          handleHeaderSort("studio");
-                                        }
-                                      },
-                                      title: "Sort by Studio",
-                                    },
-                                    "Studio",
-                                    tableSortKey === "studio" && React.createElement("span", { className: "sfm-sort-indicator ml-1" }, tableSortDir === "asc" ? "▲" : "▼")
-                                  ),
-                                  React.createElement(
-                                    "div",
-                                    {
-                                      className: `sfm-subth sfm-subth-bottom ${tableSortKey === "performers" ? "sfm-sort-active text-info" : ""}`,
-                                      role: "button",
-                                      tabIndex: 0,
-                                      "data-sort-key": "performers",
-                                      "data-sort-dir": tableSortKey === "performers" ? tableSortDir : undefined,
-                                      onClick: () => handleHeaderSort("performers"),
-                                      onKeyDown: (e) => {
-                                        if (e.key === "Enter" || e.key === " ") {
-                                          e.preventDefault();
-                                          handleHeaderSort("performers");
-                                        }
-                                      },
-                                      title: "Sort by Performers",
-                                    },
-                                    "Performers",
-                                    tableSortKey === "performers" && React.createElement("span", { className: "sfm-sort-indicator ml-1" }, tableSortDir === "asc" ? "▲" : "▼")
-                                  )
-                                ),
+                                },
                                 React.createElement(
-                                  "th",
-                                  {
-                                    key: "th-date-code",
-                                    className: "sfm-split-th",
-                                    style: { width: `${colWidths.date_code || 110}px`, maxWidth: `${colWidths.date_code || 110}px` },
-                                  },
-                                  React.createElement(
-                                    "div",
-                                    {
-                                      className: `sfm-subth sfm-subth-top ${tableSortKey === "date" ? "sfm-sort-active text-info" : ""}`,
-                                      role: "button",
-                                      tabIndex: 0,
-                                      "data-sort-key": "date",
-                                      "data-sort-dir": tableSortKey === "date" ? tableSortDir : undefined,
-                                      onClick: () => handleHeaderSort("date"),
-                                      onKeyDown: (e) => {
-                                        if (e.key === "Enter" || e.key === " ") {
-                                          e.preventDefault();
-                                          handleHeaderSort("date");
-                                        }
-                                      },
-                                      title: "Sort by Date",
-                                    },
-                                    "Date",
-                                    tableSortKey === "date" && React.createElement("span", { className: "sfm-sort-indicator ml-1" }, tableSortDir === "asc" ? "▲" : "▼")
-                                  ),
-                                  React.createElement(
-                                    "div",
-                                    {
-                                      className: `sfm-subth sfm-subth-bottom ${tableSortKey === "code" ? "sfm-sort-active text-info" : ""}`,
-                                      role: "button",
-                                      tabIndex: 0,
-                                      "data-sort-key": "code",
-                                      "data-sort-dir": tableSortKey === "code" ? tableSortDir : undefined,
-                                      onClick: () => handleHeaderSort("code"),
-                                      onKeyDown: (e) => {
-                                        if (e.key === "Enter" || e.key === " ") {
-                                          e.preventDefault();
-                                          handleHeaderSort("code");
-                                        }
-                                      },
-                                      title: "Sort by Code",
-                                    },
-                                    "Code",
-                                    tableSortKey === "code" && React.createElement("span", { className: "sfm-sort-indicator ml-1" }, tableSortDir === "asc" ? "▲" : "▼")
-                                  )
-                                ),
-                                React.createElement(
-                                  "th",
-                                  {
-                                    key: "th-organized-status",
-                                    className: "sfm-split-th",
-                                    style: { width: `${colWidths.organized_status || 105}px`, maxWidth: `${colWidths.organized_status || 105}px` },
-                                  },
-                                  React.createElement(
-                                    "div",
-                                    {
-                                      className: `sfm-subth sfm-subth-top ${tableSortKey === "organized" ? "sfm-sort-active text-info" : ""}`,
-                                      role: "button",
-                                      tabIndex: 0,
-                                      "data-sort-key": "organized",
-                                      "data-sort-dir": tableSortKey === "organized" ? tableSortDir : undefined,
-                                      onClick: () => handleHeaderSort("organized"),
-                                      onKeyDown: (e) => {
-                                        if (e.key === "Enter" || e.key === " ") {
-                                          e.preventDefault();
-                                          handleHeaderSort("organized");
-                                        }
-                                      },
-                                      title: "Sort by Organized",
-                                    },
-                                    "Organized",
-                                    tableSortKey === "organized" && React.createElement("span", { className: "sfm-sort-indicator ml-1" }, tableSortDir === "asc" ? "▲" : "▼")
-                                  ),
-                                  React.createElement(
-                                    "div",
-                                    {
-                                      className: `sfm-subth sfm-subth-bottom ${tableSortKey === "status" ? "sfm-sort-active text-info" : ""}`,
-                                      role: "button",
-                                      tabIndex: 0,
-                                      "data-sort-key": "status",
-                                      "data-sort-dir": tableSortKey === "status" ? tableSortDir : undefined,
-                                      onClick: () => handleHeaderSort("status"),
-                                      onKeyDown: (e) => {
-                                        if (e.key === "Enter" || e.key === " ") {
-                                          e.preventDefault();
-                                          handleHeaderSort("status");
-                                        }
-                                      },
-                                      title: "Sort by Status",
-                                    },
-                                    "Status",
-                                    tableSortKey === "status" && React.createElement("span", { className: "sfm-sort-indicator ml-1" }, tableSortDir === "asc" ? "▲" : "▼")
-                                  )
-                                ),
-                                React.createElement(
-                                  "th",
-                                  {
-                                    key: "th-actions",
-                                    className: "sfm-full-th",
-                                    style: { width: `${colWidths.actions || 140}px`, textAlign: "center" },
-                                  },
-                                  "Actions"
-                                ),
-                              ]
-                            : [
-                                React.createElement(
-                                  "th",
-                                  { key: "th-cb", style: { width: `${colWidths.checkbox || 34}px`, textAlign: "center" } },
-                                  React.createElement("input", {
-                                    type: "checkbox",
-                                    checked: allFilteredSelected,
-                                    onChange: () => {
-                                      if (allFilteredSelected) {
-                                        setSelectedSceneIds((prev) => {
-                                          const next = new Set(prev);
-                                          filteredItems.forEach((it) => next.delete(String(it.scene.id)));
-                                          return next;
-                                        });
-                                      } else {
-                                        setSelectedSceneIds((prev) => {
-                                          const next = new Set(prev);
-                                          filteredItems.forEach((it) => next.add(String(it.scene.id)));
-                                          return next;
-                                        });
-                                      }
-                                    },
-                                  })
-                                ),
-                                React.createElement("th", { key: "th-cover", style: { width: `${colWidths.cover || 48}px`, textAlign: "center" } }, "Cover"),
-                                ...TABLE_SORTABLE_COLUMNS.map((col) => {
-                                  const isActive = tableSortKey === col.key;
-                                  const arrow = isActive ? (tableSortDir === "asc" ? " ▲" : " ▼") : "";
-                                  const dynamicWidth = colWidths[col.key] ? `${colWidths[col.key]}px` : undefined;
-                                  return React.createElement(
-                                    "th",
-                                    {
-                                      key: col.key,
-                                      className: `sfm-sortable-th ${isActive ? "sfm-sort-active text-info" : ""}`.trim(),
-                                      "data-sort-key": col.key,
-                                      "data-sort-dir": isActive ? tableSortDir : undefined,
-                                      role: "button",
-                                      tabIndex: 0,
-                                      style: {
-                                        ...col.style,
-                                        width: dynamicWidth || col.style.width,
-                                        maxWidth: dynamicWidth || col.style.maxWidth,
-                                        textAlign: "center",
-                                        cursor: "pointer",
-                                        userSelect: "none",
-                                      },
-                                      title: `Sort by ${col.label}`,
-                                      onClick: () => handleHeaderSort(col.key),
-                                      onKeyDown: (e) => {
-                                        if (e.key === "Enter" || e.key === " ") {
-                                          e.preventDefault();
-                                          handleHeaderSort(col.key);
-                                        }
-                                      },
-                                    },
-                                    React.createElement(
-                                      "div",
-                                      { className: "d-flex align-items-center justify-content-center" },
-                                      col.label,
-                                      arrow && React.createElement("span", { className: "sfm-sort-indicator ml-1" }, arrow)
-                                    )
-                                  );
-                                }),
-                                React.createElement(
-                                  "th",
-                                  { key: "th-actions", style: { width: `${colWidths.actions || 130}px`, textAlign: "center" } },
-                                  "Actions"
-                                ),
-                              ])
-                        )
-                      ),
-                      React.createElement(
-                        "tbody",
+                                  "div",
+                                  { className: "d-flex align-items-center justify-content-center" },
+                                  col.label,
+                                  arrow && React.createElement("span", { className: "sfm-sort-indicator ml-1" }, arrow)
+                                )
+                              );
+                            }),
+                            React.createElement(
+                              "th",
+                              { key: "th-actions", style: { width: `${colWidths.actions || 125}px`, textAlign: "center" } },
+                              "Actions"
+                            )
+                          )
+                        ),
+                        React.createElement(
+                          "tbody",
                         null,
                         filteredItems.length === 0
                           ? null
@@ -4868,202 +4520,9 @@
                                     style: { cursor: "pointer", opacity: isSelected ? 1 : 0.7 },
                                     onClick: () => handleToggleSelectScene(sId),
                                   },
-                                  ...(is2Tier
-                                    ? [
-                                        React.createElement(
-                                          "td",
-                                          { key: "td-cb", className: "sfm-full-cell", style: { width: `${colWidths.checkbox || 36}px`, textAlign: "center" } },
-                                          React.createElement("input", {
-                                            type: "checkbox",
-                                            checked: isSelected,
-                                            onChange: () => handleToggleSelectScene(sId),
-                                            onClick: (e) => e.stopPropagation(),
-                                          })
-                                        ),
-                                        React.createElement(
-                                          "td",
-                                          { key: "td-cover", className: "sfm-full-cell", style: { width: `${colWidths.cover || 56}px`, textAlign: "center" } },
-                                          React.createElement("img", {
-                                            src: thumbUrl,
-                                            className: `sfm-scrape-thumb ${cloud ? "sfm-scrape-thumb-matched" : ""}`,
-                                            alt: "Thumb",
-                                            loading: "lazy",
-                                            onError: (e) => {
-                                              e.target.src = posterUrl;
-                                            },
-                                          })
-                                        ),
-                                        // Split 1: Title / Filename
-                                        React.createElement(
-                                          "td",
-                                          {
-                                            key: "td-title-filename",
-                                            className: "sfm-split-cell",
-                                            style: { width: `${colWidths.title_filename || 240}px`, maxWidth: `${colWidths.title_filename || 240}px` },
-                                          },
-                                          React.createElement(
-                                            "div",
-                                            {
-                                              className: `sfm-subcell sfm-subcell-top ${cloud ? "text-success font-weight-bold" : "text-info font-weight-bold"}`,
-                                              title: displayTitle,
-                                            },
-                                            cloud &&
-                                              React.createElement(
-                                                "span",
-                                                { className: "badge badge-success mr-1 py-0 px-1", style: { fontSize: "0.68rem" } },
-                                                "✓"
-                                              ),
-                                            displayTitle
-                                          ),
-                                          React.createElement(
-                                            "div",
-                                            {
-                                              className: "sfm-subcell sfm-subcell-bottom text-muted",
-                                              title: item.rawBasename,
-                                            },
-                                            item.rawBasename
-                                          )
-                                        ),
-                                        // Split 2: Studio / Performers
-                                        React.createElement(
-                                          "td",
-                                          {
-                                            key: "td-studio-performers",
-                                            className: "sfm-split-cell",
-                                            style: { width: `${colWidths.studio_performers || 165}px`, maxWidth: `${colWidths.studio_performers || 165}px` },
-                                          },
-                                          React.createElement(
-                                            "div",
-                                            { className: "sfm-subcell sfm-subcell-top", title: displayStudio },
-                                            displayStudio !== "—"
-                                              ? React.createElement(
-                                                  "span",
-                                                  {
-                                                    className: cloud?.studio?.name
-                                                      ? "badge badge-secondary py-0 px-1 font-weight-bold"
-                                                      : "",
-                                                  },
-                                                  displayStudio,
-                                                  isFromPathStudio &&
-                                                    React.createElement(
-                                                      "span",
-                                                      {
-                                                        className: "badge badge-dark text-info ml-1 py-0",
-                                                        title: "Resolved from Directory Path Clue",
-                                                      },
-                                                      "Path"
-                                                    )
-                                                )
-                                              : "—"
-                                          ),
-                                          React.createElement(
-                                            "div",
-                                            {
-                                              className: "sfm-subcell sfm-subcell-bottom text-muted",
-                                              title: displayPerformers,
-                                            },
-                                            displayPerformers
-                                          )
-                                        ),
-                                        // Split 3: Date / Code
-                                        React.createElement(
-                                          "td",
-                                          {
-                                            key: "td-date-code",
-                                            className: "sfm-split-cell",
-                                            style: { width: `${colWidths.date_code || 110}px`, maxWidth: `${colWidths.date_code || 110}px` },
-                                          },
-                                          React.createElement(
-                                            "div",
-                                            { className: "sfm-subcell sfm-subcell-top", title: displayDate },
-                                            displayDate
-                                          ),
-                                          React.createElement(
-                                            "div",
-                                            {
-                                              className: "sfm-subcell sfm-subcell-bottom sfm-code-cell",
-                                              style: { fontFamily: "monospace", fontSize: "0.78rem" },
-                                              title: displayCode,
-                                            },
-                                            displayCode !== "—"
-                                              ? React.createElement(
-                                                  "span",
-                                                  { className: "badge badge-dark text-warning py-0 px-1" },
-                                                  displayCode
-                                                )
-                                              : "—"
-                                          )
-                                        ),
-                                        // Split 4: Organized / Status
-                                        React.createElement(
-                                          "td",
-                                          {
-                                            key: "td-organized-status",
-                                            className: "sfm-split-cell",
-                                            style: { width: `${colWidths.organized_status || 105}px`, maxWidth: `${colWidths.organized_status || 105}px` },
-                                          },
-                                          React.createElement(
-                                            "div",
-                                            {
-                                              className: "sfm-subcell sfm-subcell-top d-flex justify-content-center align-items-center",
-                                              onClick: (e) => e.stopPropagation(),
-                                              title: orgError || (item.scene.organized ? "Organized" : "Unorganized"),
-                                            },
-                                            React.createElement("input", {
-                                              type: "checkbox",
-                                              className: "sfm-organized-checkbox",
-                                              checked: Boolean(item.scene.organized),
-                                              disabled: isOrganizedSaving,
-                                              onChange: (e) => handleToggleRowOrganized(item.scene, e),
-                                              onClick: (e) => e.stopPropagation(),
-                                              "aria-label": `Organized for ${displayTitle}`,
-                                            }),
-                                            orgError &&
-                                              React.createElement(
-                                                "span",
-                                                { className: "text-danger ml-1", style: { fontSize: "0.66rem" } },
-                                                "Err"
-                                              )
-                                          ),
-                                          React.createElement(
-                                            "div",
-                                            {
-                                              className: "sfm-subcell sfm-subcell-bottom d-flex justify-content-center align-items-center",
-                                              title: sState.error || sState.status,
-                                            },
-                                            sState.status === "applying"
-                                              ? React.createElement("span", { className: "badge badge-info py-0 px-1" }, "Applying...")
-                                              : sState.status === "done"
-                                              ? React.createElement("span", { className: "badge badge-success py-0 px-1" }, "✓ Applied")
-                                              : sState.status === "skipped"
-                                              ? React.createElement("span", { className: "badge badge-warning py-0 px-1" }, "Skipped")
-                                              : sState.status === "scraping"
-                                              ? React.createElement("span", { className: "badge badge-info py-0 px-1" }, "Scraping...")
-                                              : cloud
-                                              ? React.createElement(
-                                                  "span",
-                                                  { className: "badge badge-success font-weight-bold py-0 px-1" },
-                                                  "Matched"
-                                                )
-                                              : item.matched
-                                              ? React.createElement("span", { className: "badge badge-success py-0 px-1" }, "Matched")
-                                              : sState.status === "nomatch"
-                                              ? React.createElement("span", { className: "badge badge-warning py-0 px-1" }, "No Result")
-                                              : sState.status === "error"
-                                              ? React.createElement(
-                                                  "span",
-                                                  { className: "badge badge-danger py-0 px-1", title: sState.error || "Error" },
-                                                  "Error"
-                                                )
-                                              : React.createElement("span", { className: "badge badge-secondary py-0 px-1" }, "Idle")
-                                          )
-                                        ),
-                                        renderActionsCell(item, sId, sState, cloud, isExpanded, isInlineSearchOpen, isInlineEditOpen),
-                                      ]
-                                    : [
-                                        React.createElement(
-                                          "td",
-                                          { key: "td-cb", style: { textAlign: "center" } },
+                                  React.createElement(
+                                    "td",
+                                    { key: "td-cb", style: { width: `${colWidths.checkbox || 34}px`, textAlign: "center" } },
                                           React.createElement("input", {
                                             type: "checkbox",
                                             checked: isSelected,
@@ -5227,9 +4686,8 @@
                                               )
                                             : React.createElement("span", { className: "badge badge-secondary" }, "Idle")
                                         ),
-                                        renderActionsCell(item, sId, sState, cloud, isExpanded, isInlineSearchOpen, isInlineEditOpen),
-                                      ])
-                                  ),
+                                        renderActionsCell(item, sId, sState, cloud, isExpanded, isInlineSearchOpen, isInlineEditOpen)
+                                      ),
                                 // Inline Row Metadata Editor (R2)
                                 isInlineEditOpen &&
                                   React.createElement(
@@ -5237,7 +4695,7 @@
                                     { key: `edit-${sId}`, className: "bg-black sfm-inline-edit-row" },
                                     React.createElement(
                                       "td",
-                                      { colSpan: is2Tier ? 7 : 12, className: "p-2 px-3" },
+                                      { colSpan: 12, className: "p-2 px-3" },
                                       React.createElement(
                                         "div",
                                         {
@@ -5474,7 +4932,7 @@
                                     { key: `scraped-card-${sId}`, className: "bg-black" },
                                     React.createElement(
                                       "td",
-                                      { colSpan: is2Tier ? 7 : 12, className: "p-0 border-0" },
+                                      { colSpan: 12, className: "p-0 border-0" },
                                       React.createElement(
                                         "div",
                                         {
@@ -5733,7 +5191,7 @@
                                     { key: `search-${sId}`, className: "bg-black" },
                                     React.createElement(
                                       "td",
-                                      { colSpan: is2Tier ? 7 : 12, className: "p-2 px-3" },
+                                      { colSpan: 12, className: "p-2 px-3" },
                                       React.createElement(
                                         "div",
                                         { className: "sfm-inline-search-card" },

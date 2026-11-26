@@ -739,26 +739,15 @@ function getTests() {
     });
   });
 
-  add("T2-F24-04", "F24", "Switching between Standard 1-Tier and Compact 2-Tier dynamically updates columns", async () => {
+  add("T2-F24-04", "F24", "Scrape table layout strictly maintains single-line 12 columns and purges legacy 2-tier template", async () => {
     await withEnv(async (env) => {
+      // Simulate legacy localStorage setting
+      env.window.localStorage.setItem("sfm_scrape_layout_template", "compact_2tier");
       const modal = await openMetadataStudioGlobal(env, env.db.scenes.slice(0, 2), "Season 1");
-      assert.strictEqual(modal.findBySelector(".sfm-parser-table thead tr th").length, 12, "Defaults to 12 columns");
-      
-      // Open modal and switch to Compact 2-Tier
-      await modal.click(modal.findBySelector(".sfm-layout-template-btn")[0]);
-      const cards = modal.findBySelector(".sfm-template-card");
-      assert(cards.length >= 2, "Template cards must exist");
-      await modal.click(cards[0]); // Compact 2-Tier
-      await modal.click(modal.findBySelector(".sfm-layout-modal-done")[0]);
-
-      // Table now has 7 columns
-      assert.strictEqual(modal.findBySelector(".sfm-parser-table thead tr th").length, 7, "Compact 2-Tier has 7 columns");
-
-      // Switch back to Standard 1-Tier
-      await modal.click(modal.findBySelector(".sfm-layout-template-btn")[0]);
-      await modal.click(modal.findBySelector(".sfm-template-card")[1]); // Standard 1-Tier
-      await modal.click(modal.findBySelector(".sfm-layout-modal-done")[0]);
-      assert.strictEqual(modal.findBySelector(".sfm-parser-table thead tr th").length, 12, "Standard 1-Tier restores 12 columns");
+      // Must maintain 12 columns (never 7 split columns)
+      assert.strictEqual(modal.findBySelector(".sfm-parser-table thead tr th").length, 12, "Must always render 12 columns");
+      // Must have purged legacy key
+      assert.strictEqual(env.window.localStorage.getItem("sfm_scrape_layout_template"), null, "Legacy 2-tier key must be purged");
     });
   });
 

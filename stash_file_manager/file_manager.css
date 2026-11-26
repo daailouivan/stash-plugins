@@ -1024,12 +1024,14 @@
 .sfm-parser-table-wrap {
   border: 1px solid var(--sfm-border-strong);
   border-radius: var(--sfm-radius-md);
-  overflow: auto;
-  max-height: 460px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  max-height: 480px;
 }
 
 .sfm-parser-table {
   width: 100%;
+  table-layout: fixed;
   font-size: 0.78rem;
   margin-bottom: 0;
   border-collapse: collapse;
@@ -1041,11 +1043,13 @@
   position: sticky;
   top: 0;
   z-index: 2;
-  padding: 0.35rem 0.3rem;
+  padding: 0.35rem 0.25rem;
   border-bottom: 2px solid var(--sfm-border-strong);
   font-weight: 600;
   text-align: center;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .sfm-parser-table th.sfm-sortable-th {
@@ -1058,13 +1062,16 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 100%;
 }
 
 .sfm-parser-table td {
-  padding: 0.3rem 0.35rem;
+  padding: 0.3rem 0.25rem;
   border-bottom: 1px solid #2a303c;
   color: var(--sfm-text-color);
   vertical-align: middle;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .sfm-parser-table tr:hover td {
