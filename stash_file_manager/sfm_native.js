@@ -29,6 +29,7 @@
       buildRouteUrlForPath,
       parseQueryState,
       navigateToPluginRoute,
+      closeStashNavigationMenus,
       SafeErrorBoundary,
       icons,
     } = SFM;
@@ -67,6 +68,12 @@
     }
 
     function FileManagerRouteWrapper(routeProps) {
+      useEffect(() => {
+        if (typeof closeStashNavigationMenus === "function") {
+          closeStashNavigationMenus();
+        }
+      }, []);
+
       const FMView = SFM.FileManagerView || window.__SFM__?.FileManagerView || FileManagerView;
       if (!FMView) {
         return React.createElement(
@@ -642,6 +649,11 @@
               title: "File Manager (Browse by Directory)",
               "aria-label": "File Manager",
               className: baseLinkClass,
+              onClick: function () {
+                if (typeof closeStashNavigationMenus === "function") {
+                  closeStashNavigationMenus();
+                }
+              },
             },
             navIcon,
             React.createElement("span", null, "Files")
@@ -657,6 +669,9 @@
               onClick: function (evt) {
                 if (evt && typeof evt.preventDefault === "function") evt.preventDefault();
                 navigateToPluginRoute("/plugin/file-manager");
+                if (typeof closeStashNavigationMenus === "function") {
+                  closeStashNavigationMenus();
+                }
               },
             },
             navIcon,
@@ -820,6 +835,9 @@
         if (evt && typeof evt.preventDefault === "function") evt.preventDefault();
         navigateToPluginRoute("/plugin/file-manager");
         syncMainBarButtonActiveState();
+        if (typeof closeStashNavigationMenus === "function") {
+          closeStashNavigationMenus();
+        }
       });
 
       const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");

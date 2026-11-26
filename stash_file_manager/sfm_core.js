@@ -1026,6 +1026,28 @@
       );
     }
 
+    function IconTrash({ size = 14, color = "currentColor", className = "", style = {} }) {
+      return React.createElement(
+        "svg",
+        {
+          width: size,
+          height: size,
+          viewBox: "0 0 24 24",
+          fill: "none",
+          stroke: color,
+          strokeWidth: "2",
+          strokeLinecap: "round",
+          strokeLinejoin: "round",
+          className: className || undefined,
+          style: { display: "inline-block", verticalAlign: "-2px", ...style },
+        },
+        React.createElement("polyline", { points: "3 6 5 6 21 6" }),
+        React.createElement("path", { d: "M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" }),
+        React.createElement("line", { x1: "10", y1: "11", x2: "10", y2: "17" }),
+        React.createElement("line", { x1: "14", y1: "11", x2: "14", y2: "17" })
+      );
+    }
+
     // Helper: Resolve common base library prefix across scenes and settings (Smart Common Root)
     function resolveLibraryRoot(scenes, configuredRoot = "", stashPaths = []) {
       // 1. Manual root override from plugin settings
@@ -1752,6 +1774,51 @@
       return cur + 1;
     }
 
+    function closeStashNavigationMenus() {
+      if (typeof document === "undefined") return;
+      try {
+        // 1. Close expanded navbar toggler (mobile/responsive navbar collapse)
+        const togglers = document.querySelectorAll(
+          "button.navbar-toggler[aria-expanded='true'], .navbar-toggler:not(.collapsed)"
+        );
+        togglers.forEach((btn) => {
+          try {
+            btn.click();
+          } catch (e) {}
+        });
+
+        // 2. Close open Bootstrap / Stash dropdown menus
+        const openDropdowns = document.querySelectorAll(
+          ".dropdown.show, .dropdown-menu.show, .nav-item.dropdown.show"
+        );
+        openDropdowns.forEach((el) => {
+          try {
+            el.classList.remove("show");
+            const toggleBtn = el.querySelector(
+              "[data-toggle='dropdown'], [data-bs-toggle='dropdown'], [aria-expanded='true']"
+            );
+            if (toggleBtn) {
+              toggleBtn.setAttribute("aria-expanded", "false");
+              toggleBtn.classList.remove("show");
+            }
+          } catch (e) {}
+        });
+
+        // 3. Fallback: Close open collapse containers
+        const openCollapses = document.querySelectorAll(".navbar-collapse.show, .collapse.show");
+        openCollapses.forEach((el) => {
+          try {
+            el.classList.remove("show");
+          } catch (e) {}
+        });
+
+        // 4. Trigger document click to dismiss any open popovers or outside-click listeners
+        if (typeof document.body?.click === "function") {
+          document.body.click();
+        }
+      } catch (err) {}
+    }
+
     function navigateToPluginRoute(url, replace = false) {
       const targetUrl = url && typeof url === "string" ? url : "/plugin/file-manager";
       const nextState = { sfmDepth: getNextSfmDepth() };
@@ -1762,6 +1829,7 @@
           window.history.pushState(nextState, "", targetUrl);
         }
       }
+      closeStashNavigationMenus();
       if (typeof window.dispatchEvent === "function") {
         let evt = null;
         if (typeof PopStateEvent === "function") {
@@ -2182,6 +2250,7 @@
         IconPlus,
         IconCheckSquare,
         IconSquare,
+        IconTrash,
       },
 
       resolveLibraryRoot,
@@ -2195,6 +2264,7 @@
       buildRouteUrlForPath,
       parseQueryState,
       navigateToPluginRoute,
+      closeStashNavigationMenus,
       buildHashForPath,
       parseHashState,
       getPathFromHash,

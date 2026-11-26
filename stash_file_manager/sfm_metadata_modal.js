@@ -40,6 +40,7 @@
       IconAlert,
       IconRefresh,
       IconColumns,
+      IconTrash,
     } = icons;
 
     function renderIcon(IconComp, props, fallbackText = "") {
@@ -69,18 +70,18 @@
     };
 
     const DEFAULT_SCRAPE_WIDTHS_1TIER = {
-      checkbox: 36,
-      cover: 56,
-      filename: 140,
-      title: 190,
-      date: 92,
-      studio: 115,
-      code: 96,
-      performers: 120,
-      organized: 86,
-      source: 96,
-      status: 84,
-      actions: 140,
+      checkbox: 34,
+      cover: 48,
+      filename: 120,
+      title: 150,
+      date: 80,
+      studio: 95,
+      code: 70,
+      performers: 105,
+      organized: 60,
+      source: 75,
+      status: 70,
+      actions: 130,
     };
 
     const PRESETS = [
@@ -138,15 +139,15 @@
     ];
 
     const TABLE_SORTABLE_COLUMNS = [
-      { key: "filename", label: "Filename", style: { maxWidth: "140px" } },
-      { key: "title", label: "Title", style: { maxWidth: "190px" } },
-      { key: "date", label: "Date", style: { width: "92px" } },
-      { key: "studio", label: "Studio", style: { maxWidth: "115px" } },
-      { key: "code", label: "Code", style: { width: "96px" } },
-      { key: "performers", label: "Performers", style: { maxWidth: "120px" } },
-      { key: "organized", label: "Organized", style: { width: "86px", textAlign: "center" } },
-      { key: "source", label: "Source", style: { width: "96px", textAlign: "center" } },
-      { key: "status", label: "Status", style: { width: "84px", textAlign: "center" } },
+      { key: "filename", label: "Filename", style: { width: "120px", maxWidth: "120px", textAlign: "center" } },
+      { key: "title", label: "Title", style: { width: "150px", maxWidth: "150px", textAlign: "center" } },
+      { key: "date", label: "Date", style: { width: "80px", maxWidth: "80px", textAlign: "center" } },
+      { key: "studio", label: "Studio", style: { width: "95px", maxWidth: "95px", textAlign: "center" } },
+      { key: "code", label: "Code", style: { width: "70px", maxWidth: "70px", textAlign: "center" } },
+      { key: "performers", label: "Performers", style: { width: "105px", maxWidth: "105px", textAlign: "center" } },
+      { key: "organized", label: "Organized", style: { width: "60px", maxWidth: "60px", textAlign: "center" } },
+      { key: "source", label: "Source", style: { width: "75px", maxWidth: "75px", textAlign: "center" } },
+      { key: "status", label: "Status", style: { width: "70px", maxWidth: "70px", textAlign: "center" } },
     ];
 
     function normalizeInitialScenes(directScenes, scenes) {
@@ -366,13 +367,17 @@
         cover: true,
       });
 
-      // Scrape Table Layout & Width Customization (2-tier split cell & 1-tier standard)
+      // Scrape Table Layout & Width Customization (1-tier standard single-line & 2-tier compact)
       const [layoutTemplate, setLayoutTemplate] = useState(() => {
-        return (
-          (typeof window !== "undefined" && window.localStorage
-            ? window.localStorage.getItem("sfm_scrape_layout_template")
-            : null) || SCRAPE_LAYOUT_TEMPLATES.COMPACT_2TIER
-        );
+        try {
+          if (typeof window !== "undefined" && window.localStorage) {
+            const saved = window.localStorage.getItem("sfm_scrape_layout_template");
+            if (saved === SCRAPE_LAYOUT_TEMPLATES.COMPACT_2TIER || saved === SCRAPE_LAYOUT_TEMPLATES.STANDARD_1TIER) {
+              return saved;
+            }
+          }
+        } catch (e) {}
+        return SCRAPE_LAYOUT_TEMPLATES.STANDARD_1TIER;
       });
       const [colWidths, setColWidths] = useState(() => {
         try {
@@ -382,7 +387,7 @@
               : null;
           if (saved) return JSON.parse(saved);
         } catch (e) {}
-        return { ...DEFAULT_SCRAPE_WIDTHS_2TIER };
+        return { ...DEFAULT_SCRAPE_WIDTHS_1TIER };
       });
       const [showLayoutModal, setShowLayoutModal] = useState(false);
 
@@ -1569,6 +1574,92 @@
         }
       };
 
+      // Clear All Fields for Scene (Reset to blank for correcting mistaken scrapes)
+      const handleClearSceneMetadata = async (scene, skipConfirm = false) => {
+        const sId = String(scene.id);
+        const sceneName = scene.title || scene.files?.[0]?.basename || sId;
+        if (!skipConfirm && typeof window !== "undefined" && typeof window.confirm === "function") {
+          const ok = window.confirm(`Clear all metadata (title, details, studio, performers, tags, code) for "${sceneName}"?`);
+          if (!ok) return;
+        }
+        setScrapeStates((prev) => ({
+          ...prev,
+          [sId]: { status: "applying", sourceName: "Clearing..." },
+        }));
+        try {
+          await gqlFetch(
+            `mutation ClearSceneMetadata($input: SceneUpdateInput!) {
+              sceneUpdate(input: $input) {
+                id
+                title
+                details
+                date
+                code
+                director
+                organized
+                studio { id name }
+                performers { id name }
+                tags { id name }
+              }
+            }`,
+            {
+              input: {
+                id: sId,
+                title: "",
+                details: "",
+                date: "",
+                code: "",
+                director: "",
+                studio_id: null,
+                performer_ids: [],
+                tag_ids: [],
+                organized: false,
+              },
+            }
+          );
+          const clearedScene = {
+            ...scene,
+            title: "",
+            details: "",
+            date: "",
+            code: "",
+            director: "",
+            studio: null,
+            performers: [],
+            tags: [],
+            organized: false,
+          };
+          applyLocalScenePatch(clearedScene);
+          setCloudMatches((prev) => {
+            const next = { ...prev };
+            delete next[sId];
+            return next;
+          });
+          setScrapeStates((prev) => ({
+            ...prev,
+            [sId]: { status: "idle", sourceName: "" },
+          }));
+        } catch (err) {
+          console.error("[SFM] Failed to clear scene metadata:", err);
+          setScrapeStates((prev) => ({
+            ...prev,
+            [sId]: { status: "idle", sourceName: "Error" },
+          }));
+        }
+      };
+
+      const handleClearSelectedScenes = async () => {
+        if (selectedSceneIds.size === 0) return;
+        if (typeof window !== "undefined" && typeof window.confirm === "function") {
+          const ok = window.confirm(`Clear all metadata for ${selectedSceneIds.size} selected scene(s)?`);
+          if (!ok) return;
+        }
+        const targets = localScenes.filter((s) => selectedSceneIds.has(String(s.id)));
+        for (const sc of targets) {
+          await handleClearSceneMetadata(sc, true);
+        }
+      };
+
       // Inline Row Editor Handlers (R2)
       const handleOpenInlineEdit = (scene) => {
         const sId = String(scene.id);
@@ -2564,38 +2655,59 @@
             // Quick text search across attributes
             React.createElement(
               "div",
-              { className: "d-flex align-items-center gap-2 flex-grow-1", style: { minWidth: "220px", maxWidth: "380px" } },
+              { className: "d-flex align-items-center gap-2 flex-grow-1", style: { minWidth: "200px", maxWidth: "340px" } },
               renderIcon(IconSearch, { size: 12, className: "text-info" }),
               React.createElement("input", {
                 type: "text",
                 className: "form-control form-control-sm bg-black text-light border-secondary sfm-studio-search-input",
-                style: { height: "27px", fontSize: "0.8rem" },
+                style: { height: "28px", fontSize: "0.78rem" },
                 placeholder: "Filter items by name, code, metadata...",
                 value: attrSearchQuery,
                 onChange: (e) => setAttrSearchQuery(e.target.value),
               })
             ),
-            // Organized filter group: All / Organized / Unorganized
             React.createElement(
               "div",
-              { className: "d-flex align-items-center gap-2 flex-wrap" },
-              React.createElement("span", { className: "small text-muted font-weight-bold" }, "Organized:"),
-              React.createElement(
-                "select",
-                {
-                  className: "sfm-sort-select sfm-filter-organized-select form-control form-control-sm bg-black text-light border-secondary mr-1",
-                  style: { width: "auto", height: "27px", fontSize: "0.8rem", padding: "0 6px" },
-                  value: organizedFilter,
-                  onChange: (e) => setOrganizedFilter(e.target.value),
-                  title: "Filter by organized status",
-                },
-                React.createElement("option", { value: "all" }, "All"),
-                React.createElement("option", { value: "organized" }, "Organized"),
-                React.createElement("option", { value: "unorganized" }, "Unorganized")
-              ),
+              { className: "d-flex align-items-center gap-3 flex-wrap" },
+              // Match status filter pills (when table is shown)
+              showMatchFilter &&
+                React.createElement(
+                  "div",
+                  { className: "d-flex align-items-center gap-1 sfm-match-filter-group" },
+                  React.createElement("span", { className: "sfm-filter-label mr-1" }, "Status:"),
+                  React.createElement(
+                    "button",
+                    {
+                      type: "button",
+                      className: `sfm-pill-btn ${previewFilter === "all" ? "active-secondary" : ""}`,
+                      onClick: () => setPreviewFilter("all"),
+                    },
+                    `All (${attributeFilteredItems.length})`
+                  ),
+                  React.createElement(
+                    "button",
+                    {
+                      type: "button",
+                      className: `sfm-pill-btn ${previewFilter === "matched" ? "active-success" : ""}`,
+                      onClick: () => setPreviewFilter("matched"),
+                    },
+                    `Matched (${matchedCount})`
+                  ),
+                  React.createElement(
+                    "button",
+                    {
+                      type: "button",
+                      className: `sfm-pill-btn ${previewFilter === "unmatched" ? "active-warning" : ""}`,
+                      onClick: () => setPreviewFilter("unmatched"),
+                    },
+                    `Unmatched (${unmatchedCount})`
+                  )
+                ),
+              // Organized filter pills
               React.createElement(
                 "div",
-                { className: "btn-group btn-group-sm sfm-organized-filter-group" },
+                { className: "d-flex align-items-center gap-1 sfm-organized-filter-group" },
+                React.createElement("span", { className: "sfm-filter-label mr-1" }, "Organized:"),
                 [
                   { id: "all", label: "All" },
                   { id: "organized", label: "Organized" },
@@ -2606,55 +2718,33 @@
                     {
                       key: opt.id,
                       type: "button",
-                      className: `btn btn-sm ${
-                        organizedFilter === opt.id ? "btn-info font-weight-bold" : "btn-outline-secondary"
-                      } py-0 px-2`,
+                      className: `sfm-pill-btn ${
+                        organizedFilter === opt.id
+                          ? opt.id === "organized"
+                            ? "active-primary"
+                            : "active-secondary"
+                          : ""
+                      }`,
                       onClick: () => setOrganizedFilter(opt.id),
                     },
                     opt.label
                   )
-                )
-              )
-            ),
-            // Match status filter (when table is shown)
-            showMatchFilter &&
-              React.createElement(
-                "div",
-                { className: "btn-group btn-group-sm sfm-match-filter-group" },
-                React.createElement(
-                  "button",
-                  {
-                    type: "button",
-                    className: `btn btn-sm ${
-                      previewFilter === "all" ? "btn-secondary font-weight-bold" : "btn-outline-secondary"
-                    } py-0 px-2`,
-                    onClick: () => setPreviewFilter("all"),
-                  },
-                  `All (${attributeFilteredItems.length})`
                 ),
                 React.createElement(
-                  "button",
+                  "select",
                   {
-                    type: "button",
-                    className: `btn btn-sm ${
-                      previewFilter === "matched" ? "btn-success font-weight-bold" : "btn-outline-secondary"
-                    } py-0 px-2`,
-                    onClick: () => setPreviewFilter("matched"),
+                    className: "sfm-filter-organized form-select form-select-sm d-none",
+                    "aria-hidden": "true",
+                    tabIndex: -1,
+                    value: organizedFilter,
+                    onChange: (e) => setOrganizedFilter(e.target.value),
                   },
-                  `Matched (${matchedCount})`
-                ),
-                React.createElement(
-                  "button",
-                  {
-                    type: "button",
-                    className: `btn btn-sm ${
-                      previewFilter === "unmatched" ? "btn-warning font-weight-bold" : "btn-outline-secondary"
-                    } py-0 px-2`,
-                    onClick: () => setPreviewFilter("unmatched"),
-                  },
-                  `Unmatched (${unmatchedCount})`
+                  React.createElement("option", { value: "all" }, "All"),
+                  React.createElement("option", { value: "organized" }, "Organized"),
+                  React.createElement("option", { value: "unorganized" }, "Unorganized")
                 )
               )
+            )
           ),
           // Second row: Missing Fields multi-pill filter + Clear + Counts
           React.createElement(
@@ -2663,7 +2753,7 @@
             React.createElement(
               "div",
               { className: "d-flex align-items-center flex-wrap gap-1 sfm-missing-fields-bar" },
-              React.createElement("span", { className: "small text-muted font-weight-bold mr-1" }, "Missing Fields:"),
+              React.createElement("span", { className: "sfm-filter-label mr-1" }, "Missing Fields:"),
               MISSING_FIELD_OPTIONS.map((mf) => {
                 const isActive = missingFields.includes(mf.key);
                 return React.createElement(
@@ -2671,10 +2761,8 @@
                   {
                     key: mf.key,
                     type: "button",
-                    className: `btn btn-xs ${
-                      isActive ? "btn-warning font-weight-bold" : "btn-outline-secondary"
-                    } py-0 px-2 mr-1`,
-                    style: { fontSize: "0.74rem", borderRadius: "12px" },
+                    className: `sfm-pill-btn ${isActive ? "active-warning" : ""}`,
+                    style: { fontSize: "0.72rem", padding: "0.12rem 0.5rem" },
                     onClick: () => handleToggleMissingField(mf.key),
                     title: `Filter scenes missing ${mf.label}`,
                   },
@@ -2686,8 +2774,8 @@
                   "button",
                   {
                     type: "button",
-                    className: "btn btn-xs btn-outline-info py-0 px-2 ml-1",
-                    style: { fontSize: "0.72rem" },
+                    className: "sfm-pill-btn text-info ml-1",
+                    style: { borderColor: "rgba(0, 189, 196, 0.4)", fontSize: "0.7rem", padding: "0.12rem 0.45rem" },
                     onClick: () => setMissingMode((m) => (m === "any" ? "all" : "any")),
                     title: "Toggle whether scenes must be missing ANY or ALL selected fields",
                   },
@@ -2698,8 +2786,8 @@
                   "button",
                   {
                     type: "button",
-                    className: "btn btn-xs btn-outline-danger py-0 px-2 ml-1",
-                    style: { fontSize: "0.72rem" },
+                    className: "sfm-pill-btn sfm-action-btn-clear ml-1",
+                    style: { fontSize: "0.7rem", padding: "0.12rem 0.45rem" },
                     onClick: handleResetFilters,
                   },
                   "Clear Filters"
@@ -2713,8 +2801,8 @@
                   "button",
                   {
                     type: "button",
-                    className: "btn btn-xs btn-outline-secondary py-0 px-2",
-                    style: { fontSize: "0.72rem" },
+                    className: "sfm-pill-btn",
+                    style: { fontSize: "0.7rem", padding: "0.12rem 0.45rem" },
                     onClick: () => setTableSortKey(null),
                     title: "Reset column sort order",
                   },
@@ -2722,7 +2810,7 @@
                 ),
               React.createElement(
                 "span",
-                { className: "small text-muted" },
+                { className: "small text-muted font-weight-500", style: { fontSize: "0.74rem" } },
                 `Showing ${filteredItems.length} of ${localScenes.length}`
               )
             )
@@ -2741,12 +2829,12 @@
           {
             key: "td-actions",
             className: is2Tier ? "sfm-full-cell" : undefined,
-            style: { width: `${colWidths.actions || 140}px`, textAlign: "center" },
+            style: { width: `${colWidths.actions || 130}px`, textAlign: "center" },
             onClick: (e) => e.stopPropagation(),
           },
           React.createElement(
             "div",
-            { className: "d-inline-flex gap-1 align-items-center" },
+            { className: "d-inline-flex gap-1 align-items-center justify-content-center" },
             cloud &&
               React.createElement(
                 "button",
@@ -2799,6 +2887,17 @@
               renderIcon(IconEdit, { size: 10, className: "mr-1" }),
               "Edit"
             ),
+            React.createElement(
+              "button",
+              {
+                type: "button",
+                className: "btn btn-xs sfm-action-btn-clear py-0 px-2 mr-1 sfm-row-clear-btn sfm-btn-clear-scene",
+                onClick: () => handleClearSceneMetadata(item.scene),
+                title: "Clear all metadata fields from this scene (reset to blank)",
+              },
+              renderIcon(IconTrash, { size: 10, className: "mr-1" }),
+              "Clear"
+            ),
             cloud &&
               React.createElement(
                 "button",
@@ -2831,18 +2930,18 @@
         ];
 
         const widthFields1Tier = [
-          { key: "checkbox", label: "Checkbox", min: 28, max: 80 },
-          { key: "cover", label: "Cover", min: 40, max: 120 },
+          { key: "checkbox", label: "Checkbox", min: 24, max: 80 },
+          { key: "cover", label: "Cover", min: 36, max: 120 },
           { key: "filename", label: "Filename", min: 80, max: 350 },
-          { key: "title", label: "Title", min: 100, max: 450 },
-          { key: "date", label: "Date", min: 70, max: 180 },
-          { key: "studio", label: "Studio", min: 80, max: 300 },
-          { key: "code", label: "Code", min: 70, max: 200 },
-          { key: "performers", label: "Performers", min: 80, max: 350 },
-          { key: "organized", label: "Organized", min: 60, max: 150 },
-          { key: "source", label: "Source", min: 70, max: 180 },
-          { key: "status", label: "Status", min: 70, max: 180 },
-          { key: "actions", label: "Actions", min: 100, max: 300 },
+          { key: "title", label: "Title", min: 90, max: 450 },
+          { key: "date", label: "Date", min: 60, max: 180 },
+          { key: "studio", label: "Studio", min: 70, max: 300 },
+          { key: "code", label: "Code", min: 50, max: 200 },
+          { key: "performers", label: "Performers", min: 70, max: 350 },
+          { key: "organized", label: "Organized", min: 45, max: 150 },
+          { key: "source", label: "Source", min: 50, max: 180 },
+          { key: "status", label: "Status", min: 50, max: 180 },
+          { key: "actions", label: "Actions", min: 90, max: 300 },
         ];
 
         const activeFields = is2Tier ? widthFields2Tier : widthFields1Tier;
@@ -4336,23 +4435,24 @@
                     ),
                     React.createElement(
                       "div",
-                      { className: "d-flex align-items-center gap-2" },
+                      { className: "d-flex align-items-center gap-2 flex-wrap" },
                       React.createElement(
                         "button",
                         {
                           type: "button",
-                          className: "btn btn-xs btn-outline-secondary py-0 px-2 sfm-layout-template-btn",
+                          className: "btn btn-xs btn-outline-secondary py-1 px-2 text-light sfm-layout-template-btn",
+                          style: { borderColor: "#475569", background: "rgba(255, 255, 255, 0.05)" },
                           onClick: () => setShowLayoutModal(true),
                           title: "Switch layout templates & customize column widths",
                         },
-                        renderIcon(IconColumns, { size: 11, className: "mr-1" }),
+                        renderIcon(IconColumns, { size: 11, className: "mr-1 text-info" }),
                         "Layout & Widths"
                       ),
                       React.createElement(
                         "button",
                         {
                           type: "button",
-                          className: "btn btn-xs btn-outline-info py-0 px-2",
+                          className: "btn btn-xs btn-outline-info py-1 px-2",
                           onClick: handleSelectAllMatched,
                         },
                         matchedCount > 0 &&
@@ -4362,10 +4462,25 @@
                           ? "Deselect All Matched"
                           : "Select All Matched"
                       ),
+                      selectedSceneIds.size > 0 &&
+                        React.createElement(
+                          "button",
+                          {
+                            type: "button",
+                            className: "btn btn-xs sfm-action-btn-clear py-1 px-2 sfm-btn-batch-clear",
+                            onClick: handleClearSelectedScenes,
+                            title: `Clear all metadata fields from ${selectedSceneIds.size} selected scene(s)`,
+                          },
+                          renderIcon(IconTrash, { size: 11, className: "mr-1" }),
+                          `Clear Fields (${selectedSceneIds.size})`
+                        ),
                       React.createElement(
                         "span",
-                        { className: "badge badge-info" },
-                        `${selectedSceneIds.size} of ${localScenes.length} scenes selected for update`
+                        {
+                          className: "badge badge-info py-1 px-2 font-weight-bold",
+                          style: { background: "var(--sfm-accent, #00bdc4)", color: "#0f172a", fontSize: "0.74rem" },
+                        },
+                        `${selectedSceneIds.size} of ${localScenes.length} scenes selected`
                       )
                     ),
                     // Unified Live Preview Table
@@ -4616,7 +4731,7 @@
                             : [
                                 React.createElement(
                                   "th",
-                                  { key: "th-cb", style: { width: `${colWidths.checkbox || 36}px`, textAlign: "center" } },
+                                  { key: "th-cb", style: { width: `${colWidths.checkbox || 34}px`, textAlign: "center" } },
                                   React.createElement("input", {
                                     type: "checkbox",
                                     checked: allFilteredSelected,
@@ -4637,7 +4752,7 @@
                                     },
                                   })
                                 ),
-                                React.createElement("th", { key: "th-cover", style: { width: `${colWidths.cover || 56}px`, textAlign: "center" } }, "Cover"),
+                                React.createElement("th", { key: "th-cover", style: { width: `${colWidths.cover || 48}px`, textAlign: "center" } }, "Cover"),
                                 ...TABLE_SORTABLE_COLUMNS.map((col) => {
                                   const isActive = tableSortKey === col.key;
                                   const arrow = isActive ? (tableSortDir === "asc" ? " ▲" : " ▼") : "";
@@ -4651,7 +4766,14 @@
                                       "data-sort-dir": isActive ? tableSortDir : undefined,
                                       role: "button",
                                       tabIndex: 0,
-                                      style: { ...col.style, width: dynamicWidth || col.style.width, cursor: "pointer", userSelect: "none" },
+                                      style: {
+                                        ...col.style,
+                                        width: dynamicWidth || col.style.width,
+                                        maxWidth: dynamicWidth || col.style.maxWidth,
+                                        textAlign: "center",
+                                        cursor: "pointer",
+                                        userSelect: "none",
+                                      },
                                       title: `Sort by ${col.label}`,
                                       onClick: () => handleHeaderSort(col.key),
                                       onKeyDown: (e) => {
@@ -4661,13 +4783,17 @@
                                         }
                                       },
                                     },
-                                    col.label,
-                                    arrow && React.createElement("span", { className: "sfm-sort-indicator" }, arrow)
+                                    React.createElement(
+                                      "div",
+                                      { className: "d-flex align-items-center justify-content-center" },
+                                      col.label,
+                                      arrow && React.createElement("span", { className: "sfm-sort-indicator ml-1" }, arrow)
+                                    )
                                   );
                                 }),
                                 React.createElement(
                                   "th",
-                                  { key: "th-actions", style: { width: `${colWidths.actions || 140}px`, textAlign: "center" } },
+                                  { key: "th-actions", style: { width: `${colWidths.actions || 130}px`, textAlign: "center" } },
                                   "Actions"
                                 ),
                               ])
@@ -4960,7 +5086,7 @@
                                         ),
                                         React.createElement(
                                           "td",
-                                          { key: "td-filename", className: "text-truncate", style: { maxWidth: "140px" }, title: item.rawBasename },
+                                          { key: "td-filename", className: "text-truncate", style: { width: `${colWidths.filename || 120}px`, maxWidth: `${colWidths.filename || 120}px` }, title: item.rawBasename },
                                           item.rawBasename
                                         ),
                                         React.createElement(
@@ -4970,7 +5096,7 @@
                                             className: `text-truncate ${
                                               cloud ? "text-success font-weight-bold" : "text-info font-weight-bold"
                                             }`,
-                                            style: { maxWidth: "190px" },
+                                            style: { width: `${colWidths.title || 150}px`, maxWidth: `${colWidths.title || 150}px` },
                                             title: displayTitle,
                                           },
                                           cloud &&
@@ -4981,10 +5107,10 @@
                                             ),
                                           displayTitle
                                         ),
-                                        React.createElement("td", { key: "td-date", style: { whiteSpace: "nowrap" } }, displayDate),
+                                        React.createElement("td", { key: "td-date", style: { width: `${colWidths.date || 80}px`, maxWidth: `${colWidths.date || 80}px`, textAlign: "center", whiteSpace: "nowrap" } }, displayDate),
                                         React.createElement(
                                           "td",
-                                          { key: "td-studio", className: "text-truncate", style: { maxWidth: "115px" }, title: displayStudio },
+                                          { key: "td-studio", className: "text-truncate", style: { width: `${colWidths.studio || 95}px`, maxWidth: `${colWidths.studio || 95}px` }, title: displayStudio },
                                           displayStudio !== "—"
                                             ? React.createElement(
                                                 "span",
@@ -5012,7 +5138,7 @@
                                           {
                                             key: "td-code",
                                             className: "sfm-code-cell text-truncate",
-                                            style: { maxWidth: "110px", fontFamily: "monospace", fontSize: "0.78rem" },
+                                            style: { width: `${colWidths.code || 70}px`, maxWidth: `${colWidths.code || 70}px`, textAlign: "center", fontFamily: "monospace", fontSize: "0.76rem" },
                                             title: displayCode,
                                           },
                                           displayCode !== "—"
@@ -5025,7 +5151,7 @@
                                         ),
                                         React.createElement(
                                           "td",
-                                          { key: "td-performers", className: "text-truncate", style: { maxWidth: "120px" }, title: displayPerformers },
+                                          { key: "td-performers", className: "text-truncate", style: { width: `${colWidths.performers || 105}px`, maxWidth: `${colWidths.performers || 105}px` }, title: displayPerformers },
                                           displayPerformers
                                         ),
                                         // Organized Checkbox Column (R2)
@@ -5033,7 +5159,7 @@
                                           "td",
                                           {
                                             key: "td-organized",
-                                            style: { textAlign: "center" },
+                                            style: { width: `${colWidths.organized || 60}px`, maxWidth: `${colWidths.organized || 60}px`, textAlign: "center" },
                                             onClick: (e) => e.stopPropagation(),
                                             title: orgError || (item.scene.organized ? "Organized" : "Unorganized"),
                                           },
@@ -5055,7 +5181,7 @@
                                         ),
                                         React.createElement(
                                           "td",
-                                          { key: "td-source", style: { textAlign: "center" } },
+                                          { key: "td-source", style: { width: `${colWidths.source || 75}px`, maxWidth: `${colWidths.source || 75}px`, textAlign: "center" } },
                                           sState.sourceName
                                             ? React.createElement(
                                                 "span",
@@ -5074,7 +5200,7 @@
                                         ),
                                         React.createElement(
                                           "td",
-                                          { key: "td-status", style: { textAlign: "center" } },
+                                          { key: "td-status", style: { width: `${colWidths.status || 70}px`, maxWidth: `${colWidths.status || 70}px`, textAlign: "center" } },
                                           sState.status === "applying"
                                             ? React.createElement("span", { className: "badge badge-info" }, "Applying...")
                                             : sState.status === "done"

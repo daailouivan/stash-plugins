@@ -1030,7 +1030,7 @@
 
 .sfm-parser-table {
   width: 100%;
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   margin-bottom: 0;
   border-collapse: collapse;
 }
@@ -1041,15 +1041,27 @@
   position: sticky;
   top: 0;
   z-index: 2;
-  padding: 0.45rem 0.5rem;
+  padding: 0.35rem 0.3rem;
   border-bottom: 2px solid var(--sfm-border-strong);
   font-weight: 600;
-  text-align: left;
+  text-align: center;
   white-space: nowrap;
 }
 
+.sfm-parser-table th.sfm-sortable-th {
+  text-align: center;
+  cursor: pointer;
+  user-select: none;
+}
+
+.sfm-parser-table th.sfm-sortable-th > div {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .sfm-parser-table td {
-  padding: 0.4rem 0.5rem;
+  padding: 0.3rem 0.35rem;
   border-bottom: 1px solid #2a303c;
   color: var(--sfm-text-color);
   vertical-align: middle;
@@ -1057,6 +1069,78 @@
 
 .sfm-parser-table tr:hover td {
   background-color: rgba(136, 192, 208, 0.05);
+}
+
+/* Unified Metadata Studio Pill Buttons & Filter Controls */
+.sfm-pill-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.74rem;
+  font-weight: 500;
+  line-height: 1.3;
+  padding: 0.18rem 0.55rem;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  color: #94a3b8;
+  cursor: pointer;
+  transition: all 0.15s ease-in-out;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.sfm-pill-btn:hover {
+  background: rgba(255, 255, 255, 0.09);
+  color: #f1f5f9;
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+.sfm-pill-btn.active-primary {
+  background: var(--sfm-accent, #00bdc4) !important;
+  color: #0f172a !important;
+  border-color: var(--sfm-accent, #00bdc4) !important;
+  font-weight: 600;
+}
+
+.sfm-pill-btn.active-success {
+  background: #10b981 !important;
+  color: #ffffff !important;
+  border-color: #10b981 !important;
+  font-weight: 600;
+}
+
+.sfm-pill-btn.active-warning {
+  background: #f59e0b !important;
+  color: #ffffff !important;
+  border-color: #f59e0b !important;
+  font-weight: 600;
+}
+
+.sfm-pill-btn.active-secondary {
+  background: #475569 !important;
+  color: #ffffff !important;
+  border-color: #475569 !important;
+  font-weight: 600;
+}
+
+.sfm-filter-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #94a3b8;
+  letter-spacing: 0.02em;
+}
+
+.sfm-action-btn-clear {
+  color: #ef4444 !important;
+  border-color: rgba(239, 68, 68, 0.4) !important;
+  background: rgba(239, 68, 68, 0.05) !important;
+}
+
+.sfm-action-btn-clear:hover {
+  color: #ffffff !important;
+  background: #ef4444 !important;
+  border-color: #ef4444 !important;
 }
 
 .sfm-organized-toggle-cell {

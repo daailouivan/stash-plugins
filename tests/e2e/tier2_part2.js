@@ -699,30 +699,28 @@ function getTests() {
   });
 
   // ==========================================================
-  // F24: Scrape Menu 2-Tier Split Layout & Column Widths Customization
+  // F24: Scrape Menu Single-Line Layout, Centered Headers & Clear Fields
   // ==========================================================
-  add("T2-F24-01", "F24", "Scrape table defaults to Compact 2-Tier layout with 7 columns and split cells", async () => {
+  add("T2-F24-01", "F24", "Scrape table defaults to Standard Single-Line (1-Tier) layout with 12 centered columns", async () => {
     await withEnv(async (env) => {
       const modal = await openMetadataStudioGlobal(env, env.db.scenes.slice(0, 3), "Season 1");
       const ths = modal.findBySelector(".sfm-parser-table thead tr th");
-      assert.strictEqual(ths.length, 7, "2-Tier layout must have exactly 7 top-level columns");
-      const splitCells = modal.findBySelector(".sfm-parser-table .sfm-split-cell");
-      assert(splitCells.length >= 12, "Must contain split cells for metadata columns");
+      assert.strictEqual(ths.length, 12, "Single-line layout must have exactly 12 columns");
+      // Verify column header texts are centered
+      const nonCheckboxThs = ths.slice(1);
+      assert(nonCheckboxThs.every((th) => th.props?.style?.textAlign === "center"), "All column header titles must be centered");
     });
   });
 
-  add("T2-F24-02", "F24", "Split cells display top and bottom subcells with proper metadata pairings", async () => {
+  add("T2-F24-02", "F24", "Single-line data rows render clean metadata cells and Clear button", async () => {
     await withEnv(async (env) => {
       const modal = await openMetadataStudioGlobal(env, [env.db.scenes[0]], "Season 1");
-      const row = modal.findBySelector(".sfm-parser-table tbody tr")[0];
+      const rows = getTableBodyRows(modal, ".sfm-parser-table tbody tr");
+      const row = rows[0];
       assert(row);
-      const subcellTops = modal.findBySelector(".sfm-subcell-top", row);
-      const subcellBottoms = modal.findBySelector(".sfm-subcell-bottom", row);
-      assert.strictEqual(subcellTops.length, 4, "Must have 4 top subcells (Title, Studio, Date, Organized)");
-      assert.strictEqual(subcellBottoms.length, 4, "Must have 4 bottom subcells (Filename, Performers, Code, Status)");
-      assert(modal.nodeText(subcellTops[0]).includes("Alpha Sunrise"), "Top cell 0 must have Title");
-      assert(modal.nodeText(subcellBottoms[0]).includes("StudioAlpha_ALP-001_Alpha_Sunrise.mp4"), "Bottom cell 0 must have Filename");
-      assert(modal.nodeText(subcellBottoms[2]).includes("ALP-001"), "Bottom cell 2 must have Code");
+      assert.strictEqual(row.cells.length, 12, "Row must have 12 cells in single-line mode");
+      const clearBtn = modal.findBySelector(".sfm-btn-clear-scene", row.node)[0];
+      assert(clearBtn, "Clear button must exist on data row");
     });
   });
 
@@ -741,26 +739,26 @@ function getTests() {
     });
   });
 
-  add("T2-F24-04", "F24", "Switching between Compact 2-Tier and Standard 1-Tier dynamically updates columns", async () => {
+  add("T2-F24-04", "F24", "Switching between Standard 1-Tier and Compact 2-Tier dynamically updates columns", async () => {
     await withEnv(async (env) => {
       const modal = await openMetadataStudioGlobal(env, env.db.scenes.slice(0, 2), "Season 1");
-      assert.strictEqual(modal.findBySelector(".sfm-parser-table thead tr th").length, 7);
+      assert.strictEqual(modal.findBySelector(".sfm-parser-table thead tr th").length, 12, "Defaults to 12 columns");
       
-      // Open modal and switch to Standard 1-Tier
+      // Open modal and switch to Compact 2-Tier
       await modal.click(modal.findBySelector(".sfm-layout-template-btn")[0]);
       const cards = modal.findBySelector(".sfm-template-card");
       assert(cards.length >= 2, "Template cards must exist");
-      await modal.click(cards[1]); // Standard 1-Tier
+      await modal.click(cards[0]); // Compact 2-Tier
       await modal.click(modal.findBySelector(".sfm-layout-modal-done")[0]);
 
-      // Table now has 12 columns
-      assert.strictEqual(modal.findBySelector(".sfm-parser-table thead tr th").length, 12, "Standard 1-Tier must have 12 columns");
+      // Table now has 7 columns
+      assert.strictEqual(modal.findBySelector(".sfm-parser-table thead tr th").length, 7, "Compact 2-Tier has 7 columns");
 
-      // Switch back to Compact 2-Tier
+      // Switch back to Standard 1-Tier
       await modal.click(modal.findBySelector(".sfm-layout-template-btn")[0]);
-      await modal.click(modal.findBySelector(".sfm-template-card")[0]); // Compact 2-Tier
+      await modal.click(modal.findBySelector(".sfm-template-card")[1]); // Standard 1-Tier
       await modal.click(modal.findBySelector(".sfm-layout-modal-done")[0]);
-      assert.strictEqual(modal.findBySelector(".sfm-parser-table thead tr th").length, 7, "Compact 2-Tier must restore 7 columns");
+      assert.strictEqual(modal.findBySelector(".sfm-parser-table thead tr th").length, 12, "Standard 1-Tier restores 12 columns");
     });
   });
 
@@ -780,6 +778,49 @@ function getTests() {
 
       const cbTh = modal.findBySelector(".sfm-parser-table thead tr th")[0];
       assert(cbTh.props?.style?.width === "50px", "Custom width must apply to table header");
+    });
+  });
+
+  add("T2-F24-06", "F24", "Clicking Clear button on scene row sends sceneUpdate mutation resetting all metadata fields", async () => {
+    await withEnv(async (env) => {
+      // Mock window.confirm to return true
+      env.window.confirm = () => true;
+
+      const modal = await openMetadataStudioGlobal(env, [env.db.scenes[0]], "Season 1");
+      const clearBtn = modal.findBySelector(".sfm-btn-clear-scene")[0];
+      assert(clearBtn, "Clear button must be present");
+      await modal.click(clearBtn);
+
+      const clearCall = env.graphql.gqlCalls.find((c) => c.query.includes("sceneUpdate"));
+      assert(clearCall, "Clear mutation must be sent via sceneUpdate");
+      const mutationSent = clearCall.variables.input;
+      assert.strictEqual(mutationSent.title, "");
+      assert.strictEqual(mutationSent.studio_id, null);
+      assert.deepStrictEqual(mutationSent.performer_ids, []);
+      assert.deepStrictEqual(mutationSent.tag_ids, []);
+      assert.strictEqual(mutationSent.code, "");
+      assert.strictEqual(mutationSent.organized, false);
+    });
+  });
+
+  add("T2-F24-07", "F24", "closeStashNavigationMenus collapses open navbar dropdowns and toggler buttons", async () => {
+    await withEnv(async (env) => {
+      assert(typeof env.sfm.closeStashNavigationMenus === "function", "closeStashNavigationMenus must be exposed on window.__SFM__");
+      // Setup mock DOM elements for open dropdown and open toggler
+      const div = env.document.createElement("div");
+      div.className = "dropdown show";
+      env.document.body.appendChild(div);
+
+      let togglerClicked = false;
+      const toggler = env.document.createElement("button");
+      toggler.className = "navbar-toggler";
+      toggler.setAttribute("aria-expanded", "true");
+      toggler.click = () => { togglerClicked = true; };
+      env.document.body.appendChild(toggler);
+
+      env.sfm.closeStashNavigationMenus();
+      assert(!div.classList.contains("show"), "Open dropdown must lose .show class");
+      assert(togglerClicked, "Open navbar toggler must be clicked to collapse");
     });
   });
 
