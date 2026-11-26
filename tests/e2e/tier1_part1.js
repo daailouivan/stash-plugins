@@ -399,7 +399,7 @@ function getTests() {
       const codeColIdx = getTableHeaders(modal, ".sfm-parser-table th").findIndex((h) => /\bCode\b/i.test(h.text));
       assert(codeColIdx >= 0, "Code column must exist");
       const rows = getTableBodyRows(modal, ".sfm-parser-table tbody tr").filter((r) => r.cells.length > codeColIdx);
-      assert.strictEqual(rows[0].cells[codeColIdx].text.trim(), "—");
+      assert(rows[0].cells[codeColIdx].text.includes("—"), "Expected dash placeholder for empty code");
     });
   });
 
@@ -446,7 +446,7 @@ function getTests() {
       await modal.click(titleTh);
       const updatedTh = findHeaderByName(modal, ".sfm-parser-table", "Title");
       assert(modal.nodeText(updatedTh).includes("▲"), "Title header must show ▲ after first click");
-      const rows = getTableBodyRows(modal, ".sfm-parser-table tbody tr").filter((r) => r.cells.length >= 8);
+      const rows = getTableBodyRows(modal, ".sfm-parser-table tbody tr").filter((r) => r.cells.length >= 5);
       assert(rows[0].text.includes("Alpha Sunrise"), "First row must be Alpha Sunrise");
       assert(rows[2].text.includes("Zeta Missing Code"), "Last row must be Zeta Missing Code");
     });
@@ -460,7 +460,7 @@ function getTests() {
       await modal.click(findHeaderByName(modal, ".sfm-parser-table", "Title"));
       const updatedTh = findHeaderByName(modal, ".sfm-parser-table", "Title");
       assert(modal.nodeText(updatedTh).includes("▼"), "Title header must show ▼ after second click");
-      const rows = getTableBodyRows(modal, ".sfm-parser-table tbody tr").filter((r) => r.cells.length >= 8);
+      const rows = getTableBodyRows(modal, ".sfm-parser-table tbody tr").filter((r) => r.cells.length >= 5);
       assert(rows[0].text.includes("Zeta Missing Code"), "First row descending must be Zeta Missing Code");
     });
   });
@@ -470,7 +470,7 @@ function getTests() {
       const scenes = [env.db.scenes[0], env.db.scenes[3], env.db.scenes[4]]; // 2026-01-10, 2024-03-05, 2023-07-04
       const modal = await openMetadataStudioGlobal(env, scenes, "All");
       await modal.click(findHeaderByName(modal, ".sfm-parser-table", "Date"));
-      const rows = getTableBodyRows(modal, ".sfm-parser-table tbody tr").filter((r) => r.cells.length >= 8);
+      const rows = getTableBodyRows(modal, ".sfm-parser-table tbody tr").filter((r) => r.cells.length >= 5);
       assert(rows[0].text.includes("2023-07-04"), "Oldest date must be first on ascending Date click");
       assert(rows[2].text.includes("2026-01-10"), "Newest date must be last on ascending Date click");
     });
@@ -481,7 +481,7 @@ function getTests() {
       const scenes = [env.db.scenes[4], env.db.scenes[0], env.db.scenes[1]]; // DEL-055, ALP-001, BET-010
       const modal = await openMetadataStudioGlobal(env, scenes, "All");
       await modal.click(findHeaderByName(modal, ".sfm-parser-table", "Code"));
-      const rows = getTableBodyRows(modal, ".sfm-parser-table tbody tr").filter((r) => r.cells.length >= 8);
+      const rows = getTableBodyRows(modal, ".sfm-parser-table tbody tr").filter((r) => r.cells.length >= 5);
       assert(rows[0].text.includes("ALP-001"), "ALP-001 must sort first");
       assert(rows[2].text.includes("DEL-055"), "DEL-055 must sort last");
     });
@@ -525,7 +525,7 @@ function getTests() {
       const missingBtn = findButtonByTextOrTitle(modal, /Studio/i);
       assert(missingBtn, "Missing Studio pill button must exist");
       await modal.click(missingBtn);
-      const rows = getTableBodyRows(modal, ".sfm-parser-table tbody tr").filter((r) => r.cells.length >= 8);
+      const rows = getTableBodyRows(modal, ".sfm-parser-table tbody tr").filter((r) => r.cells.length >= 5);
       assert.strictEqual(rows.length, 1, "Only scene 103 is missing Studio");
       assert(rows[0].text.includes("raw_untagged_clip_720p.mkv"));
     });
@@ -537,7 +537,7 @@ function getTests() {
       const missingBtn = findButtonByTextOrTitle(modal, /Code/i);
       assert(missingBtn, "Missing Code pill button must exist");
       await modal.click(missingBtn);
-      const rows = getTableBodyRows(modal, ".sfm-parser-table tbody tr").filter((r) => r.cells.length >= 8);
+      const rows = getTableBodyRows(modal, ".sfm-parser-table tbody tr").filter((r) => r.cells.length >= 5);
       assert.strictEqual(rows.length, 2, "Scenes 103 and 107 are missing code");
     });
   });
@@ -552,7 +552,7 @@ function getTests() {
       )[0];
       assert(searchInput, "Metadata Studio quick text search input must exist");
       await modal.change(searchInput, "GAM-004");
-      const rows = getTableBodyRows(modal, ".sfm-parser-table tbody tr").filter((r) => r.cells.length >= 8);
+      const rows = getTableBodyRows(modal, ".sfm-parser-table tbody tr").filter((r) => r.cells.length >= 5);
       assert.strictEqual(rows.length, 1);
       assert(rows[0].text.includes("Gamma Horizon"));
     });
@@ -564,7 +564,7 @@ function getTests() {
       const missingBtn = findButtonByTextOrTitle(modal, /Cover/i);
       assert(missingBtn, "Missing Cover pill button must exist");
       await modal.click(missingBtn);
-      const rows = getTableBodyRows(modal, ".sfm-parser-table tbody tr").filter((r) => r.cells.length >= 8);
+      const rows = getTableBodyRows(modal, ".sfm-parser-table tbody tr").filter((r) => r.cells.length >= 5);
       assert.strictEqual(rows.length, 1, "Only scene 103 is missing cover screenshot");
       assert(rows[0].text.includes("raw_untagged_clip_720p.mkv"));
     });

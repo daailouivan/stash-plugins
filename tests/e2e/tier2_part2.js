@@ -26,6 +26,7 @@ const {
   findHeaderByName,
   findButtonByText,
   findButtonByTextOrTitle,
+  openMetadataStudioGlobal,
 } = require("./helpers");
 
 function getTests() {
@@ -695,6 +696,91 @@ function getTests() {
     const res = JSON.parse(out.trim().split("\n").pop());
     assert.strictEqual(res.status, "ok");
     assert(res.settings && res.settings.default_transcode_method === "direct");
+  });
+
+  // ==========================================================
+  // F24: Scrape Menu 2-Tier Split Layout & Column Widths Customization
+  // ==========================================================
+  add("T2-F24-01", "F24", "Scrape table defaults to Compact 2-Tier layout with 7 columns and split cells", async () => {
+    await withEnv(async (env) => {
+      const modal = await openMetadataStudioGlobal(env, env.db.scenes.slice(0, 3), "Season 1");
+      const ths = modal.findBySelector(".sfm-parser-table thead tr th");
+      assert.strictEqual(ths.length, 7, "2-Tier layout must have exactly 7 top-level columns");
+      const splitCells = modal.findBySelector(".sfm-parser-table .sfm-split-cell");
+      assert(splitCells.length >= 12, "Must contain split cells for metadata columns");
+    });
+  });
+
+  add("T2-F24-02", "F24", "Split cells display top and bottom subcells with proper metadata pairings", async () => {
+    await withEnv(async (env) => {
+      const modal = await openMetadataStudioGlobal(env, [env.db.scenes[0]], "Season 1");
+      const row = modal.findBySelector(".sfm-parser-table tbody tr")[0];
+      assert(row);
+      const subcellTops = modal.findBySelector(".sfm-subcell-top", row);
+      const subcellBottoms = modal.findBySelector(".sfm-subcell-bottom", row);
+      assert.strictEqual(subcellTops.length, 4, "Must have 4 top subcells (Title, Studio, Date, Organized)");
+      assert.strictEqual(subcellBottoms.length, 4, "Must have 4 bottom subcells (Filename, Performers, Code, Status)");
+      assert(modal.nodeText(subcellTops[0]).includes("Alpha Sunrise"), "Top cell 0 must have Title");
+      assert(modal.nodeText(subcellBottoms[0]).includes("StudioAlpha_ALP-001_Alpha_Sunrise.mp4"), "Bottom cell 0 must have Filename");
+      assert(modal.nodeText(subcellBottoms[2]).includes("ALP-001"), "Bottom cell 2 must have Code");
+    });
+  });
+
+  add("T2-F24-03", "F24", "Clicking 'Layout & Widths' button opens .sfm-layout-modal pop-up", async () => {
+    await withEnv(async (env) => {
+      const modal = await openMetadataStudioGlobal(env, env.db.scenes.slice(0, 2), "Season 1");
+      const layoutBtn = modal.findBySelector(".sfm-layout-template-btn")[0];
+      assert(layoutBtn, "Layout & Widths button must exist");
+      await modal.click(layoutBtn);
+      const layoutModal = modal.findBySelector(".sfm-layout-modal")[0];
+      assert(layoutModal, ".sfm-layout-modal pop-up must be rendered");
+      const doneBtn = modal.findBySelector(".sfm-layout-modal-done")[0];
+      assert(doneBtn, "Done button must exist");
+      await modal.click(doneBtn);
+      assert.strictEqual(modal.findBySelector(".sfm-layout-modal").length, 0, "Pop-up should close on Done");
+    });
+  });
+
+  add("T2-F24-04", "F24", "Switching between Compact 2-Tier and Standard 1-Tier dynamically updates columns", async () => {
+    await withEnv(async (env) => {
+      const modal = await openMetadataStudioGlobal(env, env.db.scenes.slice(0, 2), "Season 1");
+      assert.strictEqual(modal.findBySelector(".sfm-parser-table thead tr th").length, 7);
+      
+      // Open modal and switch to Standard 1-Tier
+      await modal.click(modal.findBySelector(".sfm-layout-template-btn")[0]);
+      const cards = modal.findBySelector(".sfm-template-card");
+      assert(cards.length >= 2, "Template cards must exist");
+      await modal.click(cards[1]); // Standard 1-Tier
+      await modal.click(modal.findBySelector(".sfm-layout-modal-done")[0]);
+
+      // Table now has 12 columns
+      assert.strictEqual(modal.findBySelector(".sfm-parser-table thead tr th").length, 12, "Standard 1-Tier must have 12 columns");
+
+      // Switch back to Compact 2-Tier
+      await modal.click(modal.findBySelector(".sfm-layout-template-btn")[0]);
+      await modal.click(modal.findBySelector(".sfm-template-card")[0]); // Compact 2-Tier
+      await modal.click(modal.findBySelector(".sfm-layout-modal-done")[0]);
+      assert.strictEqual(modal.findBySelector(".sfm-parser-table thead tr th").length, 7, "Compact 2-Tier must restore 7 columns");
+    });
+  });
+
+  add("T2-F24-05", "F24", "Customizing column widths and clicking Reset Defaults updates table and persists", async () => {
+    await withEnv(async (env) => {
+      const modal = await openMetadataStudioGlobal(env, env.db.scenes.slice(0, 2), "Season 1");
+      await modal.click(modal.findBySelector(".sfm-layout-template-btn")[0]);
+      
+      const resetBtn = modal.findBySelector(".sfm-reset-widths-btn")[0];
+      assert(resetBtn, "Reset Defaults button must exist");
+      await modal.click(resetBtn);
+
+      const numInputs = modal.findBySelector(".sfm-width-adjusters input[type=\"number\"]");
+      assert(numInputs.length >= 7, "Width inputs must exist for active template");
+      await modal.change(numInputs[0], "50"); // change checkbox width to 50
+      await modal.click(modal.findBySelector(".sfm-layout-modal-done")[0]);
+
+      const cbTh = modal.findBySelector(".sfm-parser-table thead tr th")[0];
+      assert(cbTh.props?.style?.width === "50px", "Custom width must apply to table header");
+    });
   });
 
   return tests;

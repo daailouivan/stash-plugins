@@ -372,7 +372,7 @@ function getTests() {
       const modal = await openMetadataStudioGlobal(env, scenes, "Season 1");
       await modal.click(findHeaderByName(modal, ".sfm-parser-table", "Code"));
       await modal.click(findHeaderByName(modal, ".sfm-parser-table", "Code"));
-      assert.strictEqual(getTableBodyRows(modal, ".sfm-parser-table tbody tr").filter((r) => r.cells.length >= 8).length, 4);
+      assert.strictEqual(getTableBodyRows(modal, ".sfm-parser-table tbody tr").filter((r) => r.cells.length >= 5).length, 4);
     });
   });
 
@@ -381,7 +381,7 @@ function getTests() {
       const scenes = [env.db.scenes[2], env.db.scenes[0], makeScene({ id: "705", date: null })];
       const modal = await openMetadataStudioGlobal(env, scenes, "Season 1");
       await modal.click(findHeaderByName(modal, ".sfm-parser-table", "Date"));
-      const rows = getTableBodyRows(modal, ".sfm-parser-table tbody tr").filter((r) => r.cells.length >= 8);
+      const rows = getTableBodyRows(modal, ".sfm-parser-table tbody tr").filter((r) => r.cells.length >= 5);
       assert.strictEqual(rows.length, 3);
     });
   });
@@ -392,7 +392,7 @@ function getTests() {
       const modal = await openMetadataStudioGlobal(env, scenes, "All");
       await modal.click(findHeaderByName(modal, ".sfm-parser-table", "Studio"));
       await modal.click(findHeaderByName(modal, ".sfm-parser-table", "Performers"));
-      const rows = getTableBodyRows(modal, ".sfm-parser-table tbody tr").filter((r) => r.cells.length >= 8);
+      const rows = getTableBodyRows(modal, ".sfm-parser-table tbody tr").filter((r) => r.cells.length >= 5);
       assert.strictEqual(rows.length, 3);
     });
   });
@@ -417,7 +417,7 @@ function getTests() {
       ];
       const modal = await openMetadataStudioGlobal(env, scenes, "Season 1");
       await modal.click(findHeaderByName(modal, ".sfm-parser-table", "Title"));
-      const rows = getTableBodyRows(modal, ".sfm-parser-table tbody tr").filter((r) => r.cells.length >= 8);
+      const rows = getTableBodyRows(modal, ".sfm-parser-table tbody tr").filter((r) => r.cells.length >= 5);
       assert(rows[0].text.includes("apple"), "Case-insensitive sort must put 'apple' before 'Banana'");
     });
   });
@@ -433,7 +433,7 @@ function getTests() {
       assert(orgSel && codeBtn);
       await modal.change(orgSel, "unorganized");
       await modal.click(codeBtn);
-      const rows = getTableBodyRows(modal, ".sfm-parser-table tbody tr").filter((r) => r.cells.length >= 8);
+      const rows = getTableBodyRows(modal, ".sfm-parser-table tbody tr").filter((r) => r.cells.length >= 5);
       assert.strictEqual(rows.length, 2, "Only scenes 103 and 107 are unorganized AND missing code");
     });
   });
@@ -446,7 +446,7 @@ function getTests() {
       assert(orgSel && studioBtn);
       await modal.change(orgSel, "organized");
       await modal.click(studioBtn);
-      const rows = getTableBodyRows(modal, ".sfm-parser-table tbody tr").filter((r) => r.cells.length >= 8);
+      const rows = getTableBodyRows(modal, ".sfm-parser-table tbody tr").filter((r) => r.cells.length >= 5);
       assert.strictEqual(rows.length, 0);
     });
   });
@@ -457,7 +457,7 @@ function getTests() {
       const searchInput = modal.findAll((n) => n.tag === "input" && /filter|search/i.test(String(n.props?.placeholder || "")))[0];
       assert(searchInput);
       await modal.change(searchInput, "[480p]");
-      const rows = getTableBodyRows(modal, ".sfm-parser-table tbody tr").filter((r) => r.cells.length >= 8);
+      const rows = getTableBodyRows(modal, ".sfm-parser-table tbody tr").filter((r) => r.cells.length >= 5);
       assert.strictEqual(rows.length, 1);
       assert(rows[0].text.includes("Delta Special & Cut"));
     });
@@ -469,7 +469,7 @@ function getTests() {
       const perfBtn = findButtonByTextOrTitle(modal, /^Performers$/i);
       assert(perfBtn);
       await modal.click(perfBtn);
-      const rows = getTableBodyRows(modal, ".sfm-parser-table tbody tr").filter((r) => r.cells.length >= 8);
+      const rows = getTableBodyRows(modal, ".sfm-parser-table tbody tr").filter((r) => r.cells.length >= 5);
       assert.strictEqual(rows.length, 2, "Scenes 103 and 105 have empty performers");
     });
   });
@@ -480,14 +480,14 @@ function getTests() {
       const titleBtn = findButtonByTextOrTitle(modal, /^Title$/i);
       assert(titleBtn);
       await modal.click(titleBtn);
-      let rows = getTableBodyRows(modal, ".sfm-parser-table tbody tr").filter((r) => r.cells.length >= 8);
+      let rows = getTableBodyRows(modal, ".sfm-parser-table tbody tr").filter((r) => r.cells.length >= 5);
       assert.strictEqual(rows.length, 1, "Only scene 103 has empty title");
       // Deselect title and select tags
       await modal.click(titleBtn);
       const tagsBtn = findButtonByTextOrTitle(modal, /^Tags$/i);
       assert(tagsBtn);
       await modal.click(tagsBtn);
-      rows = getTableBodyRows(modal, ".sfm-parser-table tbody tr").filter((r) => r.cells.length >= 8);
+      rows = getTableBodyRows(modal, ".sfm-parser-table tbody tr").filter((r) => r.cells.length >= 5);
       assert.strictEqual(rows.length, 2, "Scenes 103 and 107 have empty tags");
     });
   });

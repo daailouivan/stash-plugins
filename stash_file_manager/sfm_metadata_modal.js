@@ -39,6 +39,7 @@
       IconX,
       IconAlert,
       IconRefresh,
+      IconColumns,
     } = icons;
 
     function renderIcon(IconComp, props, fallbackText = "") {
@@ -50,6 +51,37 @@
     }
 
     const VALID_TABS = ["scrape", "pattern", "bulk_edit", "rename"];
+
+    const SCRAPE_LAYOUT_TEMPLATES = {
+      COMPACT_2TIER: "compact_2tier",
+      STANDARD_1TIER: "standard_1tier",
+      MINIMAL: "minimal",
+    };
+
+    const DEFAULT_SCRAPE_WIDTHS_2TIER = {
+      checkbox: 36,
+      cover: 56,
+      title_filename: 240,
+      studio_performers: 165,
+      date_code: 110,
+      organized_status: 105,
+      actions: 140,
+    };
+
+    const DEFAULT_SCRAPE_WIDTHS_1TIER = {
+      checkbox: 36,
+      cover: 56,
+      filename: 140,
+      title: 190,
+      date: 92,
+      studio: 115,
+      code: 96,
+      performers: 120,
+      organized: 86,
+      source: 96,
+      status: 84,
+      actions: 140,
+    };
 
     const PRESETS = [
       { label: "Auto-Detected / Interactive Pattern", pattern: "", caseInsensitive: true },
@@ -333,6 +365,66 @@
         code: true,
         cover: true,
       });
+
+      // Scrape Table Layout & Width Customization (2-tier split cell & 1-tier standard)
+      const [layoutTemplate, setLayoutTemplate] = useState(() => {
+        return (
+          (typeof window !== "undefined" && window.localStorage
+            ? window.localStorage.getItem("sfm_scrape_layout_template")
+            : null) || SCRAPE_LAYOUT_TEMPLATES.COMPACT_2TIER
+        );
+      });
+      const [colWidths, setColWidths] = useState(() => {
+        try {
+          const saved =
+            typeof window !== "undefined" && window.localStorage
+              ? window.localStorage.getItem("sfm_scrape_col_widths")
+              : null;
+          if (saved) return JSON.parse(saved);
+        } catch (e) {}
+        return { ...DEFAULT_SCRAPE_WIDTHS_2TIER };
+      });
+      const [showLayoutModal, setShowLayoutModal] = useState(false);
+
+      const handleSelectTemplate = (tpl) => {
+        setLayoutTemplate(tpl);
+        try {
+          if (typeof window !== "undefined" && window.localStorage) {
+            window.localStorage.setItem("sfm_scrape_layout_template", tpl);
+          }
+        } catch (e) {}
+        if (tpl === SCRAPE_LAYOUT_TEMPLATES.COMPACT_2TIER) {
+          setColWidths((prev) => ({ ...DEFAULT_SCRAPE_WIDTHS_2TIER, ...prev }));
+        } else if (tpl === SCRAPE_LAYOUT_TEMPLATES.STANDARD_1TIER) {
+          setColWidths((prev) => ({ ...DEFAULT_SCRAPE_WIDTHS_1TIER, ...prev }));
+        }
+      };
+
+      const handleUpdateColWidth = (key, val) => {
+        const num = Math.max(20, Math.min(800, parseInt(val, 10) || 50));
+        setColWidths((prev) => {
+          const next = { ...prev, [key]: num };
+          try {
+            if (typeof window !== "undefined" && window.localStorage) {
+              window.localStorage.setItem("sfm_scrape_col_widths", JSON.stringify(next));
+            }
+          } catch (e) {}
+          return next;
+        });
+      };
+
+      const handleResetColWidths = () => {
+        const defaults =
+          layoutTemplate === SCRAPE_LAYOUT_TEMPLATES.COMPACT_2TIER
+            ? DEFAULT_SCRAPE_WIDTHS_2TIER
+            : DEFAULT_SCRAPE_WIDTHS_1TIER;
+        setColWidths({ ...defaults });
+        try {
+          if (typeof window !== "undefined" && window.localStorage) {
+            window.localStorage.setItem("sfm_scrape_col_widths", JSON.stringify(defaults));
+          }
+        } catch (e) {}
+      };
 
       const [expandedRowIds, setExpandedRowIds] = useState(() => new Set());
       const resolvedStudiosRef = useRef({});
@@ -2640,15 +2732,339 @@
       const allFilteredSelected =
         filteredItems.length > 0 && filteredItems.every((it) => selectedSceneIds.has(String(it.scene.id)));
 
-      return React.createElement(
-        "div",
-        { className: "sfm-modal-backdrop", onClick: onClose },
+      const is2Tier = layoutTemplate === SCRAPE_LAYOUT_TEMPLATES.COMPACT_2TIER;
+
+      // Action Buttons Cell Helper (Used by both 2-tier and 1-tier layouts)
+      const renderActionsCell = (item, sId, sState, cloud, isExpanded, isInlineSearchOpen, isInlineEditOpen) =>
         React.createElement(
-          "div",
+          "td",
           {
-            className: "sfm-modal-dialog sfm-modal-dialog-large sfm-parser-modal",
+            key: "td-actions",
+            className: is2Tier ? "sfm-full-cell" : undefined,
+            style: { width: `${colWidths.actions || 140}px`, textAlign: "center" },
             onClick: (e) => e.stopPropagation(),
           },
+          React.createElement(
+            "div",
+            { className: "d-inline-flex gap-1 align-items-center" },
+            cloud &&
+              React.createElement(
+                "button",
+                {
+                  type: "button",
+                  className: `btn btn-xs ${
+                    sState.status === "done"
+                      ? "btn-outline-success disabled"
+                      : "btn-success font-weight-bold"
+                  } py-0 px-2 mr-1`,
+                  disabled: sState.status === "applying" || sState.status === "done",
+                  onClick: () => handleApplySingle(item.scene),
+                  title: "Apply scraped metadata immediately",
+                },
+                sState.status === "applying" ? "..." : sState.status === "done" ? "✓" : "Apply"
+              ),
+            React.createElement(
+              "button",
+              {
+                type: "button",
+                className: "btn btn-xs btn-outline-info py-0 px-2 mr-1",
+                onClick: () => handleScrapeSingleRow(item.scene),
+                title: "Scrape this scene using selected source",
+              },
+              "Scrape"
+            ),
+            React.createElement(
+              "button",
+              {
+                type: "button",
+                className: `btn btn-xs ${
+                  isInlineSearchOpen ? "btn-warning" : "btn-secondary text-light"
+                } py-0 px-2 mr-1`,
+                onClick: () => handleOpenInlineSearch(item.scene),
+                title: "Search this scene by custom title/query across scrapers",
+              },
+              renderIcon(IconSearch, { size: 10, className: "mr-1" }),
+              "Search"
+            ),
+            React.createElement(
+              "button",
+              {
+                type: "button",
+                className: `btn btn-xs ${
+                  isInlineEditOpen ? "btn-primary font-weight-bold" : "btn-outline-warning"
+                } py-0 px-2 mr-1 sfm-row-edit-btn sfm-btn-inline-edit`,
+                onClick: () => handleOpenInlineEdit(item.scene),
+                title: "Edit scene metadata inline",
+              },
+              renderIcon(IconEdit, { size: 10, className: "mr-1" }),
+              "Edit"
+            ),
+            cloud &&
+              React.createElement(
+                "button",
+                {
+                  type: "button",
+                  className: `btn btn-xs ${
+                    isExpanded ? "btn-dark text-info" : "btn-outline-info"
+                  } py-0 px-1`,
+                  onClick: () => handleToggleExpandRow(sId),
+                  title: isExpanded ? "Collapse scraped details" : "Expand scraped details",
+                },
+                isExpanded ? "▲" : "▼"
+              )
+          )
+        );
+
+      const renderLayoutTemplateModal = () => {
+        if (!showLayoutModal) return null;
+
+        const currentWidths = colWidths || (is2Tier ? DEFAULT_SCRAPE_WIDTHS_2TIER : DEFAULT_SCRAPE_WIDTHS_1TIER);
+
+        const widthFields2Tier = [
+          { key: "checkbox", label: "Checkbox (Full)", min: 28, max: 80 },
+          { key: "cover", label: "Cover (Full)", min: 40, max: 120 },
+          { key: "title_filename", label: "Title / Filename (Split)", min: 140, max: 500 },
+          { key: "studio_performers", label: "Studio / Performers (Split)", min: 100, max: 400 },
+          { key: "date_code", label: "Date / Code (Split)", min: 80, max: 250 },
+          { key: "organized_status", label: "Organized / Status (Split)", min: 80, max: 250 },
+          { key: "actions", label: "Actions (Full)", min: 100, max: 300 },
+        ];
+
+        const widthFields1Tier = [
+          { key: "checkbox", label: "Checkbox", min: 28, max: 80 },
+          { key: "cover", label: "Cover", min: 40, max: 120 },
+          { key: "filename", label: "Filename", min: 80, max: 350 },
+          { key: "title", label: "Title", min: 100, max: 450 },
+          { key: "date", label: "Date", min: 70, max: 180 },
+          { key: "studio", label: "Studio", min: 80, max: 300 },
+          { key: "code", label: "Code", min: 70, max: 200 },
+          { key: "performers", label: "Performers", min: 80, max: 350 },
+          { key: "organized", label: "Organized", min: 60, max: 150 },
+          { key: "source", label: "Source", min: 70, max: 180 },
+          { key: "status", label: "Status", min: 70, max: 180 },
+          { key: "actions", label: "Actions", min: 100, max: 300 },
+        ];
+
+        const activeFields = is2Tier ? widthFields2Tier : widthFields1Tier;
+        const totalCalculatedWidth = activeFields.reduce(
+          (sum, f) =>
+            sum +
+            (Number(currentWidths[f.key]) ||
+              (is2Tier ? DEFAULT_SCRAPE_WIDTHS_2TIER[f.key] : DEFAULT_SCRAPE_WIDTHS_1TIER[f.key]) ||
+              100),
+          0
+        );
+
+        return React.createElement(
+          "div",
+          {
+            className: "sfm-layout-modal-backdrop d-flex align-items-center justify-content-center",
+            onClick: () => setShowLayoutModal(false),
+          },
+          React.createElement(
+            "div",
+            {
+              className: "sfm-layout-modal bg-dark text-light border border-secondary rounded shadow-lg p-3",
+              style: { width: "560px", maxWidth: "95vw", maxHeight: "90vh", overflowY: "auto", zIndex: 1070 },
+              onClick: (e) => e.stopPropagation(),
+            },
+            React.createElement(
+              "div",
+              { className: "d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom border-secondary" },
+              React.createElement(
+                "h5",
+                { className: "m-0 d-flex align-items-center gap-2 font-weight-bold" },
+                renderIcon(IconColumns, { size: 18, className: "text-info mr-2" }),
+                "Layout Templates & Column Widths"
+              ),
+              React.createElement(
+                "button",
+                {
+                  type: "button",
+                  className: "close text-light sfm-layout-modal-close",
+                  onClick: () => setShowLayoutModal(false),
+                },
+                "×"
+              )
+            ),
+            React.createElement(
+              "div",
+              { className: "mb-3" },
+              React.createElement("label", { className: "font-weight-bold text-info small mb-2 d-block" }, "1. Select Layout Mode"),
+              React.createElement(
+                "div",
+                { className: "row g-2" },
+                React.createElement(
+                  "div",
+                  { className: "col-6" },
+                  React.createElement(
+                    "div",
+                    {
+                      className: `sfm-template-card p-2 rounded border cursor-pointer ${
+                        is2Tier ? "border-info bg-primary bg-opacity-25" : "border-secondary"
+                      }`,
+                      style: {
+                        cursor: "pointer",
+                        background: is2Tier ? "rgba(136, 192, 208, 0.12)" : "rgba(255, 255, 255, 0.03)",
+                      },
+                      onClick: () => handleSelectTemplate(SCRAPE_LAYOUT_TEMPLATES.COMPACT_2TIER),
+                    },
+                    React.createElement(
+                      "div",
+                      { className: "d-flex align-items-center justify-content-between mb-1" },
+                      React.createElement("span", { className: "font-weight-bold text-light" }, "Compact 2-Tier"),
+                      React.createElement("span", { className: "badge badge-success py-0 px-1 small" }, "Recommended")
+                    ),
+                    React.createElement(
+                      "div",
+                      { className: "small text-muted", style: { fontSize: "0.74rem", lineHeight: "1.2" } },
+                      "Full-height controls + 2-tier stacked metadata cells. Eliminates horizontal scrolling."
+                    )
+                  )
+                ),
+                React.createElement(
+                  "div",
+                  { className: "col-6" },
+                  React.createElement(
+                    "div",
+                    {
+                      className: `sfm-template-card p-2 rounded border cursor-pointer ${
+                        !is2Tier ? "border-info bg-primary bg-opacity-25" : "border-secondary"
+                      }`,
+                      style: {
+                        cursor: "pointer",
+                        background: !is2Tier ? "rgba(136, 192, 208, 0.12)" : "rgba(255, 255, 255, 0.03)",
+                      },
+                      onClick: () => handleSelectTemplate(SCRAPE_LAYOUT_TEMPLATES.STANDARD_1TIER),
+                    },
+                    React.createElement(
+                      "div",
+                      { className: "d-flex align-items-center justify-content-between mb-1" },
+                      React.createElement("span", { className: "font-weight-bold text-light" }, "Standard 1-Tier")
+                    ),
+                    React.createElement(
+                      "div",
+                      { className: "small text-muted", style: { fontSize: "0.74rem", lineHeight: "1.2" } },
+                      "Traditional single-line table with all 12 columns side-by-side."
+                    )
+                  )
+                )
+              )
+            ),
+            React.createElement(
+              "div",
+              { className: "mb-3" },
+              React.createElement(
+                "div",
+                { className: "d-flex justify-content-between align-items-center mb-2" },
+                React.createElement(
+                  "label",
+                  { className: "font-weight-bold text-info small m-0" },
+                  "2. Adjust Column Widths"
+                ),
+                React.createElement(
+                  "div",
+                  { className: "d-flex align-items-center gap-2" },
+                  React.createElement(
+                    "span",
+                    { className: "small text-muted mr-2" },
+                    `Total: ~${totalCalculatedWidth}px`
+                  ),
+                  React.createElement(
+                    "button",
+                    {
+                      type: "button",
+                      className: "btn btn-xs btn-outline-secondary py-0 px-2 sfm-reset-widths-btn",
+                      onClick: handleResetColWidths,
+                      title: "Reset column widths to default",
+                    },
+                    "Reset Defaults"
+                  )
+                )
+              ),
+              React.createElement(
+                "div",
+                {
+                  className: "sfm-width-adjusters p-2 rounded border border-secondary",
+                  style: { backgroundColor: "rgba(0, 0, 0, 0.25)", maxHeight: "230px", overflowY: "auto" },
+                },
+                activeFields.map((f) => {
+                  const val =
+                    currentWidths[f.key] !== undefined
+                      ? currentWidths[f.key]
+                      : (is2Tier ? DEFAULT_SCRAPE_WIDTHS_2TIER[f.key] : DEFAULT_SCRAPE_WIDTHS_1TIER[f.key]);
+                  return React.createElement(
+                    "div",
+                    {
+                      key: f.key,
+                      className: "d-flex align-items-center justify-content-between mb-2 py-1 px-1 border-bottom border-dark",
+                    },
+                    React.createElement(
+                      "span",
+                      { className: "small text-light", style: { width: "190px", fontSize: "0.78rem" } },
+                      f.label
+                    ),
+                    React.createElement(
+                      "div",
+                      { className: "d-flex align-items-center gap-2 flex-grow-1 ml-2" },
+                      React.createElement("input", {
+                        type: "range",
+                        className: "form-range flex-grow-1",
+                        min: f.min,
+                        max: f.max,
+                        value: val,
+                        onChange: (e) => handleUpdateColWidth(f.key, e.target.value),
+                        style: { cursor: "pointer", height: "18px" },
+                      }),
+                      React.createElement("input", {
+                        type: "number",
+                        className: "form-control form-control-sm bg-dark text-light border-secondary text-right px-1",
+                        style: { width: "65px", height: "24px", fontSize: "0.78rem" },
+                        min: f.min,
+                        max: f.max,
+                        value: val,
+                        onChange: (e) => handleUpdateColWidth(f.key, e.target.value),
+                      }),
+                      React.createElement("span", { className: "small text-muted" }, "px")
+                    )
+                  );
+                })
+              )
+            ),
+            React.createElement(
+              "div",
+              { className: "d-flex justify-content-between align-items-center pt-2 border-top border-secondary" },
+              React.createElement(
+                "span",
+                { className: "small text-muted" },
+                "Changes are saved automatically."
+              ),
+              React.createElement(
+                "button",
+                {
+                  type: "button",
+                  className: "btn btn-sm btn-info font-weight-bold px-3 sfm-layout-modal-done",
+                  onClick: () => setShowLayoutModal(false),
+                },
+                "Done"
+              )
+            )
+          )
+        );
+      };
+
+      return React.createElement(
+        React.Fragment,
+        null,
+        React.createElement(
+          "div",
+          { className: "sfm-modal-backdrop", onClick: onClose },
+          React.createElement(
+            "div",
+            {
+              className: "sfm-modal-dialog sfm-modal-dialog-large sfm-parser-modal",
+              onClick: (e) => e.stopPropagation(),
+            },
           // Header with 4 Dedicated Tabs
           React.createElement(
             "div",
@@ -3925,6 +4341,17 @@
                         "button",
                         {
                           type: "button",
+                          className: "btn btn-xs btn-outline-secondary py-0 px-2 sfm-layout-template-btn",
+                          onClick: () => setShowLayoutModal(true),
+                          title: "Switch layout templates & customize column widths",
+                        },
+                        renderIcon(IconColumns, { size: 11, className: "mr-1" }),
+                        "Layout & Widths"
+                      ),
+                      React.createElement(
+                        "button",
+                        {
+                          type: "button",
                           className: "btn btn-xs btn-outline-info py-0 px-2",
                           onClick: handleSelectAllMatched,
                         },
@@ -3940,76 +4367,310 @@
                         { className: "badge badge-info" },
                         `${selectedSceneIds.size} of ${localScenes.length} scenes selected for update`
                       )
-                    )
-                  ),
-                  // Unified Live Preview Table (12 columns)
-                  React.createElement(
-                    "div",
-                    { className: "sfm-parser-table-wrap mb-3" },
+                    ),
+                    // Unified Live Preview Table
+                    React.createElement(
+                      "div",
+                      { className: "sfm-parser-table-wrap mb-3", style: { overflowX: "auto" } },
                     React.createElement(
                       "table",
-                      { className: "sfm-parser-table table table-dark table-sm table-striped" },
+                      { className: `sfm-parser-table table table-dark table-sm table-striped ${is2Tier ? "sfm-table-2tier" : "sfm-table-1tier"}` },
                       React.createElement(
                         "thead",
                         null,
                         React.createElement(
                           "tr",
                           null,
-                          React.createElement(
-                            "th",
-                            { style: { width: "36px", textAlign: "center" } },
-                            React.createElement("input", {
-                              type: "checkbox",
-                              checked: allFilteredSelected,
-                              onChange: () => {
-                                if (allFilteredSelected) {
-                                  setSelectedSceneIds((prev) => {
-                                    const next = new Set(prev);
-                                    filteredItems.forEach((it) => next.delete(String(it.scene.id)));
-                                    return next;
-                                  });
-                                } else {
-                                  setSelectedSceneIds((prev) => {
-                                    const next = new Set(prev);
-                                    filteredItems.forEach((it) => next.add(String(it.scene.id)));
-                                    return next;
-                                  });
-                                }
-                              },
-                            })
-                          ),
-                          React.createElement("th", { style: { width: "60px", textAlign: "center" } }, "Cover"),
-                          TABLE_SORTABLE_COLUMNS.map((col) => {
-                            const isActive = tableSortKey === col.key;
-                            const arrow = isActive ? (tableSortDir === "asc" ? " ▲" : " ▼") : "";
-                            return React.createElement(
-                              "th",
-                              {
-                                key: col.key,
-                                className: `sfm-sortable-th ${isActive ? "sfm-sort-active text-info" : ""}`.trim(),
-                                "data-sort-key": col.key,
-                                "data-sort-dir": isActive ? tableSortDir : undefined,
-                                role: "button",
-                                tabIndex: 0,
-                                style: { ...col.style, cursor: "pointer", userSelect: "none" },
-                                title: `Sort by ${col.label}`,
-                                onClick: () => handleHeaderSort(col.key),
-                                onKeyDown: (e) => {
-                                  if (e.key === "Enter" || e.key === " ") {
-                                    e.preventDefault();
-                                    handleHeaderSort(col.key);
-                                  }
-                                },
-                              },
-                              col.label,
-                              arrow && React.createElement("span", { className: "sfm-sort-indicator" }, arrow)
-                            );
-                          }),
-                          React.createElement(
-                            "th",
-                            { style: { width: "1%", whiteSpace: "nowrap", textAlign: "center" } },
-                            "Actions"
-                          )
+                          ...(is2Tier
+                            ? [
+                                React.createElement(
+                                  "th",
+                                  { key: "th-cb", className: "sfm-full-th", style: { width: `${colWidths.checkbox || 36}px`, textAlign: "center" } },
+                                  React.createElement("input", {
+                                    type: "checkbox",
+                                    checked: allFilteredSelected,
+                                    onChange: () => {
+                                      if (allFilteredSelected) {
+                                        setSelectedSceneIds((prev) => {
+                                          const next = new Set(prev);
+                                          filteredItems.forEach((it) => next.delete(String(it.scene.id)));
+                                          return next;
+                                        });
+                                      } else {
+                                        setSelectedSceneIds((prev) => {
+                                          const next = new Set(prev);
+                                          filteredItems.forEach((it) => next.add(String(it.scene.id)));
+                                          return next;
+                                        });
+                                      }
+                                    },
+                                  })
+                                ),
+                                React.createElement(
+                                  "th",
+                                  { key: "th-cover", className: "sfm-full-th", style: { width: `${colWidths.cover || 56}px`, textAlign: "center" } },
+                                  "Cover"
+                                ),
+                                React.createElement(
+                                  "th",
+                                  {
+                                    key: "th-title-filename",
+                                    className: "sfm-split-th",
+                                    style: { width: `${colWidths.title_filename || 240}px`, maxWidth: `${colWidths.title_filename || 240}px` },
+                                  },
+                                  React.createElement(
+                                    "div",
+                                    {
+                                      className: `sfm-subth sfm-subth-top ${tableSortKey === "title" ? "sfm-sort-active text-info" : ""}`,
+                                      role: "button",
+                                      tabIndex: 0,
+                                      "data-sort-key": "title",
+                                      "data-sort-dir": tableSortKey === "title" ? tableSortDir : undefined,
+                                      onClick: () => handleHeaderSort("title"),
+                                      onKeyDown: (e) => {
+                                        if (e.key === "Enter" || e.key === " ") {
+                                          e.preventDefault();
+                                          handleHeaderSort("title");
+                                        }
+                                      },
+                                      title: "Sort by Title",
+                                    },
+                                    "Title",
+                                    tableSortKey === "title" && React.createElement("span", { className: "sfm-sort-indicator ml-1" }, tableSortDir === "asc" ? "▲" : "▼")
+                                  ),
+                                  React.createElement(
+                                    "div",
+                                    {
+                                      className: `sfm-subth sfm-subth-bottom ${tableSortKey === "filename" ? "sfm-sort-active text-info" : ""}`,
+                                      role: "button",
+                                      tabIndex: 0,
+                                      "data-sort-key": "filename",
+                                      "data-sort-dir": tableSortKey === "filename" ? tableSortDir : undefined,
+                                      onClick: () => handleHeaderSort("filename"),
+                                      onKeyDown: (e) => {
+                                        if (e.key === "Enter" || e.key === " ") {
+                                          e.preventDefault();
+                                          handleHeaderSort("filename");
+                                        }
+                                      },
+                                      title: "Sort by Filename",
+                                    },
+                                    "Filename",
+                                    tableSortKey === "filename" && React.createElement("span", { className: "sfm-sort-indicator ml-1" }, tableSortDir === "asc" ? "▲" : "▼")
+                                  )
+                                ),
+                                React.createElement(
+                                  "th",
+                                  {
+                                    key: "th-studio-performers",
+                                    className: "sfm-split-th",
+                                    style: { width: `${colWidths.studio_performers || 165}px`, maxWidth: `${colWidths.studio_performers || 165}px` },
+                                  },
+                                  React.createElement(
+                                    "div",
+                                    {
+                                      className: `sfm-subth sfm-subth-top ${tableSortKey === "studio" ? "sfm-sort-active text-info" : ""}`,
+                                      role: "button",
+                                      tabIndex: 0,
+                                      "data-sort-key": "studio",
+                                      "data-sort-dir": tableSortKey === "studio" ? tableSortDir : undefined,
+                                      onClick: () => handleHeaderSort("studio"),
+                                      onKeyDown: (e) => {
+                                        if (e.key === "Enter" || e.key === " ") {
+                                          e.preventDefault();
+                                          handleHeaderSort("studio");
+                                        }
+                                      },
+                                      title: "Sort by Studio",
+                                    },
+                                    "Studio",
+                                    tableSortKey === "studio" && React.createElement("span", { className: "sfm-sort-indicator ml-1" }, tableSortDir === "asc" ? "▲" : "▼")
+                                  ),
+                                  React.createElement(
+                                    "div",
+                                    {
+                                      className: `sfm-subth sfm-subth-bottom ${tableSortKey === "performers" ? "sfm-sort-active text-info" : ""}`,
+                                      role: "button",
+                                      tabIndex: 0,
+                                      "data-sort-key": "performers",
+                                      "data-sort-dir": tableSortKey === "performers" ? tableSortDir : undefined,
+                                      onClick: () => handleHeaderSort("performers"),
+                                      onKeyDown: (e) => {
+                                        if (e.key === "Enter" || e.key === " ") {
+                                          e.preventDefault();
+                                          handleHeaderSort("performers");
+                                        }
+                                      },
+                                      title: "Sort by Performers",
+                                    },
+                                    "Performers",
+                                    tableSortKey === "performers" && React.createElement("span", { className: "sfm-sort-indicator ml-1" }, tableSortDir === "asc" ? "▲" : "▼")
+                                  )
+                                ),
+                                React.createElement(
+                                  "th",
+                                  {
+                                    key: "th-date-code",
+                                    className: "sfm-split-th",
+                                    style: { width: `${colWidths.date_code || 110}px`, maxWidth: `${colWidths.date_code || 110}px` },
+                                  },
+                                  React.createElement(
+                                    "div",
+                                    {
+                                      className: `sfm-subth sfm-subth-top ${tableSortKey === "date" ? "sfm-sort-active text-info" : ""}`,
+                                      role: "button",
+                                      tabIndex: 0,
+                                      "data-sort-key": "date",
+                                      "data-sort-dir": tableSortKey === "date" ? tableSortDir : undefined,
+                                      onClick: () => handleHeaderSort("date"),
+                                      onKeyDown: (e) => {
+                                        if (e.key === "Enter" || e.key === " ") {
+                                          e.preventDefault();
+                                          handleHeaderSort("date");
+                                        }
+                                      },
+                                      title: "Sort by Date",
+                                    },
+                                    "Date",
+                                    tableSortKey === "date" && React.createElement("span", { className: "sfm-sort-indicator ml-1" }, tableSortDir === "asc" ? "▲" : "▼")
+                                  ),
+                                  React.createElement(
+                                    "div",
+                                    {
+                                      className: `sfm-subth sfm-subth-bottom ${tableSortKey === "code" ? "sfm-sort-active text-info" : ""}`,
+                                      role: "button",
+                                      tabIndex: 0,
+                                      "data-sort-key": "code",
+                                      "data-sort-dir": tableSortKey === "code" ? tableSortDir : undefined,
+                                      onClick: () => handleHeaderSort("code"),
+                                      onKeyDown: (e) => {
+                                        if (e.key === "Enter" || e.key === " ") {
+                                          e.preventDefault();
+                                          handleHeaderSort("code");
+                                        }
+                                      },
+                                      title: "Sort by Code",
+                                    },
+                                    "Code",
+                                    tableSortKey === "code" && React.createElement("span", { className: "sfm-sort-indicator ml-1" }, tableSortDir === "asc" ? "▲" : "▼")
+                                  )
+                                ),
+                                React.createElement(
+                                  "th",
+                                  {
+                                    key: "th-organized-status",
+                                    className: "sfm-split-th",
+                                    style: { width: `${colWidths.organized_status || 105}px`, maxWidth: `${colWidths.organized_status || 105}px` },
+                                  },
+                                  React.createElement(
+                                    "div",
+                                    {
+                                      className: `sfm-subth sfm-subth-top ${tableSortKey === "organized" ? "sfm-sort-active text-info" : ""}`,
+                                      role: "button",
+                                      tabIndex: 0,
+                                      "data-sort-key": "organized",
+                                      "data-sort-dir": tableSortKey === "organized" ? tableSortDir : undefined,
+                                      onClick: () => handleHeaderSort("organized"),
+                                      onKeyDown: (e) => {
+                                        if (e.key === "Enter" || e.key === " ") {
+                                          e.preventDefault();
+                                          handleHeaderSort("organized");
+                                        }
+                                      },
+                                      title: "Sort by Organized",
+                                    },
+                                    "Organized",
+                                    tableSortKey === "organized" && React.createElement("span", { className: "sfm-sort-indicator ml-1" }, tableSortDir === "asc" ? "▲" : "▼")
+                                  ),
+                                  React.createElement(
+                                    "div",
+                                    {
+                                      className: `sfm-subth sfm-subth-bottom ${tableSortKey === "status" ? "sfm-sort-active text-info" : ""}`,
+                                      role: "button",
+                                      tabIndex: 0,
+                                      "data-sort-key": "status",
+                                      "data-sort-dir": tableSortKey === "status" ? tableSortDir : undefined,
+                                      onClick: () => handleHeaderSort("status"),
+                                      onKeyDown: (e) => {
+                                        if (e.key === "Enter" || e.key === " ") {
+                                          e.preventDefault();
+                                          handleHeaderSort("status");
+                                        }
+                                      },
+                                      title: "Sort by Status",
+                                    },
+                                    "Status",
+                                    tableSortKey === "status" && React.createElement("span", { className: "sfm-sort-indicator ml-1" }, tableSortDir === "asc" ? "▲" : "▼")
+                                  )
+                                ),
+                                React.createElement(
+                                  "th",
+                                  {
+                                    key: "th-actions",
+                                    className: "sfm-full-th",
+                                    style: { width: `${colWidths.actions || 140}px`, textAlign: "center" },
+                                  },
+                                  "Actions"
+                                ),
+                              ]
+                            : [
+                                React.createElement(
+                                  "th",
+                                  { key: "th-cb", style: { width: `${colWidths.checkbox || 36}px`, textAlign: "center" } },
+                                  React.createElement("input", {
+                                    type: "checkbox",
+                                    checked: allFilteredSelected,
+                                    onChange: () => {
+                                      if (allFilteredSelected) {
+                                        setSelectedSceneIds((prev) => {
+                                          const next = new Set(prev);
+                                          filteredItems.forEach((it) => next.delete(String(it.scene.id)));
+                                          return next;
+                                        });
+                                      } else {
+                                        setSelectedSceneIds((prev) => {
+                                          const next = new Set(prev);
+                                          filteredItems.forEach((it) => next.add(String(it.scene.id)));
+                                          return next;
+                                        });
+                                      }
+                                    },
+                                  })
+                                ),
+                                React.createElement("th", { key: "th-cover", style: { width: `${colWidths.cover || 56}px`, textAlign: "center" } }, "Cover"),
+                                ...TABLE_SORTABLE_COLUMNS.map((col) => {
+                                  const isActive = tableSortKey === col.key;
+                                  const arrow = isActive ? (tableSortDir === "asc" ? " ▲" : " ▼") : "";
+                                  const dynamicWidth = colWidths[col.key] ? `${colWidths[col.key]}px` : undefined;
+                                  return React.createElement(
+                                    "th",
+                                    {
+                                      key: col.key,
+                                      className: `sfm-sortable-th ${isActive ? "sfm-sort-active text-info" : ""}`.trim(),
+                                      "data-sort-key": col.key,
+                                      "data-sort-dir": isActive ? tableSortDir : undefined,
+                                      role: "button",
+                                      tabIndex: 0,
+                                      style: { ...col.style, width: dynamicWidth || col.style.width, cursor: "pointer", userSelect: "none" },
+                                      title: `Sort by ${col.label}`,
+                                      onClick: () => handleHeaderSort(col.key),
+                                      onKeyDown: (e) => {
+                                        if (e.key === "Enter" || e.key === " ") {
+                                          e.preventDefault();
+                                          handleHeaderSort(col.key);
+                                        }
+                                      },
+                                    },
+                                    col.label,
+                                    arrow && React.createElement("span", { className: "sfm-sort-indicator" }, arrow)
+                                  );
+                                }),
+                                React.createElement(
+                                  "th",
+                                  { key: "th-actions", style: { width: `${colWidths.actions || 140}px`, textAlign: "center" } },
+                                  "Actions"
+                                ),
+                              ])
                         )
                       ),
                       React.createElement(
@@ -4081,244 +4742,368 @@
                                     style: { cursor: "pointer", opacity: isSelected ? 1 : 0.7 },
                                     onClick: () => handleToggleSelectScene(sId),
                                   },
-                                  React.createElement(
-                                    "td",
-                                    { style: { textAlign: "center" } },
-                                    React.createElement("input", {
-                                      type: "checkbox",
-                                      checked: isSelected,
-                                      onChange: () => handleToggleSelectScene(sId),
-                                      onClick: (e) => e.stopPropagation(),
-                                    })
-                                  ),
-                                  React.createElement(
-                                    "td",
-                                    { style: { textAlign: "center" } },
-                                    React.createElement("img", {
-                                      src: thumbUrl,
-                                      className: `sfm-scrape-thumb ${cloud ? "sfm-scrape-thumb-matched" : ""}`,
-                                      alt: "Thumb",
-                                      loading: "lazy",
-                                      onError: (e) => {
-                                        e.target.src = posterUrl;
-                                      },
-                                    })
-                                  ),
-                                  React.createElement(
-                                    "td",
-                                    { className: "text-truncate", style: { maxWidth: "140px" }, title: item.rawBasename },
-                                    item.rawBasename
-                                  ),
-                                  React.createElement(
-                                    "td",
-                                    {
-                                      className: `text-truncate ${
-                                        cloud ? "text-success font-weight-bold" : "text-info font-weight-bold"
-                                      }`,
-                                      style: { maxWidth: "190px" },
-                                      title: displayTitle,
-                                    },
-                                    cloud &&
-                                      React.createElement(
-                                        "span",
-                                        { className: "badge badge-success mr-1 py-0 px-1", style: { fontSize: "0.68rem" } },
-                                        "✓"
-                                      ),
-                                    displayTitle
-                                  ),
-                                  React.createElement("td", { style: { whiteSpace: "nowrap" } }, displayDate),
-                                  React.createElement(
-                                    "td",
-                                    { className: "text-truncate", style: { maxWidth: "115px" }, title: displayStudio },
-                                    displayStudio !== "—"
-                                      ? React.createElement(
-                                          "span",
+                                  ...(is2Tier
+                                    ? [
+                                        React.createElement(
+                                          "td",
+                                          { key: "td-cb", className: "sfm-full-cell", style: { width: `${colWidths.checkbox || 36}px`, textAlign: "center" } },
+                                          React.createElement("input", {
+                                            type: "checkbox",
+                                            checked: isSelected,
+                                            onChange: () => handleToggleSelectScene(sId),
+                                            onClick: (e) => e.stopPropagation(),
+                                          })
+                                        ),
+                                        React.createElement(
+                                          "td",
+                                          { key: "td-cover", className: "sfm-full-cell", style: { width: `${colWidths.cover || 56}px`, textAlign: "center" } },
+                                          React.createElement("img", {
+                                            src: thumbUrl,
+                                            className: `sfm-scrape-thumb ${cloud ? "sfm-scrape-thumb-matched" : ""}`,
+                                            alt: "Thumb",
+                                            loading: "lazy",
+                                            onError: (e) => {
+                                              e.target.src = posterUrl;
+                                            },
+                                          })
+                                        ),
+                                        // Split 1: Title / Filename
+                                        React.createElement(
+                                          "td",
                                           {
-                                            className: cloud?.studio?.name
-                                              ? "badge badge-secondary py-1 px-2 font-weight-bold"
-                                              : "",
+                                            key: "td-title-filename",
+                                            className: "sfm-split-cell",
+                                            style: { width: `${colWidths.title_filename || 240}px`, maxWidth: `${colWidths.title_filename || 240}px` },
                                           },
-                                          displayStudio,
-                                          isFromPathStudio &&
+                                          React.createElement(
+                                            "div",
+                                            {
+                                              className: `sfm-subcell sfm-subcell-top ${cloud ? "text-success font-weight-bold" : "text-info font-weight-bold"}`,
+                                              title: displayTitle,
+                                            },
+                                            cloud &&
+                                              React.createElement(
+                                                "span",
+                                                { className: "badge badge-success mr-1 py-0 px-1", style: { fontSize: "0.68rem" } },
+                                                "✓"
+                                              ),
+                                            displayTitle
+                                          ),
+                                          React.createElement(
+                                            "div",
+                                            {
+                                              className: "sfm-subcell sfm-subcell-bottom text-muted",
+                                              title: item.rawBasename,
+                                            },
+                                            item.rawBasename
+                                          )
+                                        ),
+                                        // Split 2: Studio / Performers
+                                        React.createElement(
+                                          "td",
+                                          {
+                                            key: "td-studio-performers",
+                                            className: "sfm-split-cell",
+                                            style: { width: `${colWidths.studio_performers || 165}px`, maxWidth: `${colWidths.studio_performers || 165}px` },
+                                          },
+                                          React.createElement(
+                                            "div",
+                                            { className: "sfm-subcell sfm-subcell-top", title: displayStudio },
+                                            displayStudio !== "—"
+                                              ? React.createElement(
+                                                  "span",
+                                                  {
+                                                    className: cloud?.studio?.name
+                                                      ? "badge badge-secondary py-0 px-1 font-weight-bold"
+                                                      : "",
+                                                  },
+                                                  displayStudio,
+                                                  isFromPathStudio &&
+                                                    React.createElement(
+                                                      "span",
+                                                      {
+                                                        className: "badge badge-dark text-info ml-1 py-0",
+                                                        title: "Resolved from Directory Path Clue",
+                                                      },
+                                                      "Path"
+                                                    )
+                                                )
+                                              : "—"
+                                          ),
+                                          React.createElement(
+                                            "div",
+                                            {
+                                              className: "sfm-subcell sfm-subcell-bottom text-muted",
+                                              title: displayPerformers,
+                                            },
+                                            displayPerformers
+                                          )
+                                        ),
+                                        // Split 3: Date / Code
+                                        React.createElement(
+                                          "td",
+                                          {
+                                            key: "td-date-code",
+                                            className: "sfm-split-cell",
+                                            style: { width: `${colWidths.date_code || 110}px`, maxWidth: `${colWidths.date_code || 110}px` },
+                                          },
+                                          React.createElement(
+                                            "div",
+                                            { className: "sfm-subcell sfm-subcell-top", title: displayDate },
+                                            displayDate
+                                          ),
+                                          React.createElement(
+                                            "div",
+                                            {
+                                              className: "sfm-subcell sfm-subcell-bottom sfm-code-cell",
+                                              style: { fontFamily: "monospace", fontSize: "0.78rem" },
+                                              title: displayCode,
+                                            },
+                                            displayCode !== "—"
+                                              ? React.createElement(
+                                                  "span",
+                                                  { className: "badge badge-dark text-warning py-0 px-1" },
+                                                  displayCode
+                                                )
+                                              : "—"
+                                          )
+                                        ),
+                                        // Split 4: Organized / Status
+                                        React.createElement(
+                                          "td",
+                                          {
+                                            key: "td-organized-status",
+                                            className: "sfm-split-cell",
+                                            style: { width: `${colWidths.organized_status || 105}px`, maxWidth: `${colWidths.organized_status || 105}px` },
+                                          },
+                                          React.createElement(
+                                            "div",
+                                            {
+                                              className: "sfm-subcell sfm-subcell-top d-flex justify-content-center align-items-center",
+                                              onClick: (e) => e.stopPropagation(),
+                                              title: orgError || (item.scene.organized ? "Organized" : "Unorganized"),
+                                            },
+                                            React.createElement("input", {
+                                              type: "checkbox",
+                                              className: "sfm-organized-checkbox",
+                                              checked: Boolean(item.scene.organized),
+                                              disabled: isOrganizedSaving,
+                                              onChange: (e) => handleToggleRowOrganized(item.scene, e),
+                                              onClick: (e) => e.stopPropagation(),
+                                              "aria-label": `Organized for ${displayTitle}`,
+                                            }),
+                                            orgError &&
+                                              React.createElement(
+                                                "span",
+                                                { className: "text-danger ml-1", style: { fontSize: "0.66rem" } },
+                                                "Err"
+                                              )
+                                          ),
+                                          React.createElement(
+                                            "div",
+                                            {
+                                              className: "sfm-subcell sfm-subcell-bottom d-flex justify-content-center align-items-center",
+                                              title: sState.error || sState.status,
+                                            },
+                                            sState.status === "applying"
+                                              ? React.createElement("span", { className: "badge badge-info py-0 px-1" }, "Applying...")
+                                              : sState.status === "done"
+                                              ? React.createElement("span", { className: "badge badge-success py-0 px-1" }, "✓ Applied")
+                                              : sState.status === "skipped"
+                                              ? React.createElement("span", { className: "badge badge-warning py-0 px-1" }, "Skipped")
+                                              : sState.status === "scraping"
+                                              ? React.createElement("span", { className: "badge badge-info py-0 px-1" }, "Scraping...")
+                                              : cloud
+                                              ? React.createElement(
+                                                  "span",
+                                                  { className: "badge badge-success font-weight-bold py-0 px-1" },
+                                                  "Matched"
+                                                )
+                                              : item.matched
+                                              ? React.createElement("span", { className: "badge badge-success py-0 px-1" }, "Matched")
+                                              : sState.status === "nomatch"
+                                              ? React.createElement("span", { className: "badge badge-warning py-0 px-1" }, "No Result")
+                                              : sState.status === "error"
+                                              ? React.createElement(
+                                                  "span",
+                                                  { className: "badge badge-danger py-0 px-1", title: sState.error || "Error" },
+                                                  "Error"
+                                                )
+                                              : React.createElement("span", { className: "badge badge-secondary py-0 px-1" }, "Idle")
+                                          )
+                                        ),
+                                        renderActionsCell(item, sId, sState, cloud, isExpanded, isInlineSearchOpen, isInlineEditOpen),
+                                      ]
+                                    : [
+                                        React.createElement(
+                                          "td",
+                                          { key: "td-cb", style: { textAlign: "center" } },
+                                          React.createElement("input", {
+                                            type: "checkbox",
+                                            checked: isSelected,
+                                            onChange: () => handleToggleSelectScene(sId),
+                                            onClick: (e) => e.stopPropagation(),
+                                          })
+                                        ),
+                                        React.createElement(
+                                          "td",
+                                          { key: "td-cover", style: { textAlign: "center" } },
+                                          React.createElement("img", {
+                                            src: thumbUrl,
+                                            className: `sfm-scrape-thumb ${cloud ? "sfm-scrape-thumb-matched" : ""}`,
+                                            alt: "Thumb",
+                                            loading: "lazy",
+                                            onError: (e) => {
+                                              e.target.src = posterUrl;
+                                            },
+                                          })
+                                        ),
+                                        React.createElement(
+                                          "td",
+                                          { key: "td-filename", className: "text-truncate", style: { maxWidth: "140px" }, title: item.rawBasename },
+                                          item.rawBasename
+                                        ),
+                                        React.createElement(
+                                          "td",
+                                          {
+                                            key: "td-title",
+                                            className: `text-truncate ${
+                                              cloud ? "text-success font-weight-bold" : "text-info font-weight-bold"
+                                            }`,
+                                            style: { maxWidth: "190px" },
+                                            title: displayTitle,
+                                          },
+                                          cloud &&
                                             React.createElement(
                                               "span",
-                                              {
-                                                className: "badge badge-dark text-info ml-1 py-0",
-                                                title: "Resolved from Directory Path Clue",
-                                              },
-                                              "Path"
-                                            )
-                                        )
-                                      : "—"
-                                  ),
-                                  // Code Column (R2)
-                                  React.createElement(
-                                    "td",
-                                    {
-                                      className: "sfm-code-cell text-truncate",
-                                      style: { maxWidth: "110px", fontFamily: "monospace", fontSize: "0.78rem" },
-                                      title: displayCode,
-                                    },
-                                    displayCode !== "—"
-                                      ? React.createElement(
-                                          "span",
-                                          { className: "badge badge-dark text-warning py-0 px-1" },
-                                          displayCode
-                                        )
-                                      : "—"
-                                  ),
-                                  React.createElement(
-                                    "td",
-                                    { className: "text-truncate", style: { maxWidth: "120px" }, title: displayPerformers },
-                                    displayPerformers
-                                  ),
-                                  // Organized Checkbox Column (R2)
-                                  React.createElement(
-                                    "td",
-                                    {
-                                      style: { textAlign: "center" },
-                                      onClick: (e) => e.stopPropagation(),
-                                      title: orgError || (item.scene.organized ? "Organized" : "Unorganized"),
-                                    },
-                                    React.createElement("input", {
-                                      type: "checkbox",
-                                      className: "sfm-organized-checkbox",
-                                      checked: Boolean(item.scene.organized),
-                                      disabled: isOrganizedSaving,
-                                      onChange: (e) => handleToggleRowOrganized(item.scene, e),
-                                      onClick: (e) => e.stopPropagation(),
-                                      "aria-label": `Organized for ${displayTitle}`,
-                                    }),
-                                    orgError &&
-                                      React.createElement(
-                                        "div",
-                                        { className: "text-danger", style: { fontSize: "0.66rem" } },
-                                        "Err"
-                                      )
-                                  ),
-                                  React.createElement(
-                                    "td",
-                                    { style: { textAlign: "center" } },
-                                    sState.sourceName
-                                      ? React.createElement(
-                                          "span",
-                                          { className: "badge badge-primary py-0 px-1", style: { fontSize: "0.72rem" } },
-                                          sState.sourceName
-                                        )
-                                      : cloud
-                                      ? React.createElement("span", { className: "badge badge-primary py-0 px-1" }, "Scraped")
-                                      : item.matched
-                                      ? React.createElement(
-                                          "span",
-                                          { className: "badge badge-dark text-muted py-0 px-1" },
-                                          "Pattern"
-                                        )
-                                      : "—"
-                                  ),
-                                  React.createElement(
-                                    "td",
-                                    { style: { textAlign: "center" } },
-                                    sState.status === "applying"
-                                      ? React.createElement("span", { className: "badge badge-info" }, "Applying...")
-                                      : sState.status === "done"
-                                      ? React.createElement("span", { className: "badge badge-success" }, "✓ Applied")
-                                      : sState.status === "skipped"
-                                      ? React.createElement("span", { className: "badge badge-warning" }, "Skipped")
-                                      : sState.status === "scraping"
-                                      ? React.createElement("span", { className: "badge badge-info" }, "Scraping...")
-                                      : cloud
-                                      ? React.createElement(
-                                          "span",
-                                          { className: "badge badge-success font-weight-bold" },
-                                          "Matched"
-                                        )
-                                      : item.matched
-                                      ? React.createElement("span", { className: "badge badge-success" }, "Matched")
-                                      : sState.status === "nomatch"
-                                      ? React.createElement("span", { className: "badge badge-warning" }, "No Result")
-                                      : sState.status === "error"
-                                      ? React.createElement(
-                                          "span",
-                                          { className: "badge badge-danger", title: sState.error || "Error" },
-                                          "Error"
-                                        )
-                                      : React.createElement("span", { className: "badge badge-secondary" }, "Idle")
-                                  ),
-                                  // Actions Column (Apply, Scrape, Search, Edit, Expand)
-                                  React.createElement(
-                                    "td",
-                                    { style: { textAlign: "center" }, onClick: (e) => e.stopPropagation() },
-                                    React.createElement(
-                                      "div",
-                                      { className: "d-inline-flex gap-1 align-items-center" },
-                                      cloud &&
-                                        React.createElement(
-                                          "button",
-                                          {
-                                            type: "button",
-                                            className: `btn btn-xs ${
-                                              sState.status === "done"
-                                                ? "btn-outline-success disabled"
-                                                : "btn-success font-weight-bold"
-                                            } py-0 px-2 mr-1`,
-                                            disabled: sState.status === "applying" || sState.status === "done",
-                                            onClick: () => handleApplySingle(item.scene),
-                                            title: "Apply scraped metadata immediately",
-                                          },
-                                          sState.status === "applying" ? "..." : sState.status === "done" ? "✓" : "Apply"
+                                              { className: "badge badge-success mr-1 py-0 px-1", style: { fontSize: "0.68rem" } },
+                                              "✓"
+                                            ),
+                                          displayTitle
                                         ),
-                                      React.createElement(
-                                        "button",
-                                        {
-                                          type: "button",
-                                          className: "btn btn-xs btn-outline-info py-0 px-2 mr-1",
-                                          onClick: () => handleScrapeSingleRow(item.scene),
-                                          title: "Scrape this scene using selected source",
-                                        },
-                                        "Scrape"
-                                      ),
-                                      React.createElement(
-                                        "button",
-                                        {
-                                          type: "button",
-                                          className: `btn btn-xs ${
-                                            isInlineSearchOpen ? "btn-warning" : "btn-secondary text-light"
-                                          } py-0 px-2 mr-1`,
-                                          onClick: () => handleOpenInlineSearch(item.scene),
-                                          title: "Search this scene by custom title/query across scrapers",
-                                        },
-                                        renderIcon(IconSearch, { size: 10, className: "mr-1" }),
-                                        "Search"
-                                      ),
-                                      React.createElement(
-                                        "button",
-                                        {
-                                          type: "button",
-                                          className: `btn btn-xs ${
-                                            isInlineEditOpen ? "btn-primary font-weight-bold" : "btn-outline-warning"
-                                          } py-0 px-2 mr-1 sfm-row-edit-btn sfm-btn-inline-edit`,
-                                          onClick: () => handleOpenInlineEdit(item.scene),
-                                          title: "Edit scene metadata inline",
-                                        },
-                                        renderIcon(IconEdit, { size: 10, className: "mr-1" }),
-                                        "Edit"
-                                      ),
-                                      cloud &&
+                                        React.createElement("td", { key: "td-date", style: { whiteSpace: "nowrap" } }, displayDate),
                                         React.createElement(
-                                          "button",
+                                          "td",
+                                          { key: "td-studio", className: "text-truncate", style: { maxWidth: "115px" }, title: displayStudio },
+                                          displayStudio !== "—"
+                                            ? React.createElement(
+                                                "span",
+                                                {
+                                                  className: cloud?.studio?.name
+                                                    ? "badge badge-secondary py-1 px-2 font-weight-bold"
+                                                    : "",
+                                                },
+                                                displayStudio,
+                                                isFromPathStudio &&
+                                                  React.createElement(
+                                                    "span",
+                                                    {
+                                                      className: "badge badge-dark text-info ml-1 py-0",
+                                                      title: "Resolved from Directory Path Clue",
+                                                    },
+                                                    "Path"
+                                                  )
+                                              )
+                                            : "—"
+                                        ),
+                                        // Code Column (R2)
+                                        React.createElement(
+                                          "td",
                                           {
-                                            type: "button",
-                                            className: `btn btn-xs ${
-                                              isExpanded ? "btn-dark text-info" : "btn-outline-info"
-                                            } py-0 px-1`,
-                                            onClick: () => handleToggleExpandRow(sId),
-                                            title: isExpanded ? "Collapse scraped details" : "Expand scraped details",
+                                            key: "td-code",
+                                            className: "sfm-code-cell text-truncate",
+                                            style: { maxWidth: "110px", fontFamily: "monospace", fontSize: "0.78rem" },
+                                            title: displayCode,
                                           },
-                                          isExpanded ? "▲" : "▼"
-                                        )
-                                    )
-                                  )
-                                ),
+                                          displayCode !== "—"
+                                            ? React.createElement(
+                                                "span",
+                                                { className: "badge badge-dark text-warning py-0 px-1" },
+                                                displayCode
+                                              )
+                                            : "—"
+                                        ),
+                                        React.createElement(
+                                          "td",
+                                          { key: "td-performers", className: "text-truncate", style: { maxWidth: "120px" }, title: displayPerformers },
+                                          displayPerformers
+                                        ),
+                                        // Organized Checkbox Column (R2)
+                                        React.createElement(
+                                          "td",
+                                          {
+                                            key: "td-organized",
+                                            style: { textAlign: "center" },
+                                            onClick: (e) => e.stopPropagation(),
+                                            title: orgError || (item.scene.organized ? "Organized" : "Unorganized"),
+                                          },
+                                          React.createElement("input", {
+                                            type: "checkbox",
+                                            className: "sfm-organized-checkbox",
+                                            checked: Boolean(item.scene.organized),
+                                            disabled: isOrganizedSaving,
+                                            onChange: (e) => handleToggleRowOrganized(item.scene, e),
+                                            onClick: (e) => e.stopPropagation(),
+                                            "aria-label": `Organized for ${displayTitle}`,
+                                          }),
+                                          orgError &&
+                                            React.createElement(
+                                              "div",
+                                              { className: "text-danger", style: { fontSize: "0.66rem" } },
+                                              "Err"
+                                            )
+                                        ),
+                                        React.createElement(
+                                          "td",
+                                          { key: "td-source", style: { textAlign: "center" } },
+                                          sState.sourceName
+                                            ? React.createElement(
+                                                "span",
+                                                { className: "badge badge-primary py-0 px-1", style: { fontSize: "0.72rem" } },
+                                                sState.sourceName
+                                              )
+                                            : cloud
+                                            ? React.createElement("span", { className: "badge badge-primary py-0 px-1" }, "Scraped")
+                                            : item.matched
+                                            ? React.createElement(
+                                                "span",
+                                                { className: "badge badge-dark text-muted py-0 px-1" },
+                                                "Pattern"
+                                              )
+                                            : "—"
+                                        ),
+                                        React.createElement(
+                                          "td",
+                                          { key: "td-status", style: { textAlign: "center" } },
+                                          sState.status === "applying"
+                                            ? React.createElement("span", { className: "badge badge-info" }, "Applying...")
+                                            : sState.status === "done"
+                                            ? React.createElement("span", { className: "badge badge-success" }, "✓ Applied")
+                                            : sState.status === "skipped"
+                                            ? React.createElement("span", { className: "badge badge-warning" }, "Skipped")
+                                            : sState.status === "scraping"
+                                            ? React.createElement("span", { className: "badge badge-info" }, "Scraping...")
+                                            : cloud
+                                            ? React.createElement(
+                                                "span",
+                                                { className: "badge badge-success font-weight-bold" },
+                                                "Matched"
+                                              )
+                                            : item.matched
+                                            ? React.createElement("span", { className: "badge badge-success" }, "Matched")
+                                            : sState.status === "nomatch"
+                                            ? React.createElement("span", { className: "badge badge-warning" }, "No Result")
+                                            : sState.status === "error"
+                                            ? React.createElement(
+                                                "span",
+                                                { className: "badge badge-danger", title: sState.error || "Error" },
+                                                "Error"
+                                              )
+                                            : React.createElement("span", { className: "badge badge-secondary" }, "Idle")
+                                        ),
+                                        renderActionsCell(item, sId, sState, cloud, isExpanded, isInlineSearchOpen, isInlineEditOpen),
+                                      ])
+                                  ),
                                 // Inline Row Metadata Editor (R2)
                                 isInlineEditOpen &&
                                   React.createElement(
@@ -4326,7 +5111,7 @@
                                     { key: `edit-${sId}`, className: "bg-black sfm-inline-edit-row" },
                                     React.createElement(
                                       "td",
-                                      { colSpan: 12, className: "p-2 px-3" },
+                                      { colSpan: is2Tier ? 7 : 12, className: "p-2 px-3" },
                                       React.createElement(
                                         "div",
                                         {
@@ -4563,7 +5348,7 @@
                                     { key: `scraped-card-${sId}`, className: "bg-black" },
                                     React.createElement(
                                       "td",
-                                      { colSpan: 12, className: "p-0 border-0" },
+                                      { colSpan: is2Tier ? 7 : 12, className: "p-0 border-0" },
                                       React.createElement(
                                         "div",
                                         {
@@ -4822,7 +5607,7 @@
                                     { key: `search-${sId}`, className: "bg-black" },
                                     React.createElement(
                                       "td",
-                                      { colSpan: 12, className: "p-2 px-3" },
+                                      { colSpan: is2Tier ? 7 : 12, className: "p-2 px-3" },
                                       React.createElement(
                                         "div",
                                         { className: "sfm-inline-search-card" },
@@ -5087,9 +5872,12 @@
                   )
                 )
               )
+          )
         )
-      );
-    }
+      ),
+      renderLayoutTemplateModal()
+    );
+  }
 
     // Compatibility Wrapper for legacy BatchMetadataModal callers
     function BatchMetadataModal(props) {

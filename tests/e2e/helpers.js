@@ -118,6 +118,14 @@ function getTableBodyRows(tree, selector = ".sfm-data-table tbody tr") {
 }
 
 function findHeaderByName(tree, tableSelector, headerName) {
+  const subThs = tree.findBySelector(`${tableSelector} .sfm-subth`);
+  if (subThs && subThs.length > 0) {
+    const subTh = subThs.find((el) => {
+      const t = tree.nodeText(el).replace(/[▲▼↕\s]+/g, " ").trim().toLowerCase();
+      return t === headerName.toLowerCase() || t.startsWith(headerName.toLowerCase());
+    });
+    if (subTh) return subTh;
+  }
   const ths = tree.findBySelector(`${tableSelector} th`);
   const th = ths.find((el) => {
     const t = tree.nodeText(el).replace(/[▲▼↕\s]+/g, " ").trim().toLowerCase();

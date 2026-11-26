@@ -75,7 +75,7 @@ function getTests() {
       const studioBtn = findButtonByTextOrTitle(tree, /^Studio$/i, modal);
       assert(studioBtn);
       await tree.click(studioBtn);
-      let rows = getTableBodyRows(tree, ".sfm-parser-table tbody tr").filter((r) => r.cells.length >= 8);
+      let rows = getTableBodyRows(tree, ".sfm-parser-table tbody tr").filter((r) => r.cells.length >= 5);
       assert.strictEqual(rows.length, 1);
 
       // Step 2: Inline Edit scene 103

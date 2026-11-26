@@ -5187,3 +5187,96 @@ button.badge.sfm-badge-btn.sfm-state-inactive:hover {
     max-width: 200px !important;
   }
 }
+
+/* ============================================================
+   Scrape Table 2-Tier Split Layout & Layout Template Pop-up
+   ============================================================ */
+
+.sfm-split-cell {
+  padding: 0 !important;
+  vertical-align: middle !important;
+  height: 52px;
+}
+
+.sfm-subcell {
+  height: 25px;
+  display: flex;
+  align-items: center;
+  padding: 2px 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  box-sizing: border-box;
+  font-size: 0.8rem;
+}
+
+.sfm-subcell-top {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.sfm-subcell-bottom {
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.sfm-subcell-divider {
+  display: none;
+}
+
+.sfm-full-cell {
+  height: 52px;
+  vertical-align: middle !important;
+}
+
+.sfm-split-th {
+  padding: 0 !important;
+  vertical-align: middle !important;
+}
+
+.sfm-subth {
+  height: 25px;
+  display: flex;
+  align-items: center;
+  padding: 2px 8px;
+  cursor: pointer;
+  user-select: none;
+  font-size: 0.76rem;
+  font-weight: 600;
+  box-sizing: border-box;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.sfm-subth:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--sfm-accent, #88c0d0);
+}
+
+.sfm-subth-top {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.sfm-full-th {
+  vertical-align: middle !important;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.45rem 0.5rem;
+}
+
+.sfm-layout-modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.72);
+  z-index: 1060;
+  backdrop-filter: blur(3px);
+}
+
+.sfm-template-card {
+  transition: all 0.18s ease;
+}
+
+.sfm-template-card:hover {
+  border-color: rgba(136, 192, 208, 0.4) !important;
+  background-color: rgba(255, 255, 255, 0.06) !important;
+}

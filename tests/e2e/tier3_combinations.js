@@ -159,7 +159,7 @@ function getTests() {
       const orgSel = modal.findBySelector("select").find((s) => getSelectOptionValues(s).includes("organized"));
       await modal.change(orgSel, "organized"); // 101 (Alpha), 104 (Gamma), 106 (Epsilon)
       await modal.click(findHeaderByName(modal, ".sfm-parser-table", "Title"));
-      const rows = getTableBodyRows(modal, ".sfm-parser-table tbody tr").filter((r) => r.cells.length >= 8);
+      const rows = getTableBodyRows(modal, ".sfm-parser-table tbody tr").filter((r) => r.cells.length >= 5);
       assert.strictEqual(rows.length, 3);
       assert(rows[0].text.includes("Alpha Sunrise"));
       assert(rows[1].text.includes("Epsilon Finale"));
