@@ -813,6 +813,78 @@ function getTests() {
     });
   });
 
+  add("T2-F24-08", "F24", "Scrape layout modal toggles column visibility and dynamically updates rendered table columns", async () => {
+    await withEnv(async (env) => {
+      const modal = await openMetadataStudioGlobal(env, env.db.scenes.slice(0, 2), "Season 1");
+      // Initially 12 columns
+      assert.strictEqual(modal.findBySelector(".sfm-parser-table thead tr th").length, 12);
+      
+      // Open modal
+      await modal.click(modal.findBySelector(".sfm-layout-template-btn")[0]);
+      
+      // Toggle off 'code' column
+      const codeCheckbox = modal.findBySelector("input[data-col-id=\"code\"]")[0];
+      assert(codeCheckbox, "Code column visibility checkbox must exist");
+      await modal.change(codeCheckbox, false);
+      
+      // Close modal
+      await modal.click(modal.findBySelector(".sfm-layout-modal-done")[0]);
+      
+      // Now 11 columns in thead and tbody
+      const ths = modal.findBySelector(".sfm-parser-table thead tr th");
+      assert.strictEqual(ths.length, 11, "Table should now render 11 columns");
+      const rows = getTableBodyRows(modal, ".sfm-parser-table tbody tr");
+      assert.strictEqual(rows[0].cells.length, 11, "Row cells count should match visible columns");
+      assert(!ths.some((th) => th.props?.["data-sort-key"] === "code"), "Code column must no longer be rendered");
+    });
+  });
+
+  add("T2-F24-09", "F24", "Scrape layout modal reorders columns and updates table header sequence", async () => {
+    await withEnv(async (env) => {
+      const modal = await openMetadataStudioGlobal(env, env.db.scenes.slice(0, 2), "Season 1");
+      await modal.click(modal.findBySelector(".sfm-layout-template-btn")[0]);
+      
+      // Find move buttons in the customizer
+      const moveBtns = modal.findBySelector(".sfm-col-move-btn");
+      assert(moveBtns.length > 0, "Move Up/Down buttons must exist");
+      
+      // Move cover (index 1) down past filename
+      await modal.click(moveBtns[3]);
+      await modal.click(modal.findBySelector(".sfm-layout-modal-done")[0]);
+      
+      const ths = modal.findBySelector(".sfm-parser-table thead tr th");
+      // Header at index 1 should now be filename, not cover
+      assert.strictEqual(ths[1].props?.["data-sort-key"], "filename", "Filename should now precede Cover after reorder");
+    });
+  });
+
+  add("T2-F24-10", "F24", "Scrape table supports font density modes and multi-line text wrapping on text cells", async () => {
+    await withEnv(async (env) => {
+      const modal = await openMetadataStudioGlobal(env, env.db.scenes.slice(0, 2), "Season 1");
+      
+      // Open modal and change density to compact
+      await modal.click(modal.findBySelector(".sfm-layout-template-btn")[0]);
+      const compactPill = modal.findBySelector(".sfm-density-pill").find((p) => /Compact/i.test(modal.nodeText(p)));
+      assert(compactPill, "Compact density pill must exist");
+      await modal.click(compactPill);
+      await modal.click(modal.findBySelector(".sfm-layout-modal-done")[0]);
+      
+      const table = modal.findBySelector(".sfm-parser-table")[0];
+      assert(table.props?.className?.includes("sfm-density-compact"), "Table must apply sfm-density-compact class");
+      
+      // Verify text wrapping style on filename and title cells
+      const row = getTableBodyRows(modal, ".sfm-parser-table tbody tr")[0];
+      const filenameCell = row.node.children.find((c) => c.props?.key === "td-filename");
+      assert(filenameCell, "Filename cell must exist");
+      assert.strictEqual(filenameCell.props?.style?.whiteSpace, "normal", "Filename cell must allow normal text wrapping");
+      assert.strictEqual(filenameCell.props?.style?.wordBreak, "break-word", "Filename cell must break long words");
+      
+      const titleCell = row.node.children.find((c) => c.props?.key === "td-title");
+      assert(titleCell, "Title cell must exist");
+      assert.strictEqual(titleCell.props?.style?.whiteSpace, "normal", "Title cell must allow normal text wrapping");
+    });
+  });
+
   return tests;
 }
 

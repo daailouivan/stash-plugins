@@ -1024,7 +1024,7 @@
 .sfm-parser-table-wrap {
   border: 1px solid var(--sfm-border-strong);
   border-radius: var(--sfm-radius-md);
-  overflow-x: hidden;
+  overflow-x: auto;
   overflow-y: auto;
   max-height: 480px;
 }
@@ -1070,12 +1070,97 @@
   border-bottom: 1px solid #2a303c;
   color: var(--sfm-text-color);
   vertical-align: middle;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  line-height: 1.25;
 }
 
 .sfm-parser-table tr:hover td {
   background-color: rgba(136, 192, 208, 0.05);
+}
+
+/* Scrape Table Density & Font Scaling */
+.sfm-parser-table.sfm-density-normal {
+  font-size: 0.80rem;
+}
+.sfm-parser-table.sfm-density-normal th {
+  padding: 0.38rem 0.30rem;
+}
+.sfm-parser-table.sfm-density-normal td {
+  padding: 0.34rem 0.28rem;
+}
+
+.sfm-parser-table.sfm-density-compact {
+  font-size: 0.74rem;
+}
+.sfm-parser-table.sfm-density-compact th {
+  padding: 0.28rem 0.22rem;
+}
+.sfm-parser-table.sfm-density-compact td {
+  padding: 0.25rem 0.20rem;
+}
+.sfm-parser-table.sfm-density-compact .badge {
+  font-size: 0.68rem;
+}
+
+.sfm-parser-table.sfm-density-condensed {
+  font-size: 0.68rem;
+}
+.sfm-parser-table.sfm-density-condensed th {
+  padding: 0.22rem 0.16rem;
+}
+.sfm-parser-table.sfm-density-condensed td {
+  padding: 0.20rem 0.14rem;
+}
+.sfm-parser-table.sfm-density-condensed .badge {
+  font-size: 0.62rem;
+  padding: 0.1rem 0.25rem;
+}
+
+.sfm-parser-table.sfm-density-micro {
+  font-size: 0.62rem;
+}
+.sfm-parser-table.sfm-density-micro th {
+  padding: 0.16rem 0.12rem;
+}
+.sfm-parser-table.sfm-density-micro td {
+  padding: 0.14rem 0.10rem;
+}
+.sfm-parser-table.sfm-density-micro .badge {
+  font-size: 0.58rem;
+  padding: 0.05rem 0.2rem;
+}
+
+/* Layout & Columns Customizer Modal */
+.sfm-col-config-item {
+  transition: background-color 0.12s ease;
+}
+.sfm-col-config-item:hover {
+  background-color: rgba(255, 255, 255, 0.06) !important;
+}
+.sfm-col-move-btn {
+  line-height: 1;
+  padding: 0.15rem 0.35rem;
+}
+.sfm-density-pill {
+  cursor: pointer;
+  padding: 0.2rem 0.6rem;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  font-size: 0.72rem;
+  background: rgba(255, 255, 255, 0.05);
+  color: #cbd5e1;
+  transition: all 0.15s ease;
+}
+.sfm-density-pill:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+.sfm-density-pill.active {
+  background: var(--sfm-accent, #00bdc4);
+  color: #0f172a;
+  border-color: var(--sfm-accent, #00bdc4);
+  font-weight: 600;
 }
 
 /* Unified Metadata Studio Pill Buttons & Filter Controls */
